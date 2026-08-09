@@ -1,8 +1,8 @@
-# Color Toolkit – Implementation Plan
+# ColorKit – Implementation Plan
 
 > **Status (2026-08-05): M0–M18 and M5b (CVD) complete – the numbered plan is done.**
-> The suite is **405 Swift Testing functions across 46 suites in `Color ToolkitTests`,
-> 59 more across 10 suites in `ColorToolkitCLITests`, plus 30
+> The suite is **405 Swift Testing functions across 46 suites in `ColorKitTests`,
+> 59 more across 10 suites in `ColorKitCLITests`, plus 30
 > XCUITests**, read off a run rather than counted by hand. ColorCore is validated against
 > **colorjs.io 0.7.0** (pinned exact) – 6,384 conversions, 1,368 gamut mappings, 108
 > contrast pairs and **1,760 mix vectors** – plus independent definitional anchors, and
@@ -393,20 +393,20 @@ M0–M12 are built. The stock SwiftData template (`Item.swift`, the `NavigationS
 | Convert       | [Conversion.swift](ColorCore/Convert/Conversion.swift), [GamutMapping.swift](ColorCore/Convert/GamutMapping.swift), [GamutBoundary.swift](ColorCore/Convert/GamutBoundary.swift), [HSV.swift](ColorCore/Convert/HSV.swift), [MissingComponents.swift](ColorCore/Convert/MissingComponents.swift)                                                                             |
 | Parse         | [CSSTokenizer.swift](ColorCore/Parse/CSSTokenizer.swift), [ColorSyntax.swift](ColorCore/Parse/ColorSyntax.swift), [CSSColorParser.swift](ColorCore/Parse/CSSColorParser.swift)                                                                                                                                                                                               |
 | Format        | [CSSFormatter.swift](ColorCore/Format/CSSFormatter.swift), [FormatCatalog.swift](ColorCore/Format/FormatCatalog.swift)                                                                                                                                                                                                                                                       |
-| Shell         | [ColorStore.swift](Color%20Toolkit/Features/Shell/ColorStore.swift), [MenuBarPanel.swift](Color%20Toolkit/Features/Shell/MenuBarPanel.swift), [ContentView.swift](Color%20Toolkit/ContentView.swift)                                                                                                                                                                         |
+| Shell         | [ColorStore.swift](ColorKit/Features/Shell/ColorStore.swift), [MenuBarPanel.swift](ColorKit/Features/Shell/MenuBarPanel.swift), [ContentView.swift](ColorKit/ContentView.swift)                                                                                                                                                                         |
 | Analysis      | [WCAGContrast.swift](ColorCore/Analysis/WCAGContrast.swift), [APCAContrast.swift](ColorCore/Analysis/APCAContrast.swift), [CVDSimulation.swift](ColorCore/Analysis/CVDSimulation.swift), [CVDMatrices.swift](ColorCore/Analysis/CVDMatrices.swift) (**generated**)                                                                                                           |
 | Transform     | [Adjustment.swift](ColorCore/Transform/Adjustment.swift), [LightnessCurve.swift](ColorCore/Transform/LightnessCurve.swift), [Harmony.swift](ColorCore/Transform/Harmony.swift), [ShadeRamp.swift](ColorCore/Transform/ShadeRamp.swift), [ContrastSolver.swift](ColorCore/Transform/ContrastSolver.swift)                                                                     |
 | Export        | [ExportTemplate.swift](ColorCore/Export/ExportTemplate.swift), [ColorExport.swift](ColorCore/Export/ColorExport.swift)                                                                                                                                                                                                                                                       |
-| Conversion UI | [ColorInputField.swift](Color%20Toolkit/Features/Conversion/ColorInputField.swift), [ConversionPanel.swift](Color%20Toolkit/Features/Conversion/ConversionPanel.swift), [FormatPresentation.swift](Color%20Toolkit/Features/Conversion/FormatPresentation.swift)                                                                                                             |
-| Contrast UI   | [ContrastPanel.swift](Color%20Toolkit/Features/Contrast/ContrastPanel.swift)                                                                                                                                                                                                                                                                                                 |
-| Picker UI     | [PickerState.swift](Color%20Toolkit/Features/Picker/PickerState.swift), [PickerPlane.swift](Color%20Toolkit/Features/Picker/PickerPlane.swift), [PickerPanel.swift](Color%20Toolkit/Features/Picker/PickerPanel.swift), [PickerPlaneView.swift](Color%20Toolkit/Features/Picker/PickerPlaneView.swift), [PickerHueStripView.swift](Color%20Toolkit/Features/Picker/PickerHueStripView.swift), [PickerAlphaSliderView.swift](Color%20Toolkit/Features/Picker/PickerAlphaSliderView.swift), [CompactPicker.swift](Color%20Toolkit/Features/Picker/CompactPicker.swift)                                                                                                                                                       |
-| CVD UI        | [CVDPanel.swift](Color%20Toolkit/Features/CVD/CVDPanel.swift)                                                                                                                                                                                                                                                                                                                |
-| Transform UI  | [TransformPanel.swift](Color%20Toolkit/Features/Transform/TransformPanel.swift)                                                                                                                                                                                                                                                                                              |
-| Export UI     | [ExportPanel.swift](Color%20Toolkit/Features/Export/ExportPanel.swift), [ExportPresentation.swift](Color%20Toolkit/Features/Export/ExportPresentation.swift)                                                                                                                                                                                                                 |
-| Persistence   | [ColorRecord.swift](Color%20Toolkit/Persistence/ColorRecord.swift), [ProjectModels.swift](Color%20Toolkit/Persistence/ProjectModels.swift), [ProjectLibrary.swift](Color%20Toolkit/Persistence/ProjectLibrary.swift), [PersistenceStack.swift](Color%20Toolkit/Persistence/PersistenceStack.swift), [SchemaVersions.swift](Color%20Toolkit/Persistence/SchemaVersions.swift) |
-| Projects UI   | [ProjectsPanel.swift](Color%20Toolkit/Features/Projects/ProjectsPanel.swift)                                                                                                                                                                                                                                                                                                 |
-| Design system | [ColorSwatch.swift](Color%20Toolkit/DesignSystem/ColorSwatch.swift), [ColorValue+SwiftUI.swift](Color%20Toolkit/DesignSystem/ColorValue+SwiftUI.swift)                                                                                                                                                                                                                       |
-| Services      | [Clipboard.swift](Color%20Toolkit/Services/Clipboard.swift), [ScreenSampler.swift](Color%20Toolkit/Services/ScreenSampler.swift), [GlobalHotKey.swift](Color%20Toolkit/Services/GlobalHotKey.swift)                                                                                                                                                                          |
+| Conversion UI | [ColorInputField.swift](ColorKit/Features/Conversion/ColorInputField.swift), [ConversionPanel.swift](ColorKit/Features/Conversion/ConversionPanel.swift), [FormatPresentation.swift](ColorKit/Features/Conversion/FormatPresentation.swift)                                                                                                             |
+| Contrast UI   | [ContrastPanel.swift](ColorKit/Features/Contrast/ContrastPanel.swift)                                                                                                                                                                                                                                                                                                 |
+| Picker UI     | [PickerState.swift](ColorKit/Features/Picker/PickerState.swift), [PickerPlane.swift](ColorKit/Features/Picker/PickerPlane.swift), [PickerPanel.swift](ColorKit/Features/Picker/PickerPanel.swift), [PickerPlaneView.swift](ColorKit/Features/Picker/PickerPlaneView.swift), [PickerHueStripView.swift](ColorKit/Features/Picker/PickerHueStripView.swift), [PickerAlphaSliderView.swift](ColorKit/Features/Picker/PickerAlphaSliderView.swift), [CompactPicker.swift](ColorKit/Features/Picker/CompactPicker.swift)                                                                                                                                                       |
+| CVD UI        | [CVDPanel.swift](ColorKit/Features/CVD/CVDPanel.swift)                                                                                                                                                                                                                                                                                                                |
+| Transform UI  | [TransformPanel.swift](ColorKit/Features/Transform/TransformPanel.swift)                                                                                                                                                                                                                                                                                              |
+| Export UI     | [ExportPanel.swift](ColorKit/Features/Export/ExportPanel.swift), [ExportPresentation.swift](ColorKit/Features/Export/ExportPresentation.swift)                                                                                                                                                                                                                 |
+| Persistence   | [ColorRecord.swift](ColorKit/Persistence/ColorRecord.swift), [ProjectModels.swift](ColorKit/Persistence/ProjectModels.swift), [ProjectLibrary.swift](ColorKit/Persistence/ProjectLibrary.swift), [PersistenceStack.swift](ColorKit/Persistence/PersistenceStack.swift), [SchemaVersions.swift](ColorKit/Persistence/SchemaVersions.swift) |
+| Projects UI   | [ProjectsPanel.swift](ColorKit/Features/Projects/ProjectsPanel.swift)                                                                                                                                                                                                                                                                                                 |
+| Design system | [ColorSwatch.swift](ColorKit/DesignSystem/ColorSwatch.swift), [ColorValue+SwiftUI.swift](ColorKit/DesignSystem/ColorValue+SwiftUI.swift)                                                                                                                                                                                                                       |
+| Services      | [Clipboard.swift](ColorKit/Services/Clipboard.swift), [ScreenSampler.swift](ColorKit/Services/ScreenSampler.swift), [GlobalHotKey.swift](ColorKit/Services/GlobalHotKey.swift)                                                                                                                                                                          |
 
 `Persistence/` exists as of M9 and holds five files, listed above – M11 added
 `SchemaVersions.swift`. An earlier revision of this file claimed one existed and was empty
@@ -417,7 +417,7 @@ Key facts about the project, established during exploration and still current:
 
 | Fact                            | Value                                                     | Why it matters                                                                                                                                                                                                             |
 | ------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `objectVersion`                 | `77`, with **two** `PBXFileSystemSynchronizedRootGroup`s  | **New `.swift` files are picked up automatically.** No `project.pbxproj` edits needed – write into `ColorCore/` or `Color Toolkit/`, subfolders included. Editing the project file is for adding a *target*, nothing else. |
+| `objectVersion`                 | `77`, with **two** `PBXFileSystemSynchronizedRootGroup`s  | **New `.swift` files are picked up automatically.** No `project.pbxproj` edits needed – write into `ColorCore/` or `ColorKit/`, subfolders included. Editing the project file is for adding a *target*, nothing else. |
 | `SDKROOT` / target              | `macosx`, deploy `26.5`                                   | macOS-only. Every modern API is available; no availability guards needed.                                                                                                                                                  |
 | `ENABLE_APP_SANDBOX`            | `YES` (no `.entitlements` file yet; Xcode auto-generates) | Constrains the eyedropper and global-hotkey design.                                                                                                                                                                        |
 | `SWIFT_VERSION`                 | `6.0` (raised in M0)                                      | Strict concurrency throughout.                                                                                                                                                                                             |
@@ -438,7 +438,7 @@ Key facts about the project, established during exploration and still current:
 Four layers, strictly one-directional. **`ColorCore` imports nothing but `Foundation`** – no SwiftUI, no AppKit, no SwiftData. Every one of its 31 files, measured rather than assumed (the figure stood at 27 for three milestones without being recounted, which is what measuring is for). That constraint is what keeps it exhaustively testable and reusable, and M10 turned "reusable in principle" into "addressable by a second target": it now sits beside the app rather than inside it.
 
 ```
-Color Toolkit/                    ← repo root
+ColorKit/                    ← repo root
 ├── ColorCore/                    ← its own synchronized root group (M10)
 │   ├── ColorValue.swift          canonical model
 │   ├── ColorSpace.swift          space enum + component metadata
@@ -450,20 +450,20 @@ Color Toolkit/                    ← repo root
 │   ├── Transform/                lightness/sat/hue, harmonies, ramps
 │   ├── Export/                   declaration templates + document shapes
 │   └── Import/                   W3C design token decoding (M17)
-├── ColorToolkitCLI/              ← the CLI's logic, in the tool *and* its test bundle
-├── ColorToolkitCLIMain/          ← `main.swift` alone, in the tool only (M18)
-├── ColorToolkitCLITests/         ← ColorCore + the CLI + tests, its own module
-├── Color Toolkit/                ← the app target's own group
+├── ColorKitCLI/              ← the CLI's logic, in the tool *and* its test bundle
+├── ColorKitCLIMain/          ← `main.swift` alone, in the tool only (M18)
+├── ColorKitCLITests/         ← ColorCore + the CLI + tests, its own module
+├── ColorKit/                ← the app target's own group
 │   ├── Services/                 eyedropper, global hotkey, clipboard
 │   ├── Persistence/              SwiftData @Models + Codable bridge
 │   ├── Features/                 one folder per feature area (SwiftUI)
 │   └── DesignSystem/             shared swatch/slider components
-├── Color ToolkitTests/
-├── Color ToolkitUITests/
+├── ColorKitTests/
+├── ColorKitUITests/
 └── Tools/                        Node + Python generators (not in any target)
 ```
 
-Both `ColorCore/` and `Color Toolkit/` are `PBXFileSystemSynchronizedRootGroup`s listed by the app target, so a `.swift` file dropped in either compiles with no project edit. The sources still build **into the app module**, which is why everything in `ColorCore` stays `internal` and the tests reach it with `@testable import`. The CLI target lists `ColorCore` too – a synchronized root group can be
+Both `ColorCore/` and `ColorKit/` are `PBXFileSystemSynchronizedRootGroup`s listed by the app target, so a `.swift` file dropped in either compiles with no project edit. The sources still build **into the app module**, which is why everything in `ColorCore` stays `internal` and the tests reach it with `@testable import`. The CLI target lists `ColorCore` too – a synchronized root group can be
 listed by any number of targets, which is what M10 bought and what M18 spent.
 
 The boundary runs in one direction only: **ColorCore knows facts, the UI layer owns editorial copy.** `CSSOutputFormat.catalog` lives in core; the section names ("Web", "Perceptual") and the per-format labels live in `Features/`. A core test that reaches into the UI for a display string is the smell that the layering has slipped – and in M3 it also broke a commit's ability to build standalone.
@@ -515,7 +515,7 @@ Sequenced so the app becomes genuinely useful at M4, then grows. Each milestone 
 
 ### ✅ M0 – Project hygiene
 
-- Delete `Item.swift`; strip the template body from [ContentView.swift](Color%20Toolkit/ContentView.swift) and the `Item` schema from [Color_ToolkitApp.swift](Color%20Toolkit/Color_ToolkitApp.swift).
+- Delete `Item.swift`; strip the template body from [ContentView.swift](ColorKit/ContentView.swift) and the `Item` schema from [ColorKitApp.swift](ColorKit/ColorKitApp.swift).
 - Raise `SWIFT_VERSION` to `6.0`. Do this **now**, while the codebase is tiny, and migrating later is far more expensive. Strict concurrency is genuinely free across the value-type core; the one place it costs real work is the Carbon hot-key bridge in M4 – expect it there and nowhere else.
 - Create the folder skeleton above.
 - Add a `.gitignore` and `git init` (the directory is not yet a repo).
@@ -556,8 +556,8 @@ Round-trip tests: parse → serialize → parse must be idempotent.
 
 ### ✅ M4 – Eyedropper + global hotkey
 
-- **Eyedropper:** [ScreenSampler](Color%20Toolkit/Services/ScreenSampler.swift) wraps `NSColorSampler`. Colors are read in **linear extended sRGB**, never `.sRGB` – see the finding above; the bridge is pure and `nonisolated` so it can be tested without the loupe.
-- **Global hotkey:** [GlobalHotKey](Color%20Toolkit/Services/GlobalHotKey.swift) – Carbon `RegisterEventHotKey`, ⌃⌥⌘C. Three modifiers deliberately: ⇧⌘C and ⌥⌘C are already claimed (Digital Color Meter, Finder's "Copy as Pathname"), and a global hot key *wins* over the frontmost app's, so a collision silently breaks something the user relies on.
+- **Eyedropper:** [ScreenSampler](ColorKit/Services/ScreenSampler.swift) wraps `NSColorSampler`. Colors are read in **linear extended sRGB**, never `.sRGB` – see the finding above; the bridge is pure and `nonisolated` so it can be tested without the loupe.
+- **Global hotkey:** [GlobalHotKey](ColorKit/Services/GlobalHotKey.swift) – Carbon `RegisterEventHotKey`, ⌃⌥⌘C. Three modifiers deliberately: ⇧⌘C and ⌥⌘C are already claimed (Digital Color Meter, Finder's "Copy as Pathname"), and a global hot key *wins* over the frontmost app's, so a collision silently breaks something the user relies on.
 - **The two entry points do different things.** The in-app button fills the field and leaves the clipboard alone. The hot key also **copies**, because its whole point is capturing a color while another app is frontmost – filling an invisible text field would accomplish nothing. The menu bar icon flashes a checkmark, which is the only feedback a global capture can get without a notification permission.
 - The shortcut is claimed from whichever scene appears first (`activateGlobalShortcut` is idempotent). Neither scene is guaranteed: the window can be closed, the menu bar item can be hidden.
 
@@ -567,7 +567,7 @@ Round-trip tests: parse → serialize → parse must be idempotent.
 
 - **WCAG 2.2** – [WCAGContrast.swift](ColorCore/Analysis/WCAGContrast.swift). Spec-literal `0.03928`, AA/AAA × normal/large, plus 1.4.11's 3:1 non-text threshold.
 - **APCA** – [APCAContrast.swift](ColorCore/Analysis/APCAContrast.swift). Transcribed from colorjs.io 0.7.0's implementation of **0.0.98G**, matching to 1e-9 across 108 pairs in both polarities.
-- **UI** – [ContrastPanel.swift](Color%20Toolkit/Features/Contrast/ContrastPanel.swift), reached by the tool switcher (which sat in the toolbar until M8 moved it into the window body – see that milestone). The store now holds a *pair* of colors via `ColorField`, so the background gets the foreground's editing behavior rather than a second implementation of it.
+- **UI** – [ContrastPanel.swift](ColorKit/Features/Contrast/ContrastPanel.swift), reached by the tool switcher (which sat in the toolbar until M8 moved it into the window body – see that milestone). The store now holds a *pair* of colors via `ColorField`, so the background gets the foreground's editing behavior rather than a second implementation of it.
 
 **No APCA pass/fail badges.** Its readability levels (Lc 90/75/60/45/30) could not be verified against a pinned source the way the algorithm was, and a threshold this app cannot stand behind has no business wearing a checkmark next to WCAG's, which it can. The panel shows the signed `Lc` and its polarity, nothing more.
 
@@ -620,7 +620,7 @@ Display P3 while 9,626 of 20,000 P3 colors fall outside sRGB.
   and the first one missed would offer a format no browser accepts. It is a coordinate
   on the side ([HSV.swift](ColorCore/Convert/HSV.swift)) wrapping the
   sRGB↔HSV conversions that already existed to route HWB.
-- **[PickerState.swift](Color%20Toolkit/Features/Picker/PickerState.swift)** holds the
+- **[PickerState.swift](ColorKit/Features/Picker/PickerState.swift)** holds the
   axes as a plain value type, testable without SwiftUI – which is what let the write
   loop, the hue-preservation rule and the format choice all be asserted directly.
 - **Each mode writes in a format that can hold what it produced**: `oklch()` at
@@ -1097,7 +1097,7 @@ state that could make a later run pass for the wrong reason), releases the conta
 opens a second one over the same file, and requires both the spelling and the ramp's
 order to come back. Separately, launching with no arguments was confirmed to open
 `default.store` under
-`~/Library/Containers/me.parkersprouse.color-toolkit/Data/Library/Application Support/` –
+`~/Library/Containers/me.parkersprouse.colorkit/Data/Library/Application Support/` –
 so the sandbox permits the default location, `.persistent` is the arm actually taken, and
 the fallback banner is not quietly the normal case.
 
@@ -1121,7 +1121,7 @@ the app target. The sources still compile **into the app module**, so `internal`
 untouched and no `public` sweep was needed – the alternative, extracting a real SPM
 package, would have meant `public` on every type, member and `init` across 26 files and
 `import ColorCore` throughout the app. Unit tests were unaffected because they reach the
-core through `@testable import Color_Toolkit`, never by listing its sources.
+core through `@testable import ColorKit`, never by listing its sources.
 
 **The path references outside the project file are the part worth remembering.** Three
 pointed at the old location and would have written to a stale path in silence: the two
@@ -1141,7 +1141,7 @@ to whoever regenerates next.
 
 The three items M9 deferred, done together because they are all the projects panel.
 
-**The `VersionedSchema` is insurance and is documented as such.** `ColorToolkitSchemaV1`
+**The `VersionedSchema` is insurance and is documented as such.** `ColorKitSchemaV1`
 wraps the three existing models with an empty migration plan. Nothing migrates, and
 nothing here asserts that it does – a test over an empty stage list would pass against a
 plan that does nothing, which is exactly what it is. The value is having a version to
@@ -1205,7 +1205,7 @@ the source tree and neither is visible from a Debug build.
 **The drag needed an `Info.plist`, and the app did not have one.** `UTType(exportedAs:)`
 returns a working identifier whether or not the type is declared, so M11's reorder drag
 functioned – both ends compare the same string – while every launch logged that
-`me.parkersprouse.color-toolkit.saved-color-position` "was expected to be declared and
+`me.parkersprouse.colorkit.saved-color-position` "was expected to be declared and
 exported in the Info.plist … but it was not found". `GENERATE_INFOPLIST_FILE` covers every
 scalar through `INFOPLIST_KEY_*`, and `UTExportedTypeDeclarations` is an array of
 dictionaries with no such spelling, so a file is the only way to say it. Setting
@@ -1213,7 +1213,7 @@ dictionaries with no such spelling, so a file is the only way to say it. Setting
 diffing the built plist against a build without it, 24 keys in and the same 24 plus the
 declaration out – and it is set in *both* configurations, because the declaration is read
 only at runtime and a Release-only omission is invisible from a Debug build. The file sits
-at the **repo root**: `Color Toolkit/` is a synchronized root group, so a plist dropped
+at the **repo root**: `ColorKit/` is a synchronized root group, so a plist dropped
 there becomes the target's `Info.plist` *and* a bundled resource, which builds, warns, and
 ships a duplicate in `Contents/Resources`. Confirmed by building it that way first.
 `lsregister -dump` now finds the type; before, it did not.
@@ -1723,20 +1723,20 @@ grammar to build its arguments back into the string the parser wants. A test pin
 so the argument stops holding out loud rather than quietly.
 
 **Two root groups for one executable, and the second is what avoids an exclusion list.**
-`ColorToolkitCLI/` holds the logic and is compiled by the tool *and* by its test bundle;
-`ColorToolkitCLIMain/` holds `main.swift` alone and is compiled by the tool only, because
+`ColorKitCLI/` holds the logic and is compiled by the tool *and* by its test bundle;
+`ColorKitCLIMain/` holds `main.swift` alone and is compiled by the tool only, because
 top-level code is legal only in an executable module. The alternative was a
 `PBXFileSystemSynchronizedBuildFileExceptionSet` naming one file – a list to keep in step
 with the file system, which is precisely what M10 moved `ColorCore` to a root group to
 avoid. A folder costs nothing and cannot drift.
 
 **A third target compiles `ColorCore` a third time, and the two cheaper options are both
-wrong.** The CLI cannot be tested from `Color ToolkitTests`: its sources reach ColorCore
+wrong.** The CLI cannot be tested from `ColorKitTests`: its sources reach ColorCore
 through their own module, so compiling them into a target that reaches ColorCore through
-`@testable import Color_Toolkit` does not build – and listing `ColorCore` in that target as
+`@testable import ColorKit` does not build – and listing `ColorCore` in that target as
 well would *shadow* the import rather than merely duplicate it. Black-boxing the built
 binary from the test host is worse: the host is the sandboxed app, so a sandbox denial
-would be indistinguishable from a real failure. `ColorToolkitCLITests` therefore lists
+would be indistinguishable from a real failure. `ColorKitCLITests` therefore lists
 `ColorCore`, the CLI and its own sources and imports nothing.
 
 **Three rules the CLI adds, each an answer to a question the GUI answers by drawing.**
@@ -1841,7 +1841,7 @@ M22) and `showsRecents` (for M23), and `recentLimit` moved from
 `private static let recentLimit = 12` to a settable instance property, defaulting to the
 same 12.
 
-**One new seam, not a second store.** `Color Toolkit/Services/Preferences.swift`:
+**One new seam, not a second store.** `ColorKit/Services/Preferences.swift`:
 
 - `struct Preferences: Codable, Equatable, Sendable` with **explicit `CodingKeys`**,
   holding the deliberate persisted subset – `formatOptions`, `webFriendly`,
@@ -1877,14 +1877,14 @@ checked, and it keeps one source of truth rather than a mirrored copy that can d
 **`CSSOutputFormat` needed a hand-written conformance instead** – the plan note did not
 anticipate this. It is not `RawRepresentable` (`.color` carries a `ColorSpace`), so there
 is no raw value for synthesis to use. The chosen spelling mirrors
-`ColorToolkitCLI/Names.swift`'s `--format` vocabulary exactly – the `color()` cases named
+`ColorKitCLI/Names.swift`'s `--format` vocabulary exactly – the `color()` cases named
 by their space's own raw value – not because the two share code (they cannot; see the
 CLI/app module split) but because it is one fact transcribed twice rather than two
 decisions. `CSSFormattingTests.formatCodableRoundTrips()` walks the whole catalog through
 encode/decode so a copy-paste slip in either switch has somewhere to surface.
 
 **The scene.** `Settings { SettingsView().environment(store) }` in
-`Color_ToolkitApp.swift`. New `Color Toolkit/Features/Settings/SettingsView.swift` with
+`ColorKitApp.swift`. New `ColorKit/Features/Settings/SettingsView.swift` with
 three sections: General (web-friendly, recents row, recents count), Output (the existing
 seven controls from `OutputOptionsMenu`, bound to the same store properties), and a Reset
 button that assigns `Preferences()` wholesale.
@@ -1893,7 +1893,7 @@ button that assigns `Preferences()` wholesale.
 values, which is the precedent the export panel's Precision picker already set and
 documented – not a second setting.
 
-**Load-at-launch and save-on-change live in `Color_ToolkitApp`, not in `ColorStore`.**
+**Load-at-launch and save-on-change live in `ColorKitApp`, not in `ColorStore`.**
 `ColorStore.preferences` is a plain computed property – no I/O – so every unit test's
 `ColorStore()` stays deterministic regardless of what the machine running it has saved to
 its real `UserDefaults`. The app loads once, in the `@State private var store` initial-
@@ -1915,7 +1915,7 @@ bypasses it entirely. `ColorStore.preferences`'s setter now clamps to `max(1, �
 `Fatal error: Can't remove more items from a collection than it contains` – exactly the
 trap – before the clamp was restored.
 
-**Testing.** [PreferencesTests](Color%20ToolkitTests/PreferencesTests.swift): every field
+**Testing.** [PreferencesTests](ColorKitTests/PreferencesTests.swift): every field
 round-trips through encode/decode changed from its default in one fixture (including
 `exportFormat: .color(.displayP3)`, the one case that exercises `CSSOutputFormat`'s
 associated-value branch rather than a plain one); decoding garbage yields defaults;
@@ -1933,7 +1933,7 @@ leaving it as reasoning in a comment**: `withObservationTracking` around a read 
 `store.preferences`, mutated at three sites – a field on the store directly, one nested
 in `formatOptions`, one nested in `exportOptions` – confirms the getter's `@Observable`
 access really does reach through both levels of nesting, which is what lets
-`Color_ToolkitApp`'s `.onChange` fire on any persisted change without listing nine
+`ColorKitApp`'s `.onChange` fire on any persisted change without listing nine
 properties itself.
 
 **Manual check, recorded for when this ships and not yet run.** Quit and relaunch,
@@ -1946,7 +1946,7 @@ out of scope for the milestone that introduces the scene, matching the plan note
 original call that this check stays manual. When run: locate the container with
 `ls ~/Library/Containers/*olor-*oolkit/Data/Library/Preferences/` (the container's
 bundle-id casing does not match `PRODUCT_BUNDLE_IDENTIFIER` exactly) and read the key
-back with `plutil -p`, and quit with ⌘Q or `osascript -e 'quit app "Color Toolkit"'`
+back with `plutil -p`, and quit with ⌘Q or `osascript -e 'quit app "ColorKit"'`
 rather than `kill -9` – `UserDefaults` writes go through `cfprefsd` asynchronously, so a
 hard kill can lose an unflushed write and look like a bug that is not one.
 
@@ -2425,7 +2425,7 @@ at both the pure-value and the live-store level; `ColorStoreTests` and
 `PickerStateTests` cover the adopt/picker clamp paths. One UI test,
 `WebFriendlyModeSmokeTests`, confirms the mix section is actually absent in the
 running app – launched with a new bare argument, `UITestWebFriendly`, read once in
-`Color_ToolkitApp`, because nothing in the app wires an accessibility identifier to
+`ColorKitApp`, because nothing in the app wires an accessibility identifier to
 the Settings scene's Toggle and no UI test anywhere drives that window yet.
 **The live round trip — flip the Toggle in Settings and watch the mix section and the
 conversion panel's sections react, on a P3 display sampling a wide color and watching
@@ -2907,7 +2907,7 @@ new `Features/Picker/PickerPlaneView.swift` + `PickerHueStripView.swift` +
 `PickerAlphaSliderView.swift` + `CompactPicker.swift` (M24),
 `Features/Export/ExportPanel.swift` + `ExportPresentation.swift`,
 `Features/Projects/ProjectsPanel.swift`, `Features/Shell/ColorStore.swift`,
-`Persistence/ProjectLibrary.swift`, `Color_ToolkitApp.swift`.
+`Persistence/ProjectLibrary.swift`, `ColorKitApp.swift`.
 
 **Docs** – this file gains the new invariants as each milestone lands (the grouped
 renderer's uniquing rule; the `webFriendly` table's transcription rule and the
@@ -2960,15 +2960,15 @@ Settings window mid-capture. Carbon's modifier masks are translated from
 Space/Tab/Return/Delete/arrows/F1–F20, since `charactersIgnoringModifiers` is empty or
 unhelpful for all of them.
 
-**Testing.** [GlobalHotKeyTests](Color%20ToolkitTests/GlobalHotKeyTests.swift) pins
+**Testing.** [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift) pins
 `isEligible`'s boundary and `GlobalShortcut`'s `Codable` round trip.
-[ColorStoreTests](Color%20ToolkitTests/ColorStoreTests.swift) covers
+[ColorStoreTests](ColorKitTests/ColorStoreTests.swift) covers
 `updateGlobalShortcut(_:)` end to end, including the one branch that claims a real
 system-wide chord (a four-modifier probe, the same convention `GlobalHotKeyTests`
 already uses to avoid racing the host app's own `.sampleColor` registration) —
 confirmed by mutation that removing the `unregisterAll()` call before a rebind's retry
 fails exactly that test.
-[PreferencesTests](Color%20ToolkitTests/PreferencesTests.swift) extends the M19 pattern
+[PreferencesTests](ColorKitTests/PreferencesTests.swift) extends the M19 pattern
 (round trip, observation, clamp-on-load) to the new field. **No XCUITest**: nothing
 drives the Settings window today, and synthesizing a key event needs Accessibility
 permission a test runner has no business holding — recorded as a manual check, the same
@@ -3037,7 +3037,7 @@ recorded in CLAUDE.md rather than silently changed, since changing either is a p
 call this milestone was not asked to make.
 
 **Files touched.** New `ExportOptions.plist` (repo root);
-`Color Toolkit.xcodeproj/project.pbxproj` (`INFOPLIST_KEY_NSHumanReadableCopyright` in
+`ColorKit.xcodeproj/project.pbxproj` (`INFOPLIST_KEY_NSHumanReadableCopyright` in
 both the app target's Debug and Release configurations).
 
 ### ✅ M29 – Install colorkit command
@@ -3104,6 +3104,29 @@ document that was supposed to correct it was itself the thing that needed correc
 `CommandLineToolInstaller.embeddedBinaryURL(inBundleAt:)` is written against the
 measured path, with the discrepancy recorded in its own doc comment.
 
+**Post-M29 addendum, from the app rename to `ColorKit`/`colorkit`:** landing bare in
+`Contents/MacOS/` was safe only because the app's own executable and the embedded CLI
+had unrelated names. Once the app became `ColorKit`, `Contents/MacOS/ColorKit` (the
+app) and `Contents/MacOS/colorkit` (the embedded CLI) are the same path on the
+case-insensitive filesystem every default macOS volume uses, and the later write
+silently won — measured on a build made before the fix, which had only one file in
+`Contents/MacOS/` where two were expected, and launched the CLI's `--help` in place of
+the app. The Copy Files phase's `dstPath` is now `cli`, landing the binary at
+`Contents/MacOS/cli/colorkit` instead; `embeddedBinaryURL(inBundleAt:)` and its test
+were updated to match. Two build settings needed the identical fix for the identical
+reason, one level down: the CLI's Xcode target is `ColorKitCLI` rather than `colorkit`
+(so its intermediate build directory, named from the target, doesn't collide with the
+app target's `ColorKit.build`), with `PRODUCT_NAME` set explicitly to `colorkit` so the
+rename is invisible in the shipped binary's name; and `PRODUCT_MODULE_NAME` is set
+explicitly to `ColorKitCLIModule`, because the module name Xcode derives by default
+from `PRODUCT_NAME` — `colorkit` — collides with the app's own `ColorKit.swiftmodule`
+in the shared build-products directory the same way. All three collisions were found
+by building, not by reasoning about the settings in the abstract: the first surfaced as
+a build failure with `-scheme ColorKit` that did not reproduce with `-target colorkit`
+alone, the second as `ColorKitTests` failing to resolve `@testable import ColorKit`,
+and the third — the broken app bundle itself — only by actually launching the built
+`.app` and noticing it printed the CLI's usage text.
+
 `CodeSignOnCopy` was required for the embedded binary to pass notarization
 independently of the app — confirmed via `codesign -d --verbose=2` on the archived
 `colorkit`, which reports `flags=…(runtime)`. **The Hardened Runtime question was
@@ -3118,7 +3141,7 @@ the new embedded copy and the old loose `Products/usr/local/bin/colorkit`. Flagg
 a cosmetic follow-up, deliberately not folded into this change unverified, the same
 discipline M28 already modeled for `-exportArchive`/`notarytool`.
 
-**2. New service, `Color Toolkit/Services/CommandLineToolInstaller.swift`**, split pure
+**2. New service, `ColorKit/Services/CommandLineToolInstaller.swift`**, split pure
 from impure the way `GlobalShortcut`/`GlobalHotKeyCenter` (M27) already do. Pure,
 `nonisolated`, unit-tested directly: `embeddedBinaryURL(inBundleAt:)` and
 `destinationURL(in:)` (both take a `URL` parameter rather than reading `Bundle.main`);
@@ -3169,7 +3192,7 @@ already failed — confirmed by mutation to actually depend on the `scoped` flag
 merely to compile.
 
 **One thing the plan assumed untestable turned out not to be, and it was worth
-checking rather than assuming.** `Color ToolkitTests` carries no `ENABLE_APP_SANDBOX`
+checking rather than assuming.** `ColorKitTests` carries no `ENABLE_APP_SANDBOX`
 of its own — only the app target does — so unlike `NSOpenPanel`/`.fileImporter`
 themselves, `install(embeddedBinary:into:)`'s real filesystem write **is** reachable
 from a unit test, against a plain temp directory rather than a security-scoped
@@ -3193,10 +3216,10 @@ Release archive were built after adding the copy phase.
 stays unverifiable in this environment, same as M28: no "Developer ID Application"
 certificate here.
 
-**Critical files.** `Color Toolkit.xcodeproj/project.pbxproj`; new
-`Color Toolkit/Services/CommandLineToolInstaller.swift`;
-`Color Toolkit/Features/Settings/SettingsView.swift`; `CLAUDE.md`; this file; new
-`Color ToolkitTests/CommandLineToolInstallerTests.swift`.
+**Critical files.** `ColorKit.xcodeproj/project.pbxproj`; new
+`ColorKit/Services/CommandLineToolInstaller.swift`;
+`ColorKit/Features/Settings/SettingsView.swift`; `CLAUDE.md`; this file; new
+`ColorKitTests/CommandLineToolInstallerTests.swift`.
 
 **Addendum, same day: the recorded manual check found a real bug on first actual use,
 and it was the default destination itself.** Parker ran the feature against the real
@@ -3255,28 +3278,28 @@ its assertions, not zero and not one.
 
 ## Verification
 
-**A feature reached through a system loupe or a global chord has links no test can touch**, and they fail independently – so check them separately rather than as one gesture. For M4 that was: (1) does the menu bar show the chord, proving the OS accepted the registration and a scene's `.task` fired; (2) does the chord raise the loupe from *another* app, proving the key is captured and the C callback reaches the main actor; (3) does the picked color reach the field and the clipboard, proving the sandbox and the bridge. All three passed. Everything either side of them is covered by [ScreenSamplerTests](Color%20ToolkitTests/ScreenSamplerTests.swift) and [GlobalHotKeyTests](Color%20ToolkitTests/GlobalHotKeyTests.swift).
+**A feature reached through a system loupe or a global chord has links no test can touch**, and they fail independently – so check them separately rather than as one gesture. For M4 that was: (1) does the menu bar show the chord, proving the OS accepted the registration and a scene's `.task` fired; (2) does the chord raise the loupe from *another* app, proving the key is captured and the C callback reaches the main actor; (3) does the picked color reach the field and the clipboard, proving the sandbox and the bridge. All three passed. Everything either side of them is covered by [ScreenSamplerTests](ColorKitTests/ScreenSamplerTests.swift) and [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift).
 
 Per milestone:
 
 - **M1/M2 (core):** `xcodebuild test` – parameterized tests against the colorjs.io fixture; round-trip idempotency; gamut-mapping boundary cases (`L≥1` → white, `L≤0` → black, in-gamut colors unchanged).
 - **M5:** two different standards of proof, because the oracle only covers one of them. **APCA** is validated against colorjs.io directly (`node Tools/generate-contrast-fixtures.mjs`) at 1e-9, both polarities – real external validation, since the Swift is transcribed from that package. **WCAG** cannot be, because colorjs.io implements a different definition; correctness there comes from anchors that hold under any variant (`#000` on `#fff` = 21:1, a color against itself = 1:1) plus one pair chosen to *disagree* between the definitions, asserted both ways round.
-- **M6:** the plane is a `Canvas`, so nothing about the pixels reaches the accessibility tree – the numeric readout is the assertable surface, and the boundary figures it prints were checked against the oracle from the panel's own screenshots. See [PickerSmokeTests](Color%20ToolkitUITests/PickerSmokeTests.swift).
-- **M7:** the transforms have no oracle, so ColorCore asserts their defining properties and every load-bearing one was confirmed by mutation (see the milestone above). What *can* be cross-checked is the pipeline end to end, and was: the OKLCH string the panel wrote after adopting a triad member agrees with colorjs.io to ten decimals. See [TransformSmokeTests](Color%20ToolkitUITests/TransformSmokeTests.swift), where each derived swatch is a button labelled with its own CSS – the only handle a test has on a row of colored rectangles, and the thing a bare swatch owes VoiceOver anyway.
-- **M8:** the only milestone whose output is *text a machine will read*, so the parser is the oracle – [ExportTests](Color%20ToolkitTests/ExportTests.swift) round-trips every exportable format back through `CSSColorParser` and requires the color to survive. Syntax is pinned with exact strings, and the identifier rules (JavaScript key quoting, CSS sanitizing) have their own parameterized cases, because a config that will not load is the failure mode and it is invisible from inside Swift. The source-to-entries mapping is asserted on `ColorStore` rather than through the UI – see [ExportStoreTests](Color%20ToolkitTests/ExportStoreTests.swift) – which is why that mapping lives on the store. [ExportSmokeTests](Color%20ToolkitUITests/ExportSmokeTests.swift) covers only what a running app can show: that the controls reach the document. It never clicks Copy, for the reason no test here touches the pasteboard.
-- **M9:** three levels, split on what each can actually answer. [ColorRecordTests](Color%20ToolkitTests/ColorRecordTests.swift) takes the mapping with no container in sight – every space, the `none` mask, and the stored components agreeing with the stored spelling. [ProjectStoreTests](Color%20ToolkitTests/ProjectStoreTests.swift) takes what only SwiftData can answer, opening with the assertion that the container builds at all, because inverses are resolved there rather than at compile time. [ProjectsSmokeTests](Color%20ToolkitUITests/ProjectsSmokeTests.swift) takes the round trip through a running app – and launches every one with `UITestInMemoryStore`, because the alternative is writing into the real library. The end-to-end cross-check is the ramp in the status note: saved, reloaded, exported, and identical to the value M8 checked against colorjs.io.
+- **M6:** the plane is a `Canvas`, so nothing about the pixels reaches the accessibility tree – the numeric readout is the assertable surface, and the boundary figures it prints were checked against the oracle from the panel's own screenshots. See [PickerSmokeTests](ColorKitUITests/PickerSmokeTests.swift).
+- **M7:** the transforms have no oracle, so ColorCore asserts their defining properties and every load-bearing one was confirmed by mutation (see the milestone above). What *can* be cross-checked is the pipeline end to end, and was: the OKLCH string the panel wrote after adopting a triad member agrees with colorjs.io to ten decimals. See [TransformSmokeTests](ColorKitUITests/TransformSmokeTests.swift), where each derived swatch is a button labelled with its own CSS – the only handle a test has on a row of colored rectangles, and the thing a bare swatch owes VoiceOver anyway.
+- **M8:** the only milestone whose output is *text a machine will read*, so the parser is the oracle – [ExportTests](ColorKitTests/ExportTests.swift) round-trips every exportable format back through `CSSColorParser` and requires the color to survive. Syntax is pinned with exact strings, and the identifier rules (JavaScript key quoting, CSS sanitizing) have their own parameterized cases, because a config that will not load is the failure mode and it is invisible from inside Swift. The source-to-entries mapping is asserted on `ColorStore` rather than through the UI – see [ExportStoreTests](ColorKitTests/ExportStoreTests.swift) – which is why that mapping lives on the store. [ExportSmokeTests](ColorKitUITests/ExportSmokeTests.swift) covers only what a running app can show: that the controls reach the document. It never clicks Copy, for the reason no test here touches the pasteboard.
+- **M9:** three levels, split on what each can actually answer. [ColorRecordTests](ColorKitTests/ColorRecordTests.swift) takes the mapping with no container in sight – every space, the `none` mask, and the stored components agreeing with the stored spelling. [ProjectStoreTests](ColorKitTests/ProjectStoreTests.swift) takes what only SwiftData can answer, opening with the assertion that the container builds at all, because inverses are resolved there rather than at compile time. [ProjectsSmokeTests](ColorKitUITests/ProjectsSmokeTests.swift) takes the round trip through a running app – and launches every one with `UITestInMemoryStore`, because the alternative is writing into the real library. The end-to-end cross-check is the ramp in the status note: saved, reloaded, exported, and identical to the value M8 checked against colorjs.io.
 - **M10:** the milestone has no behavior to test, so the test suite proves nothing beyond "still compiles". The real check is that **re-running all four generators reproduces every generated Swift file byte-for-byte** – that is what shows the output paths moved with the sources rather than quietly writing somewhere stale. (`cvd-vectors.json` is the exception and stays as committed; see the libm note in CLAUDE.md.)
-- **M11:** the store rules are in [ProjectStoreTests](Color%20ToolkitTests/ProjectStoreTests.swift), each confirmed against a mutation of the rule it covers – dropping the move's offset discount, skipping the dense renumber, disabling key dedup, re-deriving stored text, and moving colors instead of copying them all fail the suite. Reordering is checked across a real store close and reopen, since an in-memory container proves only that the objects in hand were mutated. [ProjectsSmokeTests](Color%20ToolkitUITests/ProjectsSmokeTests.swift) covers the wiring – **through the menu commands, not the drag**, because XCUITest cannot start a dragging session and a drag-driven test would fail whether the feature worked or not. **The drag gesture itself is not covered by any automated test and wants a human to try it once.**
-- **M12:** [MissingComponentTests](Color%20ToolkitTests/MissingComponentTests.swift), and the standard of proof is the spec rather than a reference implementation – colorjs.io resolves `none` on conversion, so it cannot answer this at all. Each test names the spec example or role-table property it encodes, and all five load-bearing rules were confirmed by mutation (see the milestone). The spec's *printed* conversions are asserted as roundings, not with a tolerance, because that is the claim actually available from a displayed figure.
-- **M13:** [CalcTests](Color%20ToolkitTests/CalcTests.swift), hand-written throughout because there is no oracle – colorjs.io rejects `rgb(calc(10 + 20) 0 0)` outright with "Expected 3 coordinates … got 5", so `parse-vectors.json` is untouched. The arithmetic is checkable by inspection; what is not obvious from reading the code is pinned by five mutations, each failing only what it should. Stripping precedence fails one test, dropping the `±` type check one, ignoring leftover tokens two, and hoisting the tokenizer's operator rules above the number scanner fails the *curated fixture* – `rgb(+128 0 0)` – plus the numeric-edge-forms test. The fifth is the discriminating one: letting a calc body's slash escape to separator logic fails every test whose input contains a slash and **no test without one**, which is the sharpest available statement that consuming the body as a unit is what resolves the ambiguity. A first, blunter version of that mutation (not consuming the body at all) failed fifteen tests and proved nothing except that the feature was off. A sixth mutation covers the seam the other five do not touch: dropping `min` from `UnsupportedFunctions.names` makes `rgb(calc(min(1, 2) * 2) 0 0)` come back `calcUnsupportedSyntax("min(")` instead of naming the function, which is the observable proof that the pre-tokenize check still runs *before* calc consumption. `firstCalled` scans its own list rather than the input, so the case is checked with a first-listed name (`var`) and a later one (`min`) both.
-- **M14:** [RelativeColorTests](Color%20ToolkitTests/RelativeColorTests.swift), hand-written for a *third* distinct no-oracle reason – colorjs.io 0.7.0 has no relative color syntax at all, so every form comes back "Expected 3 coordinates … got 4". (M13's reason was that it rejects `calc()`; M12's was that it resolves `none` on conversion and so cannot be asked the question.) The conversions underneath are oracle-validated already and are deliberately not re-tested. **Eight mutations, and the most useful one passed.** Seven failed exactly what they should – deriving the keyword table from roles, ignoring `numberScale`, dropping carry-forward, collapsing either half of the `none` rule, allowing legacy commas, and removing the alpha clamp. The eighth, replacing the origin's depth counting with "first close paren wins", **passed the entire suite**, which is the finding worth carrying: *a mutation that survives means the test set is incomplete, not that the rule is safe.* The obvious nesting cases do not discriminate – in `rgb(from color(display-p3 1 0 0) r g b)` the first `)` already is the right one, and `rgb(from rgb(from red r g b) r g b)` is still one level deep because `from red` opens nothing. Depth counting only earns its keep when the origin's function contains another function, so a case was added for the cheapest one, a `calc()` inside the origin, and the mutation now fails with `wrongComponentCount(got: 1)`. Two assertions are deliberately loose and say so in place: white's OKLab lightness is `1.0000000000000002` and an sRGB → OKLCh → sRGB round trip returns red as the same, so both claims are checked by discrimination – the competing readings are off by ~100× and ~1 – rather than by an equality the conversion never promised.
-- **M15:** [ColorMixTests](Color%20ToolkitTests/ColorMixTests.swift), split on what each half can be held to. The **numbers** are generated – 1,760 vectors over fifteen color pairs, all fourteen interpolation spaces, four hue arcs and five positions along each mix – with the two oracle corrections above baked into the generator. The **grammar and the percentage rules** are hand-written, because colorjs.io can compute a mix and cannot parse one, which is the fourth distinct no-oracle reason this plan has recorded. Three assertions carry more than their length suggests: `null` in a recorded component is checked against our *missing mask* rather than against a number, which is a claim about §12.2's substitution rather than about arithmetic; the hue-arc test runs the same pair in both directions, because for any pair the four methods only ever produce two answers and it is *which method gets which* that proves direction is honoured rather than length; and the premultiplication case is stated as the wrong answer it discriminates against, `rgb(50% 0% 50%)` versus `rgb(33.3% 0% 66.7%)`. The tolerance is 1e-8 rather than the conversions' 1e-9, and says why in place: un-premultiplying divides by an interpolated alpha as low as 0.1, multiplying any upstream difference by up to ten. **Eleven mutations, all eleven killed, two of them only after three tests were added** – the survey found a shipped bug in the premultiplication guard plus two exemptions nothing was holding, and the milestone note above records all three. The failure sets are tight: the alpha shortfall is owned by two tests, the powerless marking by three, carry-forward by one, the hue's premultiplication exemption by the recorded vectors alone, and gamut-mapping the result by four – including `The ends of the mix are the colors themselves`, which is the cheapest possible statement that a mix returns its endpoints untouched.
+- **M11:** the store rules are in [ProjectStoreTests](ColorKitTests/ProjectStoreTests.swift), each confirmed against a mutation of the rule it covers – dropping the move's offset discount, skipping the dense renumber, disabling key dedup, re-deriving stored text, and moving colors instead of copying them all fail the suite. Reordering is checked across a real store close and reopen, since an in-memory container proves only that the objects in hand were mutated. [ProjectsSmokeTests](ColorKitUITests/ProjectsSmokeTests.swift) covers the wiring – **through the menu commands, not the drag**, because XCUITest cannot start a dragging session and a drag-driven test would fail whether the feature worked or not. **The drag gesture itself is not covered by any automated test and wants a human to try it once.**
+- **M12:** [MissingComponentTests](ColorKitTests/MissingComponentTests.swift), and the standard of proof is the spec rather than a reference implementation – colorjs.io resolves `none` on conversion, so it cannot answer this at all. Each test names the spec example or role-table property it encodes, and all five load-bearing rules were confirmed by mutation (see the milestone). The spec's *printed* conversions are asserted as roundings, not with a tolerance, because that is the claim actually available from a displayed figure.
+- **M13:** [CalcTests](ColorKitTests/CalcTests.swift), hand-written throughout because there is no oracle – colorjs.io rejects `rgb(calc(10 + 20) 0 0)` outright with "Expected 3 coordinates … got 5", so `parse-vectors.json` is untouched. The arithmetic is checkable by inspection; what is not obvious from reading the code is pinned by five mutations, each failing only what it should. Stripping precedence fails one test, dropping the `±` type check one, ignoring leftover tokens two, and hoisting the tokenizer's operator rules above the number scanner fails the *curated fixture* – `rgb(+128 0 0)` – plus the numeric-edge-forms test. The fifth is the discriminating one: letting a calc body's slash escape to separator logic fails every test whose input contains a slash and **no test without one**, which is the sharpest available statement that consuming the body as a unit is what resolves the ambiguity. A first, blunter version of that mutation (not consuming the body at all) failed fifteen tests and proved nothing except that the feature was off. A sixth mutation covers the seam the other five do not touch: dropping `min` from `UnsupportedFunctions.names` makes `rgb(calc(min(1, 2) * 2) 0 0)` come back `calcUnsupportedSyntax("min(")` instead of naming the function, which is the observable proof that the pre-tokenize check still runs *before* calc consumption. `firstCalled` scans its own list rather than the input, so the case is checked with a first-listed name (`var`) and a later one (`min`) both.
+- **M14:** [RelativeColorTests](ColorKitTests/RelativeColorTests.swift), hand-written for a *third* distinct no-oracle reason – colorjs.io 0.7.0 has no relative color syntax at all, so every form comes back "Expected 3 coordinates … got 4". (M13's reason was that it rejects `calc()`; M12's was that it resolves `none` on conversion and so cannot be asked the question.) The conversions underneath are oracle-validated already and are deliberately not re-tested. **Eight mutations, and the most useful one passed.** Seven failed exactly what they should – deriving the keyword table from roles, ignoring `numberScale`, dropping carry-forward, collapsing either half of the `none` rule, allowing legacy commas, and removing the alpha clamp. The eighth, replacing the origin's depth counting with "first close paren wins", **passed the entire suite**, which is the finding worth carrying: *a mutation that survives means the test set is incomplete, not that the rule is safe.* The obvious nesting cases do not discriminate – in `rgb(from color(display-p3 1 0 0) r g b)` the first `)` already is the right one, and `rgb(from rgb(from red r g b) r g b)` is still one level deep because `from red` opens nothing. Depth counting only earns its keep when the origin's function contains another function, so a case was added for the cheapest one, a `calc()` inside the origin, and the mutation now fails with `wrongComponentCount(got: 1)`. Two assertions are deliberately loose and say so in place: white's OKLab lightness is `1.0000000000000002` and an sRGB → OKLCh → sRGB round trip returns red as the same, so both claims are checked by discrimination – the competing readings are off by ~100× and ~1 – rather than by an equality the conversion never promised.
+- **M15:** [ColorMixTests](ColorKitTests/ColorMixTests.swift), split on what each half can be held to. The **numbers** are generated – 1,760 vectors over fifteen color pairs, all fourteen interpolation spaces, four hue arcs and five positions along each mix – with the two oracle corrections above baked into the generator. The **grammar and the percentage rules** are hand-written, because colorjs.io can compute a mix and cannot parse one, which is the fourth distinct no-oracle reason this plan has recorded. Three assertions carry more than their length suggests: `null` in a recorded component is checked against our *missing mask* rather than against a number, which is a claim about §12.2's substitution rather than about arithmetic; the hue-arc test runs the same pair in both directions, because for any pair the four methods only ever produce two answers and it is *which method gets which* that proves direction is honoured rather than length; and the premultiplication case is stated as the wrong answer it discriminates against, `rgb(50% 0% 50%)` versus `rgb(33.3% 0% 66.7%)`. The tolerance is 1e-8 rather than the conversions' 1e-9, and says why in place: un-premultiplying divides by an interpolated alpha as low as 0.1, multiplying any upstream difference by up to ten. **Eleven mutations, all eleven killed, two of them only after three tests were added** – the survey found a shipped bug in the premultiplication guard plus two exemptions nothing was holding, and the milestone note above records all three. The failure sets are tight: the alpha shortfall is owned by two tests, the powerless marking by three, carry-forward by one, the hue's premultiplication exemption by the recorded vectors alone, and gamut-mapping the result by four – including `The ends of the mix are the colors themselves`, which is the cheapest possible statement that a mix returns its endpoints untouched.
 - **M16:** the same oracle M8 has – this app's own parser – applied to *both* blocks at once, since `propertyValues(in:)` already trims before matching `--…;` and so returns the media block's lines unchanged. The discriminating input is a color **outside sRGB and inside P3**: asserting only that every value parses would pass a document that wrote the same rounded hex twice, so the test requires the fallback to come back inside sRGB *and* the override to come back as the color that went in. The syntax – the braces, the query, the blank line between blocks – is pinned with an exact string, while the P3 *values* in it are computed from the serializer rather than transcribed, because those conversions are oracle-validated in the fixture suite and re-typing them would only test whether they were copied correctly. **Four mutations, all four killed, and each failure set is tight**: a per-entry conditional media block fails four tests, a fallback honoring `options.format` fails three, desynchronized property names fail three, and the badge measured against the P3 block instead of the fallback fails exactly one – the store test written for that decision. One existing test had to change and the reason is worth keeping: `formattingReachesEveryShape` is parameterized over `allCases` and asserts a precision-sensitive string, so it now asks each shape for the format it *actually writes* – and for this shape that has to be the **wide** one, because **hex is precision-invariant**. Pointing it at the fallback would have left the test unable to fail, and its own `lossless != coarse` blindness guard could not have caught that, since the guard is computed from whatever format the test picks. That in turn left the *fallback's* `formatting` pass-through unpinned – hardcoding `.default` there would have survived the whole file – so a second test asserts it through hex casing, the cheapest setting hex does observe. **The last test added is the one that found a shipped defect**, and it found it by failing first: `p3OverrideIsNotAnExactnessPromise` was written against `.lossless` and reported the override *un*mapped, because that constant is `.preserve`. The override is not hex – it is not `cannotRepresentOutOfGamut` – so it has no fixed answer at all and follows the **app-wide gamut policy**, which is `.map` in the panel. Both policies are now asserted, because it is the dependence rather than either instance that makes an exactness claim unsafe.
-- **M17:** [DesignTokenImportTests](Color%20ToolkitTests/DesignTokenImportTests.swift) for the decoder and [ProjectStoreTests](Color%20ToolkitTests/ProjectStoreTests.swift) for the path through a container. **A fifth distinct no-oracle reason, and the simplest one yet**: colorjs.io parses CSS, and a design token's `$value` is a JSON object rather than a CSS string, so there is nothing to ask it. The Color module's own documented shapes are the fixtures, written inline rather than in fixture files – the generated vector sets earn their own files by being thousands of numbers, where these are five lines of JSON apiece and only read as the spec examples they are when they sit beside the assertion. **Ten mutations, all ten killed, and every failure set is tight**: uniquing on the raw path instead of the sanitized key fails one test, ignoring a resolved reference's type one, letting `hex` rescue broken components one, sorting names as text two (both the ordering claims), dropping the `none` mask one, dropping the alpha clamp one, spelling imports `oklch()` one, keying on a token's leaf name instead of its whole path three (every claim about keys), and ignoring a token's own `$type` one – that last mutation being the one that *found* a gap, since nothing had pinned the first arm of the precedence chain until it was written. The cycle-detection mutation is the odd one out and worth its own sentence: removing the visited set fails the suite **without reporting a single test**, because the unbounded recursion takes the test process down with it. That is the shape of the bug the visited set prevents, and it is why the rule is not an optimization. Two claims are asserted by discrimination rather than by equality alone – an sRGB `[1, 0, 0]` is checked against the `1/255` it would be under `rgb()`'s scale, and the `hex` fallback is checked with a *known* space and broken components, where a fallback that fired would look perfectly plausible. One test deliberately does *not* isolate a rule: `awholeFileImports` takes an alias, two color spaces, a description and a dimension token in one document, because the per-rule tests are diagnostic precisely by testing one thing at a time and a real token file is never one thing. It asserts the three counts together, since those are what the panel reports and "imported 4, ignored 1" is only true if all three are – and it is in the failure set of the reference-type mutation, so it discriminates rather than decorates.
-- **M17, the part no test reaches – and it passed.** This is the app's only file read, so it is the only place a **sandbox** denial can happen, and every test above loads its JSON from a string in the test bundle: that exercises the decoder and nothing about the sandbox. Same shape as M4's loupe and global chord – links a test cannot touch, wanting a named manual check instead. The check is *choose a token file in `~/Downloads` through the Import button and confirm a palette appears*, and it was run on the built app: four swatches under an `Imported` badge, with the summary reading `Imported 4 colors from color-toolkit-m17-check.tokens.json. Ignored 1 token of other types.` So the powerbox URL reads under `ENABLE_USER_SELECTED_FILES = readonly` with the security-scoped claim, which was the open question. **The screenshot happens to discriminate three separate rules, which is why it is worth more than a pass**: the second and fourth swatches are the *same blue*, so `semantic.primary` – a token with no `$type` of its own – resolved through its alias to `brand.500` and took both its value and its type, the rule a filter-then-resolve design drops silently; the order is `50, 500, 900, primary`, so numeric sorting held on real data where alphabetical would have filed `500` ahead of `50`; and the navy is the `display-p3` token, so the wide-gamut path rendered as well as the sRGB ones. XCUITest cannot drive `NSOpenPanel`, exactly as it cannot start a dragging session, so [ProjectsSmokeTests](Color%20ToolkitUITests/ProjectsSmokeTests.swift) stops at asserting the control reached the panel and is hittable – a test that clicked it would fail whether the feature worked or not. The panel's error copy is built for this: the open-panel dismissal, the read, the decode, "readable file with nothing importable in it", and the save are five outcomes with five different sentences, because a denial reported as "no color tokens in that file" would be undiagnosable.
-- **M18:** [ColorToolkitCLITests](ColorToolkitCLITests/CommandTests.swift), and **the oracle is this app's own parser** – the same standard `Export/` is held to and for the same reason: the CLI's output is text a machine will read back. So the discriminating assertion is that a printed value survives `CSSColorParser`, applied to all six document shapes at both cardinalities and to every listing; exact strings are kept for *syntax* (exit codes, which stream a message lands on, `:root {`) and are wrong for anything editorial. Three claims are asserted as totality over an `allCases` rather than by example, because each is a table that a change in ColorCore can silently outgrow: every catalog format has a CLI name and the name inverts, every export shape has one that is lowercase and round-trips, and every command in the `--help` listing dispatches to something. **Twelve mutations, all twelve killed, and every failure set is tight** – collapsing the usage and failure exit codes fails one test, routing diagnostics to stdout five, accepting an unknown option as a positional one, accepting an inert `--format` one, uniquing export keys on the raw path instead of the sanitized key one, ignoring `mappedCountFormat` one, dropping `solve`'s read-back check two, canonicalizing the token listing's spelling one, short-circuiting `--help` before argument scanning one, deriving shape names from raw values three, dropping the listing's mapped note three, and dropping the `convert` table's mapped marker one. **The value extractor took two attempts and the first one is the lesson**: reading "everything after the first space" agreed with three output shapes and silently handed the other five a value with punctuation attached, which reads exactly like a broken serializer – so it now matches structurally, on a `#` run or a *color* function name followed by a balanced paren group. That last qualifier is not decoration: `tailwind-config` opens with `/** @type {import('tailwindcss').Config} */`, and `import(…)` satisfies every part of the shape rule but the name. **Three findings came out of the suite failing first.** The ramp's in-gamut assertion has to read the value at full precision, because a stop on the boundary rounds outward at four decimals and the test would otherwise be measuring the serializer; the mapped-note test had to move from `ramp` to `harmony`, because every ramp stop is already in gamut and asking a ramp for a mapped value tests nothing; and `solve`'s guarantee turned out not to survive serialization at all, which is the milestone note above.
-- **M19:** [PreferencesTests](Color%20ToolkitTests/PreferencesTests.swift) – every field round-trips through encode/decode with each field changed from its default (including `exportFormat: .color(.displayP3)`, the one case that exercises `CSSOutputFormat`'s hand-written conformance rather than a plain raw value), decoding garbage yields defaults, and the negative-`recentLimit` crash is pinned as a regression after being reproduced directly (`Fatal error: Can't remove more items from a collection than it contains`, with the clamp removed). `withObservationTracking` confirms `ColorStore.preferences`'s getter reaches through both `formatOptions` and `exportOptions` rather than only the top level. **Confirmed the mutation directly**: dropping `webFriendly` from `CodingKeys` failed exactly the two tests that could tell. The quit-and-relaunch check is manual, in the shape of M8b's write and M17's read – see the M19 section above for what was found.
-- **M20:** [GroupedExportTests](Color%20ToolkitTests/ExportTests.swift) and [StagedProjectTests](Color%20ToolkitTests/ExportStoreTests.swift). The single-group case is not re-pinned as a new assertion – it would be true by construction, since the one-list `render` is now a one-line call into the grouped renderer – so the discriminating check is that every exact string in the *pre-existing* `ExportShapeTests` and `ExportRoundTripTests` still passes unchanged. **That check turned out to be uneven across shapes**: `declaration` and the three shapes sharing `groupedPropertyLines` each guard their own header independently, and `tailwindTheme`'s pre-existing test (`.contains`/`.hasPrefix`/`.hasSuffix`) does not notice an extra comment appearing, so a dedicated single-group `tailwindTheme` test was added before that shape's byte-identity claim had anywhere to fail. Two-group documents are pinned exactly for `declaration`, `customProperties`, `tailwindTheme`, `json` and `tailwindConfig` (the latter two at both per-group cardinalities in one document – a lone-color group beside a scale), plus a multi-group round trip through `CSSColorParser`, `p3WithFallback` covering every group in both blocks, and a test that `options.name` moves a grouped document's filename and never its content. **Six mutations, all six caught by the intended test and no other**: uniquing against the raw name instead of the sanitized one fails `collidingGroupNamesStaySeparate`; deleting the suffix loop's `while` (always appending a bare `-2`) fails only `thirdCollisionSkipsTakenSuffix`, not the simpler two-way collision test – proof the loop itself is exercised, not just the branch that enters it; truncating `p3WithFallback`'s wide block to the first group fails `p3WithFallbackCoversEveryGroup`; forcing `groupedPropertyLines`'s header unconditionally fails three pre-existing tests and the new single-group `tailwindTheme` one, none of the new two-group ones; and both directions of `declaration`'s separate header guard were checked, one against a new two-group test and the other against two pre-existing single-group ones. [ProjectsSmokeTests](Color%20ToolkitUITests/ProjectsSmokeTests.swift) adds the end-to-end run – a ramp and a loose color, saved separately, exported together under the project's own groups – **and asserts the Source picker's "Project" segment is itself hittable**, not merely that the right document reached the field; the pre-existing `ExportSmokeTests` never click that segment, so they would not have caught a sixth entry rendering unusably, and this is the test that actually closes that question rather than the one first assumed to.
+- **M17:** [DesignTokenImportTests](ColorKitTests/DesignTokenImportTests.swift) for the decoder and [ProjectStoreTests](ColorKitTests/ProjectStoreTests.swift) for the path through a container. **A fifth distinct no-oracle reason, and the simplest one yet**: colorjs.io parses CSS, and a design token's `$value` is a JSON object rather than a CSS string, so there is nothing to ask it. The Color module's own documented shapes are the fixtures, written inline rather than in fixture files – the generated vector sets earn their own files by being thousands of numbers, where these are five lines of JSON apiece and only read as the spec examples they are when they sit beside the assertion. **Ten mutations, all ten killed, and every failure set is tight**: uniquing on the raw path instead of the sanitized key fails one test, ignoring a resolved reference's type one, letting `hex` rescue broken components one, sorting names as text two (both the ordering claims), dropping the `none` mask one, dropping the alpha clamp one, spelling imports `oklch()` one, keying on a token's leaf name instead of its whole path three (every claim about keys), and ignoring a token's own `$type` one – that last mutation being the one that *found* a gap, since nothing had pinned the first arm of the precedence chain until it was written. The cycle-detection mutation is the odd one out and worth its own sentence: removing the visited set fails the suite **without reporting a single test**, because the unbounded recursion takes the test process down with it. That is the shape of the bug the visited set prevents, and it is why the rule is not an optimization. Two claims are asserted by discrimination rather than by equality alone – an sRGB `[1, 0, 0]` is checked against the `1/255` it would be under `rgb()`'s scale, and the `hex` fallback is checked with a *known* space and broken components, where a fallback that fired would look perfectly plausible. One test deliberately does *not* isolate a rule: `awholeFileImports` takes an alias, two color spaces, a description and a dimension token in one document, because the per-rule tests are diagnostic precisely by testing one thing at a time and a real token file is never one thing. It asserts the three counts together, since those are what the panel reports and "imported 4, ignored 1" is only true if all three are – and it is in the failure set of the reference-type mutation, so it discriminates rather than decorates.
+- **M17, the part no test reaches – and it passed.** This is the app's only file read, so it is the only place a **sandbox** denial can happen, and every test above loads its JSON from a string in the test bundle: that exercises the decoder and nothing about the sandbox. Same shape as M4's loupe and global chord – links a test cannot touch, wanting a named manual check instead. The check is *choose a token file in `~/Downloads` through the Import button and confirm a palette appears*, and it was run on the built app: four swatches under an `Imported` badge, with the summary reading `Imported 4 colors from colorkit-m17-check.tokens.json. Ignored 1 token of other types.` So the powerbox URL reads under `ENABLE_USER_SELECTED_FILES = readonly` with the security-scoped claim, which was the open question. **The screenshot happens to discriminate three separate rules, which is why it is worth more than a pass**: the second and fourth swatches are the *same blue*, so `semantic.primary` – a token with no `$type` of its own – resolved through its alias to `brand.500` and took both its value and its type, the rule a filter-then-resolve design drops silently; the order is `50, 500, 900, primary`, so numeric sorting held on real data where alphabetical would have filed `500` ahead of `50`; and the navy is the `display-p3` token, so the wide-gamut path rendered as well as the sRGB ones. XCUITest cannot drive `NSOpenPanel`, exactly as it cannot start a dragging session, so [ProjectsSmokeTests](ColorKitUITests/ProjectsSmokeTests.swift) stops at asserting the control reached the panel and is hittable – a test that clicked it would fail whether the feature worked or not. The panel's error copy is built for this: the open-panel dismissal, the read, the decode, "readable file with nothing importable in it", and the save are five outcomes with five different sentences, because a denial reported as "no color tokens in that file" would be undiagnosable.
+- **M18:** [ColorKitCLITests](ColorKitCLITests/CommandTests.swift), and **the oracle is this app's own parser** – the same standard `Export/` is held to and for the same reason: the CLI's output is text a machine will read back. So the discriminating assertion is that a printed value survives `CSSColorParser`, applied to all six document shapes at both cardinalities and to every listing; exact strings are kept for *syntax* (exit codes, which stream a message lands on, `:root {`) and are wrong for anything editorial. Three claims are asserted as totality over an `allCases` rather than by example, because each is a table that a change in ColorCore can silently outgrow: every catalog format has a CLI name and the name inverts, every export shape has one that is lowercase and round-trips, and every command in the `--help` listing dispatches to something. **Twelve mutations, all twelve killed, and every failure set is tight** – collapsing the usage and failure exit codes fails one test, routing diagnostics to stdout five, accepting an unknown option as a positional one, accepting an inert `--format` one, uniquing export keys on the raw path instead of the sanitized key one, ignoring `mappedCountFormat` one, dropping `solve`'s read-back check two, canonicalizing the token listing's spelling one, short-circuiting `--help` before argument scanning one, deriving shape names from raw values three, dropping the listing's mapped note three, and dropping the `convert` table's mapped marker one. **The value extractor took two attempts and the first one is the lesson**: reading "everything after the first space" agreed with three output shapes and silently handed the other five a value with punctuation attached, which reads exactly like a broken serializer – so it now matches structurally, on a `#` run or a *color* function name followed by a balanced paren group. That last qualifier is not decoration: `tailwind-config` opens with `/** @type {import('tailwindcss').Config} */`, and `import(…)` satisfies every part of the shape rule but the name. **Three findings came out of the suite failing first.** The ramp's in-gamut assertion has to read the value at full precision, because a stop on the boundary rounds outward at four decimals and the test would otherwise be measuring the serializer; the mapped-note test had to move from `ramp` to `harmony`, because every ramp stop is already in gamut and asking a ramp for a mapped value tests nothing; and `solve`'s guarantee turned out not to survive serialization at all, which is the milestone note above.
+- **M19:** [PreferencesTests](ColorKitTests/PreferencesTests.swift) – every field round-trips through encode/decode with each field changed from its default (including `exportFormat: .color(.displayP3)`, the one case that exercises `CSSOutputFormat`'s hand-written conformance rather than a plain raw value), decoding garbage yields defaults, and the negative-`recentLimit` crash is pinned as a regression after being reproduced directly (`Fatal error: Can't remove more items from a collection than it contains`, with the clamp removed). `withObservationTracking` confirms `ColorStore.preferences`'s getter reaches through both `formatOptions` and `exportOptions` rather than only the top level. **Confirmed the mutation directly**: dropping `webFriendly` from `CodingKeys` failed exactly the two tests that could tell. The quit-and-relaunch check is manual, in the shape of M8b's write and M17's read – see the M19 section above for what was found.
+- **M20:** [GroupedExportTests](ColorKitTests/ExportTests.swift) and [StagedProjectTests](ColorKitTests/ExportStoreTests.swift). The single-group case is not re-pinned as a new assertion – it would be true by construction, since the one-list `render` is now a one-line call into the grouped renderer – so the discriminating check is that every exact string in the *pre-existing* `ExportShapeTests` and `ExportRoundTripTests` still passes unchanged. **That check turned out to be uneven across shapes**: `declaration` and the three shapes sharing `groupedPropertyLines` each guard their own header independently, and `tailwindTheme`'s pre-existing test (`.contains`/`.hasPrefix`/`.hasSuffix`) does not notice an extra comment appearing, so a dedicated single-group `tailwindTheme` test was added before that shape's byte-identity claim had anywhere to fail. Two-group documents are pinned exactly for `declaration`, `customProperties`, `tailwindTheme`, `json` and `tailwindConfig` (the latter two at both per-group cardinalities in one document – a lone-color group beside a scale), plus a multi-group round trip through `CSSColorParser`, `p3WithFallback` covering every group in both blocks, and a test that `options.name` moves a grouped document's filename and never its content. **Six mutations, all six caught by the intended test and no other**: uniquing against the raw name instead of the sanitized one fails `collidingGroupNamesStaySeparate`; deleting the suffix loop's `while` (always appending a bare `-2`) fails only `thirdCollisionSkipsTakenSuffix`, not the simpler two-way collision test – proof the loop itself is exercised, not just the branch that enters it; truncating `p3WithFallback`'s wide block to the first group fails `p3WithFallbackCoversEveryGroup`; forcing `groupedPropertyLines`'s header unconditionally fails three pre-existing tests and the new single-group `tailwindTheme` one, none of the new two-group ones; and both directions of `declaration`'s separate header guard were checked, one against a new two-group test and the other against two pre-existing single-group ones. [ProjectsSmokeTests](ColorKitUITests/ProjectsSmokeTests.swift) adds the end-to-end run – a ramp and a loose color, saved separately, exported together under the project's own groups – **and asserts the Source picker's "Project" segment is itself hittable**, not merely that the right document reached the field; the pre-existing `ExportSmokeTests` never click that segment, so they would not have caught a sixth entry rendering unusably, and this is the test that actually closes that question rather than the one first assumed to.
 - **M21 (done):** met as stated – `TransformSmokeTests`' pattern extended to a CVD swatch (`CVDSmokeTests.testClickingTheSimulatedSwatchAdoptsIt`) and a palette tile (an extension to `ProjectsSmokeTests.testSavingASelectionMakesAPalette`); the authored-text claim was already covered store-side by the pre-existing `usingARecentRestoresItsText`, so no duplicate was added, and the new `adoptBackgroundWritesBackground` covers the one genuinely new store seam, `adoptBackground(_:preferring:)`. Two regressions were caught against the *running app*, not by a written test predicting them in advance – see the M21 retrospective above.
 - **M22 (done):** `webFriendly` asserted as a subset of `catalog`, plus that every
   member is sRGB-expressible and that `color(srgb …)` is excluded despite fitting –
@@ -3350,7 +3373,7 @@ Per milestone:
   was typed – rewritten against `rgb(59 130 246)`, whose hex fallback reads differently
   from its own text, the same mutation fails. See the M25 section above for the full
   account.
-- **M26:** [PaletteImportTests](Color%20ToolkitTests/PaletteImportTests.swift) (20
+- **M26:** [PaletteImportTests](ColorKitTests/PaletteImportTests.swift) (20
   tests) – shape detection for every shape including ordering (`@theme` ahead of the
   JSON/declaration fallbacks), the `primary`/`primar` segment-wise vs. character-wise
   discriminator, the round trip through every export shape at both cardinalities (a
@@ -3361,12 +3384,12 @@ Per milestone:
   mutations verified by hand – ignoring headers, character-wise prefix, reading
   `p3WithFallback`'s hex block, reordering `detect()`'s `@media`/`:root` checks – each
   failed exactly its own test and no other.**
-  [ProjectStoreTests](Color%20ToolkitTests/ProjectStoreTests.swift) (2 tests) pins the
+  [ProjectStoreTests](ColorKitTests/ProjectStoreTests.swift) (2 tests) pins the
   fourth `savePalette` overload's stored text as the literal pasted string rather than a
   re-derivation – checked by mutation against routing through
   `.derived(_:preferring: .oklch)`, which both tests catch – and that the stored text
   reparses to the stored components, the same check every other stored spelling in this
-  app carries. [ProjectsSmokeTests](Color%20ToolkitUITests/ProjectsSmokeTests.swift)
+  app carries. [ProjectsSmokeTests](ColorKitUITests/ProjectsSmokeTests.swift)
   covers the Import menu offering both paths without clicking the un-drivable one
   (`NSOpenPanel`), and a full paste-to-palette run through `app.sheets` – typing a
   two-property `:root` block into the `textViews` query, confirming, and asserting a
@@ -3387,17 +3410,17 @@ Per milestone:
   `initial: true`, with the UI test now asserting the field's value directly. Both fixes
   were confirmed to fail against the unfixed code before being fixed; neither changed a
   test count.
-- **M27:** [GlobalHotKeyTests](Color%20ToolkitTests/GlobalHotKeyTests.swift) pins
+- **M27:** [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift) pins
   `isEligible` by discrimination on each of ⌃⌥⌘ alone (eligible) against ⇧ alone and no
   modifier at all (both not), plus a bare function key (eligible with nothing at all) –
   the exact boundary a hand-edited preferences file can cross. `GlobalShortcut`'s new
-  `Codable` conformance round-trips. [ColorStoreTests](Color%20ToolkitTests/ColorStoreTests.swift)
+  `Codable` conformance round-trips. [ColorStoreTests](ColorKitTests/ColorStoreTests.swift)
   covers `updateGlobalShortcut(_:)`'s three reachable branches – commits directly while
   inactive, refuses an ineligible chord unchanged, no-ops on the chord already in
   effect – plus the one branch that claims a real system-wide chord: rebinding while
   active, proved by re-claiming the *old* chord afterward (`eventHotKeyExistsErr` if it
   were still held). **Confirmed by mutation**: removing the `unregisterAll()` call
-  before the retry failed exactly that test. [PreferencesTests](Color%20ToolkitTests/PreferencesTests.swift)
+  before the retry failed exactly that test. [PreferencesTests](ColorKitTests/PreferencesTests.swift)
   extends the M19 `recentLimit` pattern to `globalShortcut` – round-trips as part of
   `nonDefault`, clamps to `.sampleColor` when the loaded value is ineligible, and gets
   its own `withObservationTracking` mutation entry, since `globalShortcut` is a
@@ -3423,9 +3446,9 @@ Per milestone:
   "Developer ID Application" identity in this environment, only the "Apple Development"
   one ordinary builds use – and are recorded as unverified, needing the app's own
   credentialed step.
-- **M29:** [CommandLineToolInstallerTests](Color%20ToolkitTests/CommandLineToolInstallerTests.swift),
+- **M29:** [CommandLineToolInstallerTests](ColorKitTests/CommandLineToolInstallerTests.swift),
   and unlike M28 this target *is* reachable past the "recorded manual check" boundary
-  most sandboxed I/O gets in this file – `Color ToolkitTests` carries no
+  most sandboxed I/O gets in this file – `ColorKitTests` carries no
   `ENABLE_APP_SANDBOX` of its own, so `install(embeddedBinary:into:)`'s real
   `createSymbolicLink` write is exercised end to end against a plain temp directory,
   not merely its guard clauses. Every pure helper is mutation-confirmed rather than
@@ -3450,13 +3473,13 @@ Per milestone:
 The scheme is shared and works from the command line:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' test
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' test
 ```
 
 `xcodebuild` does **not** print Swift Testing failure text – a failed run tells you which test failed and nothing about why. Capture a result bundle and read the `Failure Message` nodes out of it:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' -resultBundlePath /tmp/res.xcresult test
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' -resultBundlePath /tmp/res.xcresult test
 ```
 
 ```bash
@@ -3478,23 +3501,23 @@ clicks and survives quitting the app, because the app you quit was not the one t
 owns it. There is no ghost to clear; there is a process to find:
 
 ```bash
-ps -Ao pid,lstart,command | grep "Color Toolkit.app" | grep -v grep
+ps -Ao pid,lstart,command | grep "ColorKit.app" | grep -v grep
 ```
 
 Kill the stale pid and the icon goes with it. The UI tests in
-[Color ToolkitUITests](Color%20ToolkitUITests/ConversionSmokeTests.swift) call
+[ColorKitUITests](ColorKitUITests/ConversionSmokeTests.swift) call
 `app.terminate()` in `tearDown` specifically so they cannot be the cause.
 
 **If `kill -9` does not work**, the instance is held by a debugger – a leftover test
 host still attached to `debugserver`. `ps` shows it as state `SX`, where `X` means
 traced. Seen once during M4: a UI test failed at `app.launch()` with *"Failed to
-terminate me.parkersprouse.color-toolkit"*, and `sample` on the stuck process showed
+terminate me.parkersprouse.colorkit"*, and `sample` on the stuck process showed
 its main thread frozen mid-`_AXXMIGAddNotification`. That stack is a red herring – a
 traced process shows identical frames in every sample because it is not running at
 all. Find the debugger and kill that first:
 
 ```bash
-ps -Ao pid,ppid,stat,command | grep -E "debugserver|Color Toolkit.app" | grep -v grep
+ps -Ao pid,ppid,stat,command | grep -E "debugserver|ColorKit.app" | grep -v grep
 ```
 
 The run was clean on retry, so this is a flake in the unit-test-host → UI-test
@@ -3505,11 +3528,11 @@ runs at once.** Found during M8. The symptoms are *"The test runner hung before
 establishing connection"* and *"Lost connection to the application"* mid-test, and they
 were reproduced twice by starting a second suite while the first was still alive – both
 runs share the same DerivedData and the same test host and fight over them. Worse, the
-loser leaves orphaned `UITests-Runner` and `Color Toolkit.app` processes reparented to
+loser leaves orphaned `UITests-Runner` and `ColorKit.app` processes reparented to
 `init`, which then poison the *next* run too. So before blaming the host:
 
 ```bash
-ps -Ao pid,ppid,command | grep -E "xcodebuild|UITests-Runner|Color Toolkit.app/Contents" | grep -v grep
+ps -Ao pid,ppid,command | grep -E "xcodebuild|UITests-Runner|ColorKit.app/Contents" | grep -v grep
 ```
 
 Anything with `ppid 1` is an orphan. Kill it, and any second `xcodebuild`, then re-run.
@@ -3517,7 +3540,7 @@ Anything with `ppid 1` is an orphan. Kill it, and any second `xcodebuild`, then 
 **Two more ways to read a false pass**, both hit in the same session:
 
 - **Never delete the worktree or its `-derivedDataPath` while the run is still alive.**
-  Doing so removed `Color Toolkit.app` out from under the UI phase, and three tests
+  Doing so removed `ColorKit.app` out from under the UI phase, and three tests
   failed with *"Could not launch … no such file"* – a failure that looks like a
   regression and is nothing but housekeeping. Confirm the process has exited first.
 - **`Test run with N tests in M suites passed` is the Swift Testing line, not the
@@ -3532,7 +3555,7 @@ Anything with `ppid 1` is an orphan. Kill it, and any second `xcodebuild`, then 
 Commits follow milestone seams, and **each one must build and test on its own** – a green suite at HEAD says nothing about whether an intermediate commit is bisectable. Verify in a throwaway worktree with isolated DerivedData before stacking the next commit on top:
 
 ```bash
-git worktree add -q --detach /tmp/wt <sha> && cd /tmp/wt && xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' -derivedDataPath /tmp/dd test
+git worktree add -q --detach /tmp/wt <sha> && cd /tmp/wt && xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' -derivedDataPath /tmp/dd test
 ```
 
 ## Deferred (worth revisiting)
@@ -3574,7 +3597,7 @@ What remains genuinely deferred:
   *fallback* moved, so a color outside P3 is mapped in both blocks with nothing saying
   which. Answering it properly means two counts and a badge that can show them, which is
   a UI decision rather than a missing line.
-- **~380 MainActor-isolation warnings across all 11 `Color ToolkitUITests` files**
+- **~380 MainActor-isolation warnings across all 11 `ColorKitUITests` files**
   (`Call to main actor-isolated … in a synchronous nonisolated context`, one per
   `XCUIApplication`/`XCUIElement` call). See CLAUDE.md's Testing section for the full
   diagnosis and the two fixes already tried and ruled out. The real fix is per-file:

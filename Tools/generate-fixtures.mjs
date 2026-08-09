@@ -141,7 +141,7 @@ const fixture = {
   gamutMapping,
 };
 
-const out = join(here, "..", "Color ToolkitTests", "Fixtures", "reference-vectors.json");
+const out = join(here, "..", "ColorKitTests", "Fixtures", "reference-vectors.json");
 writeFileSync(out, JSON.stringify(fixture));
 console.log(`conversions   ${conversions.length}`);
 console.log(`gamutMapping  ${gamutMapping.length}`);

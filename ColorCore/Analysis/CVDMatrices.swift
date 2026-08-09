@@ -1,6 +1,6 @@
 //
 //  CVDMatrices.swift
-//  Color Toolkit
+//  ColorKit
 //
 //  GENERATED FILE — DO NOT EDIT BY HAND.
 //  Regenerate with: python3 Tools/generate-cvd-matrices.py

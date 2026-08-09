@@ -62,13 +62,32 @@ preferences file can never register a chord that would swallow ordinary typing.
 **M28 is done too**: a Developer ID release/export path — see *Release build* under
 Commands below for what was actually run and verified versus documented and left for a
 credentialed step only the person distributing the app can perform.
-**M29 is done too**: `colorkit` is embedded in the app bundle (`Contents/MacOS/`, not
-`Contents/Executables/` despite the Copy Files phase's own name — see the M28 section
-above for the measured reason) and Settings gained a "Command Line Tool" section that
-symlinks it onto a directory the user picks, entirely inside the sandbox — no
-privileged helper, no admin authentication, and no persisted "installed" status, since
-the sandbox gives the app no honest way to re-verify a symlink still exists on a later
-launch. See `CommandLineToolInstaller` and the M29 entry in PLAN.md.
+**M29 is done too**: `colorkit` is embedded in the app bundle (`Contents/MacOS/cli/`,
+not `Contents/Executables/` despite the Copy Files phase's own name — see the M28
+section above for the measured reason, and the app-rename note below for why it is a
+subfolder rather than bare `Contents/MacOS/`) and Settings gained a "Command Line Tool"
+section that symlinks it onto a directory the user picks, entirely inside the sandbox —
+no privileged helper, no admin authentication, and no persisted "installed" status,
+since the sandbox gives the app no honest way to re-verify a symlink still exists on a
+later launch. See `CommandLineToolInstaller` and the M29 entry in PLAN.md.
+**The app and its CLI tool were renamed to `ColorKit`/`colorkit` after M29** — same
+casing relationship as before (app title-case, CLI lowercase), but now on a shared stem
+instead of two unrelated words, and that is what turned the Copy Files destination
+load-bearing rather than cosmetic: embedding `colorkit` straight into `Contents/MacOS/`
+collides with the app's own main executable, `Contents/MacOS/ColorKit`, because `ColorKit`
+and `colorkit` are the same path on the case-insensitive filesystem every default macOS
+volume uses. Measured directly, not assumed: before the Copy Files phase's `dstPath`
+was set to `cli`, only one file existed in `Contents/MacOS/` after a build — the CLI had
+silently overwritten the app's own executable — and launching "the app" ran the CLI's
+`--help` instead. The rename also needed two build-setting fixes with the identical root
+cause: the CLI's Xcode target is named `ColorKitCLI` (not `colorkit`) so its intermediate
+build directory doesn't collide with the app target's, with `PRODUCT_NAME = colorkit` set
+explicitly so the shipped binary name is unaffected by the target's internal name; and the
+CLI's `PRODUCT_MODULE_NAME` is explicitly `ColorKitCLIModule`, because the *default*
+module name (from `PRODUCT_NAME`) is `colorkit`, which collides with the app's own
+`ColorKit.swiftmodule` in the shared build products directory the same way. Nothing
+elsewhere depends on the CLI's module name — see the architecture invariant on why no
+target ever `import`s it.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
@@ -80,23 +99,23 @@ has the argument; read it before making a design call.
 Build (the scheme builds the app **and** `colorkit`):
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' build
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' build
 ```
 
 To build or run just the CLI — much faster, and the right way to check a project-file
 change without a mistake masquerading as an app regression:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -target colorkit -destination 'platform=macOS' build && ./build/Release/colorkit --help
+xcodebuild -project "ColorKit.xcodeproj" -target colorkit -destination 'platform=macOS' build && ./build/Release/colorkit --help
 ```
 
 Full test suite (~9 minutes, nearly all of it UI tests — the 505 + 59 Swift Testing
 tests finish in about a second, the 45 XCUITests take seven minutes and up). **There are
-two Swift Testing bundles now**: `Color ToolkitTests` (505 tests, 53 suites) and
-`ColorToolkitCLITests` (59 tests, 10 suites), and both are in the scheme:
+two Swift Testing bundles now**: `ColorKitTests` (505 tests, 53 suites) and
+`ColorKitCLITests` (59 tests, 10 suites), and both are in the scheme:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' test
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' test
 ```
 
 **Run exactly one suite at a time, and read the right line for the verdict.** Both of
@@ -120,7 +139,7 @@ test and tells you nothing about why. Capture a result bundle and read the failu
 messages out of it — this is the single most useful command here:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' -resultBundlePath /tmp/res.xcresult test
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' -resultBundlePath /tmp/res.xcresult test
 ```
 
 ```bash
@@ -140,12 +159,12 @@ That prints `Expectation failed: (parsed.deltaEOK(…) → 4.59e-05) < (1e-9 →
 the actual numbers, which is usually the whole question.
 
 **Two Swift Testing bundles means `-only-testing:` needs the right target prefix.** The
-CLI's tests are `ColorToolkitCLITests/...` — no space, no quoting needed — and the app's
-are `"Color ToolkitTests/..."`. `-only-testing:ColorToolkitCLITests` alone runs the whole
+CLI's tests are `ColorKitCLITests/...` — no space, no quoting needed — and the app's
+are `"ColorKitTests/..."`. `-only-testing:ColorKitCLITests` alone runs the whole
 CLI suite in about a second and is the fast loop while working on it.
 
 **The two identifiers are spelled differently and neither accepts the other's form.**
-`-only-testing:` takes the **target prefix** (`Color ToolkitTests/ProjectStoreTests/foo()`);
+`-only-testing:` takes the **target prefix** (`ColorKitTests/ProjectStoreTests/foo()`);
 `--test-id` takes the bare `nodeIdentifier` (`ProjectStoreTests/foo()`) and answers a
 target-prefixed one with *"Failed to find test with the provided identifier"*. Both need
 the trailing `()`: omit it from `-only-testing:` and the run selects nothing and reports
@@ -156,16 +175,16 @@ string, and one file often holds several suites — `CSSParsingTests.swift` defi
 `CSSParseValidTests`, `CSSParseRejectionTests`, and `CSSParseLeniencyTests`:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' -only-testing:"Color ToolkitTests/ColorStoreTests" test
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' -only-testing:"ColorKitTests/ColorStoreTests" test
 ```
 
-One test: append the function name — `-only-testing:"Color ToolkitTests/ColorStoreTests/adoptWritesInput()"`.
+One test: append the function name — `-only-testing:"ColorKitTests/ColorStoreTests/adoptWritesInput()"`.
 It is the Swift **function** name, not the `@Test("…")` display string.
 
-The scheme is versioned at `Color Toolkit.xcodeproj/xcshareddata/xcschemes/`, so every
+The scheme is versioned at `ColorKit.xcodeproj/xcshareddata/xcschemes/`, so every
 command above works from a fresh clone. It used to live only in gitignored
 `xcuserdata/`, where deleting it made all of them fail with *"does not contain a scheme
-named Color Toolkit"* — do not move it back.
+named ColorKit"* — do not move it back.
 
 ### Formatting
 
@@ -270,10 +289,10 @@ distribution actually needs, chosen for **Developer ID (direct download)**, not 
 App Store:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -configuration Release -archivePath build/ColorToolkit.xcarchive archive
-xcodebuild -exportArchive -archivePath build/ColorToolkit.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/export
-xcrun notarytool submit build/export/"Color Toolkit.zip" --keychain-profile "AC_NOTARY" --wait
-xcrun stapler staple build/export/"Color Toolkit.app"
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -configuration Release -archivePath build/ColorKit.xcarchive archive
+xcodebuild -exportArchive -archivePath build/ColorKit.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/export
+xcrun notarytool submit build/export/"ColorKit.zip" --keychain-profile "AC_NOTARY" --wait
+xcrun stapler staple build/export/"ColorKit.app"
 ```
 
 `ExportOptions.plist` (repo root) fixes `method: developer-id` — the one setting that
@@ -325,9 +344,19 @@ destination popup calls `dstSubfolderSpec = 6` "Executables", and it was planned
 assumption that this meant a bundle subfolder of that name. It does not, for a macOS
 application product specifically: inspecting both a Debug build's `Contents/` and a
 Release archive's `Contents/` after adding the phase shows `colorkit` sitting beside the
-app's own executable, `Contents/MacOS/Color Toolkit`. `CommandLineToolInstaller
-.embeddedBinaryURL(inBundleAt:)` is written against the measured path, and its own doc
-comment records the discrepancy so nobody "corrects" it back to the name on the tin.
+app's own executable — originally `Contents/MacOS/Color Toolkit`, and harmless there,
+because `colorkit` and `Color Toolkit` share no path component. **That stopped being
+true once the app was renamed to `ColorKit`**, which is why the Copy Files phase's
+`dstPath` is `cli` rather than empty: `Contents/MacOS/ColorKit` (the app's own
+executable) and a bare `Contents/MacOS/colorkit` are the identical path on every
+case-insensitive volume macOS ships by default, and the later of the two writes to land
+silently wins — measured by inspecting a build made before the fix, which had exactly
+one file in `Contents/MacOS/` where two were expected, and launched the CLI's `--help`
+instead of the app. The binary now lands at `Contents/MacOS/cli/colorkit`.
+`CommandLineToolInstaller.embeddedBinaryURL(inBundleAt:)` is written against the
+measured path, and its own doc comment records both the `Contents/Executables/`
+discrepancy and the case-collision reason for the `cli/` subfolder, so neither gets
+"corrected" back to something that looks more obviously right.
 
 **Two settings were left as found, on purpose, because changing either is a product call
 this milestone did not make:** `MACOSX_DEPLOYMENT_TARGET = 26.5` means the shipped app
@@ -345,11 +374,11 @@ change in this section that needed no judgment call.
 
 Layered so the numeric core stays independently testable and UI-free:
 
-- **`ColorCore/`** — at the **repo root**, not inside `Color Toolkit/`. It is its own
+- **`ColorCore/`** — at the **repo root**, not inside `ColorKit/`. It is its own
   `PBXFileSystemSynchronizedRootGroup` so a second target (a CLI) can list it without an
   exclusion list to maintain; the sources still compile *into* the app module, which is why
   everything in it stays `internal` and tests still reach it with
-  `@testable import Color_Toolkit`. Pure value types, no AppKit, no SwiftUI. `ColorValue` +
+  `@testable import ColorKit`. Pure value types, no AppKit, no SwiftUI. `ColorValue` +
   `ColorSpace`, 14 spaces routed through XYZ D65, CSS Color 4 §13 gamut mapping,
   a hand-written recursive-descent CSS parser, a serializer, `Analysis/`
   (WCAG 2.2 and APCA contrast), `Convert/GamutBoundary.swift` (how much chroma
@@ -358,9 +387,9 @@ Layered so the numeric core stays independently testable and UI-free:
   `Transform/` (relative adjustment, the S-curve,
   harmonies, shade ramps, the contrast solver — all in OKLCH), and `Export/`
   (declaration templates and six document shapes), and `Import/` (W3C design tokens).
-- **`ColorToolkitCLI/` and `ColorToolkitCLIMain/`** — the `colorkit` tool (M18), also at
+- **`ColorKitCLI/` and `ColorKitCLIMain/`** — the `colorkit` tool (M18), also at
   the **repo root**. Two root groups for one executable: the first holds the logic and is
-  compiled by the tool *and* by `ColorToolkitCLITests`, the second holds `main.swift`
+  compiled by the tool *and* by `ColorKitCLITests`, the second holds `main.swift`
   alone and is compiled by the tool only, because top-level code is legal only in an
   executable module. That split exists so no synchronized-group membership exception has
   to be maintained. The tool target also lists `ColorCore`, so `internal` still works, and
@@ -373,7 +402,7 @@ Layered so the numeric core stays independently testable and UI-free:
 - **`Persistence/`** — the only SwiftData in the app, five files. `ColorRecord` is a plain
   value type bridging `ColorValue` to flat, queryable columns; `ProjectModels` holds the
   three `@Model` classes; `ProjectLibrary` owns every mutation so the rules are testable
-  against a container; `SchemaVersions` declares `ColorToolkitSchemaV1` and an empty
+  against a container; `SchemaVersions` declares `ColorKitSchemaV1` and an empty
   migration plan; `PersistenceStack` builds the one container both scenes share.
 - **`Features/`, `DesignSystem/`** — SwiftUI, one folder per tool. `Services/` wraps
   AppKit (pasteboard, `NSColorSampler`, Carbon hot keys).
@@ -397,20 +426,20 @@ Layered so the numeric core stays independently testable and UI-free:
 - The project uses file-system-synchronized groups (`objectVersion = 77`). New
   `.swift` files compile automatically — do not edit `project.pbxproj` to add them.
   There are **two** root groups feeding the app target, `ColorCore/` and
-  `Color Toolkit/`; a file dropped in either compiles. Editing the project file is for
+  `ColorKit/`; a file dropped in either compiles. Editing the project file is for
   adding a *target*, or a build setting with nowhere else to live — never for adding
   files.
 - **One synchronized root group can be listed by any number of targets, and `ColorCore/`
-  is listed by three** — the app, `colorkit`, and `ColorToolkitCLITests`. That is what
+  is listed by three** — the app, `colorkit`, and `ColorKitCLITests`. That is what
   M10's move bought. It also means ColorCore compiles into three separate modules, which
-  is why a *fourth* target wanting the CLI's types has to list `ColorToolkitCLI/` too
+  is why a *fourth* target wanting the CLI's types has to list `ColorKitCLI/` too
   rather than importing anything: there is no CLI module to import.
-- **`ColorToolkitCLITests` cannot be folded into `Color ToolkitTests`, and the reason is
+- **`ColorKitCLITests` cannot be folded into `ColorKitTests`, and the reason is
   not tidiness.** The CLI's sources reach ColorCore through their own module, so
   compiling them into a target that reaches ColorCore through
-  `@testable import Color_Toolkit` does not build — and adding `ColorCore/` to that
+  `@testable import ColorKit` does not build — and adding `ColorCore/` to that
   target as well would *shadow* the import rather than merely duplicate it, breaking
-  every existing test. Testing the built binary from `Color ToolkitTests` is worse: the
+  every existing test. Testing the built binary from `ColorKitTests` is worse: the
   test host is the sandboxed app, so a sandbox denial would be indistinguishable from a
   real failure.
 - **The CLI writes results to stdout and everything else to stderr, with three exit
@@ -493,13 +522,13 @@ Layered so the numeric core stays independently testable and UI-free:
   alongside the generator **merges** rather than replaces — measured, 24 generated keys
   in and 24 plus the declaration out — but set it in *both* the Debug and Release blocks,
   because the type declaration is only read at runtime and a Release-only omission is
-  invisible from a Debug build. It cannot live in `Color Toolkit/`: that folder is a
+  invisible from a Debug build. It cannot live in `ColorKit/`: that folder is a
   synchronized root group, so it claims the file and the plist becomes the target's
   `Info.plist` *and* a bundled resource, which builds, warns, and ships a duplicate in
   `Contents/Resources`.
 - **A SwiftData `VersionedSchema`'s statics need `nonisolated`**, like everything else
   under this project's default actor isolation. `PersistenceStack.schema` is built from
-  `ColorToolkitSchemaV1`; the migration plan is deliberately empty, and a test asserting
+  `ColorKitSchemaV1`; the migration plan is deliberately empty, and a test asserting
   that it "works" would be asserting nothing — see PLAN.md.
 - **Reordering renumbers `sortIndex` densely; appending does not.** `nextIndex(after:)`
   leaves gaps so a new color lands last after a deletion, and that is only safe while
@@ -1048,7 +1077,7 @@ Layered so the numeric core stays independently testable and UI-free:
   writing), not only `ProjectsSmokeTests`. Stated as "every" rather than as a count on
   purpose: the rule is that a new suite carries it too, and a number here goes stale the
   next time one is added, which is exactly when somebody most needs to read this.
-- **`Preferences` loads and saves only from `Color_ToolkitApp`, never from
+- **`Preferences` loads and saves only from `ColorKitApp`, never from
   `ColorStore.init`.** `ColorStore()` is what every unit test constructs, so if the plain
   initializer read real `UserDefaults` a fresh store's `pickerMode` would depend on
   whichever preferences happen to be sitting on the machine running the test — the same
@@ -1064,7 +1093,7 @@ Layered so the numeric core stays independently testable and UI-free:
   `Codable` is free — the compiler derives it from the raw value. `CSSOutputFormat` is
   not `RawRepresentable` (`.color` carries a `ColorSpace`), so it has a hand-written
   conformance in `CSSFormatter.swift` instead, spelled to match
-  `ColorToolkitCLI/Names.swift`'s `--format` vocabulary — the same fact transcribed
+  `ColorKitCLI/Names.swift`'s `--format` vocabulary — the same fact transcribed
   twice because the two targets cannot import one another, not two independent
   decisions that happen to agree.
 - **`recentLimit`'s truncation lives in one private `trimRecents()`, called from both
@@ -1200,7 +1229,7 @@ Layered so the numeric core stays independently testable and UI-free:
 
 Swift Testing (`@Suite`/`@Test`/`#expect`) for units; XCUITest only for what unit
 tests structurally cannot reach — rendering. See the header of
-[ConversionSmokeTests.swift](Color%20ToolkitUITests/ConversionSmokeTests.swift) for
+[ConversionSmokeTests.swift](ColorKitUITests/ConversionSmokeTests.swift) for
 the accessibility-tree conventions before writing UI tests.
 
 - A green test is not a test that tests anything. Confirm a new regression test
@@ -1346,11 +1375,29 @@ the accessibility-tree conventions before writing UI tests.
   three times running, failed identically at the unmodified commit, and then passed six
   of six once the Mac was idle. Do not "fix" it by loosening the wait — a chain that
   falls back to a non-hittable click is a test that cannot fail.
+- **The identical `Disabled`-tree signature above has a second, unrelated cause: a
+  window shorter than its content, not a backgrounded host.** Discovered renaming the
+  app to `ColorKit` — `TransformSmokeTests.testTriadIsThreeDistinctColorsAndAdoptingOneChangesTheField`
+  failed consistently (never intermittently, unlike the M15 case) with `transformHarmony-1
+  never became hittable`, and the reported `Window (Main)` frame was genuinely the app's
+  coded `.defaultSize(width: 620, height: 700)` — short enough that the triad swatches
+  sit past the window's bottom edge with nothing in the test to scroll them into view.
+  The *original* bundle never showed this, not because its window is coded any
+  differently, but because macOS's window-state restoration had it pinned at 806pt tall
+  from weeks of the developer manually resizing it — state a brand-new bundle ID starts
+  without. So the test has always depended on that one developer machine's accumulated
+  window size rather than on anything the app itself guarantees, and every UI test
+  launch before this one incidentally inherited it. Telling the two causes apart: check
+  `HIDIdleTime` and retry as above for the M15 kind; for this kind, retrying does
+  nothing (it is not intermittent) and the window frame reported in the failure tree is
+  the same on every run. Not fixed here — the fix is a product decision (raise the
+  default height, or have the test resize/scroll first) outside a pure rename's scope,
+  and is recorded rather than silently patched around.
 - A `GeometryReader` square inside a `ScrollView` claims the whole unbounded height
   proposal. Size it from *width*, which is bounded.
 - Every running instance owns its own `MenuBarExtra` icon, so an orphaned process
   looks like a duplicate app. See *Running the app* in PLAN.md for the diagnosis.
-- **Every `Color ToolkitUITests` file builds with ~380 MainActor-isolation warnings
+- **Every `ColorKitUITests` file builds with ~380 MainActor-isolation warnings
   (`Call to main actor-isolated … in a synchronous nonisolated context`), left in
   deliberately — see the "Deferred" entry in PLAN.md.** `XCUIApplication`/`XCUIElement`
   now live in `XCUIAutomation.framework` (re-exported through `XCTest`) and are
@@ -1384,11 +1431,11 @@ about whether intermediate commits are bisectable. Verify in a throwaway worktre
 before stacking the next one:
 
 ```bash
-git worktree add -q --detach /tmp/wt <sha> && cd /tmp/wt && xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' -derivedDataPath /tmp/dd test
+git worktree add -q --detach /tmp/wt <sha> && cd /tmp/wt && xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' -derivedDataPath /tmp/dd test
 ```
 
 **Let it exit before cleaning up.** `git worktree remove` or `rm -rf /tmp/dd` while the
-run is still alive deletes `Color Toolkit.app` out from under the UI phase, and the
+run is still alive deletes `ColorKit.app` out from under the UI phase, and the
 remaining tests fail with *"Could not launch … no such file"* — which reads as a
 regression in the commit under test and is nothing of the kind. Check the process is
 gone, then check for exactly one `** TEST SUCCEEDED **`, then clean up.

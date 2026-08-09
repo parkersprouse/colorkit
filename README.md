@@ -1,4 +1,4 @@
-# Color Toolkit
+# ColorKit
 
 A native macOS app for the color work that happens while building for the web:
 converting a color between formats, picking one off the screen, checking whether text
@@ -19,20 +19,20 @@ requests at all.
 - **macOS 26.5 or later**
 - **Xcode** — there is no prebuilt download, so you build it once from source
 
-The simplest route is to open `Color Toolkit.xcodeproj` in Xcode and press **⌘R**. Once
+The simplest route is to open `ColorKit.xcodeproj` in Xcode and press **⌘R**. Once
 it is running you'll see an eyedropper icon in the menu bar.
 
 From the terminal:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' build
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' build
 ```
 
-That puts `Color Toolkit.app` in Xcode's DerivedData folder rather than beside the
+That puts `ColorKit.app` in Xcode's DerivedData folder rather than beside the
 project. To find it:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -showBuildSettings | grep -m1 BUILT_PRODUCTS_DIR
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -showBuildSettings | grep -m1 BUILT_PRODUCTS_DIR
 ```
 
 Drag the app from there into `/Applications` if you want to keep it.
@@ -45,7 +45,7 @@ Drag the app from there into `/Applications` if you want to keep it.
 
 Click the eyedropper in the menu bar for a small panel holding the current color, a
 **Copy as** menu listing every format, your recent colors, and three actions: **Pick
-Color from Screen**, **Open Color Toolkit**, and **Quit**.
+Color from Screen**, **Open ColorKit**, and **Quit**.
 
 ### The global shortcut
 
@@ -220,7 +220,7 @@ Plus whether to show the recents row, and how many colors it keeps.
 The same engine, for scripts and for anyone who'd rather not leave the terminal.
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -target colorkit -destination 'platform=macOS' build
+xcodebuild -project "ColorKit.xcodeproj" -target colorkit -destination 'platform=macOS' build
 ```
 
 It builds to `./build/Release/colorkit`. Copy it somewhere on your `PATH` if you want
@@ -348,7 +348,7 @@ call.
 The full test suite:
 
 ```bash
-xcodebuild -project "Color Toolkit.xcodeproj" -scheme "Color Toolkit" -destination 'platform=macOS' test
+xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' test
 ```
 
 There are no third-party runtime dependencies. Swift 6, SwiftUI, SwiftData.

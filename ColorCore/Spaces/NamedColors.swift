@@ -1,6 +1,6 @@
 //
 //  NamedColors.swift
-//  Color Toolkit
+//  ColorKit
 //
 //  GENERATED FILE — DO NOT EDIT BY HAND.
 //  Regenerate with: node Tools/generate-constants.mjs

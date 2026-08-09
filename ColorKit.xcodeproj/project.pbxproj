@@ -1,0 +1,830 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2CB1801830125A0000F6925E /* colorkit in Embed Executables */ = {isa = PBXBuildFile; fileRef = 2CB1800030125A0000F6925E /* colorkit */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2C6D6B543012599D00F6925E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2C6D6B3C3012599C00F6925E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C6D6B433012599C00F6925E;
+			remoteInfo = "ColorKit";
+		};
+		2C6D6B5E3012599D00F6925E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2C6D6B3C3012599C00F6925E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C6D6B433012599C00F6925E;
+			remoteInfo = "ColorKit";
+		};
+		2CB1801A30125A0000F6925E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2C6D6B3C3012599C00F6925E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2CB1800530125A0000F6925E;
+			remoteInfo = ColorKitCLI;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2CB1801930125A0000F6925E /* Embed Executables */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = cli;
+			dstSubfolderSpec = 6;
+			files = (
+				2CB1801830125A0000F6925E /* colorkit in Embed Executables */,
+			);
+			name = "Embed Executables";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		2C6D6B443012599C00F6925E /* ColorKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ColorKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C6D6B533012599D00F6925E /* ColorKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ColorKitTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C6D6B5D3012599D00F6925E /* ColorKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ColorKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CB1800030125A0000F6925E /* colorkit */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = colorkit; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CB1801030125A0000F6925E /* ColorKitCLITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColorKitCLITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		2C6D6B463012599C00F6925E /* ColorKit */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ColorKit";
+			sourceTree = "<group>";
+		};
+		2C6D6B563012599D00F6925E /* ColorKitTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ColorKitTests";
+			sourceTree = "<group>";
+		};
+		2C6D6B603012599D00F6925E /* ColorKitUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ColorKitUITests";
+			sourceTree = "<group>";
+		};
+		2CA1C0DE3012599C00F6925E /* ColorCore */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ColorCore;
+			sourceTree = "<group>";
+		};
+		2CB1800130125A0000F6925E /* ColorKitCLI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ColorKitCLI;
+			sourceTree = "<group>";
+		};
+		2CB1800230125A0000F6925E /* ColorKitCLIMain */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ColorKitCLIMain;
+			sourceTree = "<group>";
+		};
+		2CB1801130125A0000F6925E /* ColorKitCLITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ColorKitCLITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2C6D6B413012599C00F6925E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C6D6B503012599D00F6925E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C6D6B5A3012599D00F6925E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CB1800430125A0000F6925E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CB1801330125A0000F6925E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2C6D6B3B3012599C00F6925E = {
+			isa = PBXGroup;
+			children = (
+				2CA1C0DE3012599C00F6925E /* ColorCore */,
+				2C6D6B463012599C00F6925E /* ColorKit */,
+				2CB1800130125A0000F6925E /* ColorKitCLI */,
+				2CB1800230125A0000F6925E /* ColorKitCLIMain */,
+				2CB1801130125A0000F6925E /* ColorKitCLITests */,
+				2C6D6B563012599D00F6925E /* ColorKitTests */,
+				2C6D6B603012599D00F6925E /* ColorKitUITests */,
+				2C6D6B453012599C00F6925E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2C6D6B453012599C00F6925E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2C6D6B443012599C00F6925E /* ColorKit.app */,
+				2C6D6B533012599D00F6925E /* ColorKitTests.xctest */,
+				2C6D6B5D3012599D00F6925E /* ColorKitUITests.xctest */,
+				2CB1800030125A0000F6925E /* colorkit */,
+				2CB1801030125A0000F6925E /* ColorKitCLITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2C6D6B433012599C00F6925E /* ColorKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C6D6B673012599D00F6925E /* Build configuration list for PBXNativeTarget "ColorKit" */;
+			buildPhases = (
+				2C6D6B403012599C00F6925E /* Sources */,
+				2C6D6B413012599C00F6925E /* Frameworks */,
+				2C6D6B423012599C00F6925E /* Resources */,
+				2CB1801930125A0000F6925E /* Embed Executables */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2CB1801B30125A0000F6925E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				2C6D6B463012599C00F6925E /* ColorKit */,
+				2CA1C0DE3012599C00F6925E /* ColorCore */,
+			);
+			name = "ColorKit";
+			packageProductDependencies = (
+			);
+			productName = "ColorKit";
+			productReference = 2C6D6B443012599C00F6925E /* ColorKit.app */;
+			productType = "com.apple.product-type.application";
+		};
+		2C6D6B523012599D00F6925E /* ColorKitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C6D6B6A3012599D00F6925E /* Build configuration list for PBXNativeTarget "ColorKitTests" */;
+			buildPhases = (
+				2C6D6B4F3012599D00F6925E /* Sources */,
+				2C6D6B503012599D00F6925E /* Frameworks */,
+				2C6D6B513012599D00F6925E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2C6D6B553012599D00F6925E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				2C6D6B563012599D00F6925E /* ColorKitTests */,
+			);
+			name = "ColorKitTests";
+			packageProductDependencies = (
+			);
+			productName = "ColorKitTests";
+			productReference = 2C6D6B533012599D00F6925E /* ColorKitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		2C6D6B5C3012599D00F6925E /* ColorKitUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2C6D6B6D3012599D00F6925E /* Build configuration list for PBXNativeTarget "ColorKitUITests" */;
+			buildPhases = (
+				2C6D6B593012599D00F6925E /* Sources */,
+				2C6D6B5A3012599D00F6925E /* Frameworks */,
+				2C6D6B5B3012599D00F6925E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2C6D6B5F3012599D00F6925E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				2C6D6B603012599D00F6925E /* ColorKitUITests */,
+			);
+			name = "ColorKitUITests";
+			packageProductDependencies = (
+			);
+			productName = "ColorKitUITests";
+			productReference = 2C6D6B5D3012599D00F6925E /* ColorKitUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		2CB1800530125A0000F6925E /* ColorKitCLI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2CB1800830125A0000F6925E /* Build configuration list for PBXNativeTarget "ColorKitCLI" */;
+			buildPhases = (
+				2CB1800330125A0000F6925E /* Sources */,
+				2CB1800430125A0000F6925E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				2CA1C0DE3012599C00F6925E /* ColorCore */,
+				2CB1800130125A0000F6925E /* ColorKitCLI */,
+				2CB1800230125A0000F6925E /* ColorKitCLIMain */,
+			);
+			name = ColorKitCLI;
+			packageProductDependencies = (
+			);
+			productName = colorkit;
+			productReference = 2CB1800030125A0000F6925E /* colorkit */;
+			productType = "com.apple.product-type.tool";
+		};
+		2CB1801430125A0000F6925E /* ColorKitCLITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2CB1801730125A0000F6925E /* Build configuration list for PBXNativeTarget "ColorKitCLITests" */;
+			buildPhases = (
+				2CB1801230125A0000F6925E /* Sources */,
+				2CB1801330125A0000F6925E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				2CA1C0DE3012599C00F6925E /* ColorCore */,
+				2CB1800130125A0000F6925E /* ColorKitCLI */,
+				2CB1801130125A0000F6925E /* ColorKitCLITests */,
+			);
+			name = ColorKitCLITests;
+			packageProductDependencies = (
+			);
+			productName = ColorKitCLITests;
+			productReference = 2CB1801030125A0000F6925E /* ColorKitCLITests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2C6D6B3C3012599C00F6925E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					2C6D6B433012599C00F6925E = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					2C6D6B523012599D00F6925E = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 2C6D6B433012599C00F6925E;
+					};
+					2C6D6B5C3012599D00F6925E = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 2C6D6B433012599C00F6925E;
+					};
+					2CB1800530125A0000F6925E = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					2CB1801430125A0000F6925E = {
+						CreatedOnToolsVersion = 26.6;
+					};
+				};
+			};
+			buildConfigurationList = 2C6D6B3F3012599C00F6925E /* Build configuration list for PBXProject "ColorKit" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 2C6D6B3B3012599C00F6925E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2C6D6B453012599C00F6925E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2C6D6B433012599C00F6925E /* ColorKit */,
+				2C6D6B523012599D00F6925E /* ColorKitTests */,
+				2C6D6B5C3012599D00F6925E /* ColorKitUITests */,
+				2CB1800530125A0000F6925E /* colorkit */,
+				2CB1801430125A0000F6925E /* ColorKitCLITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2C6D6B423012599C00F6925E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C6D6B513012599D00F6925E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C6D6B5B3012599D00F6925E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2C6D6B403012599C00F6925E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C6D6B4F3012599D00F6925E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2C6D6B593012599D00F6925E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CB1800330125A0000F6925E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CB1801230125A0000F6925E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2C6D6B553012599D00F6925E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2C6D6B433012599C00F6925E /* ColorKit */;
+			targetProxy = 2C6D6B543012599D00F6925E /* PBXContainerItemProxy */;
+		};
+		2C6D6B5F3012599D00F6925E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2C6D6B433012599C00F6925E /* ColorKit */;
+			targetProxy = 2C6D6B5E3012599D00F6925E /* PBXContainerItemProxy */;
+		};
+		2CB1801B30125A0000F6925E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2CB1800530125A0000F6925E /* colorkit */;
+			targetProxy = 2CB1801A30125A0000F6925E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		2C6D6B653012599D00F6925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		2C6D6B663012599D00F6925E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		2C6D6B683012599D00F6925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "ColorKit";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Parker Sprouse. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.colorkit";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		2C6D6B693012599D00F6925E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "ColorKit";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Parker Sprouse. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.colorkit";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		2C6D6B6B3012599D00F6925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ColorKit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ColorKit";
+			};
+			name = Debug;
+		};
+		2C6D6B6C3012599D00F6925E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ColorKit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ColorKit";
+			};
+			name = Release;
+		};
+		2C6D6B6E3012599D00F6925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = "ColorKit";
+			};
+			name = Debug;
+		};
+		2C6D6B6F3012599D00F6925E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = "ColorKit";
+			};
+			name = Release;
+		};
+		2CB1800630125A0000F6925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_MODULE_NAME = ColorKitCLIModule;
+				PRODUCT_NAME = colorkit;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		2CB1800730125A0000F6925E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_USE_OPTIMIZATION_PROFILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_MODULE_NAME = ColorKitCLIModule;
+				PRODUCT_NAME = colorkit;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		2CB1801530125A0000F6925E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.ColorKitCLITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		2CB1801630125A0000F6925E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.ColorKitCLITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2C6D6B3F3012599C00F6925E /* Build configuration list for PBXProject "ColorKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2C6D6B653012599D00F6925E /* Debug */,
+				2C6D6B663012599D00F6925E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2C6D6B673012599D00F6925E /* Build configuration list for PBXNativeTarget "ColorKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2C6D6B683012599D00F6925E /* Debug */,
+				2C6D6B693012599D00F6925E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2C6D6B6A3012599D00F6925E /* Build configuration list for PBXNativeTarget "ColorKitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2C6D6B6B3012599D00F6925E /* Debug */,
+				2C6D6B6C3012599D00F6925E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2C6D6B6D3012599D00F6925E /* Build configuration list for PBXNativeTarget "ColorKitUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2C6D6B6E3012599D00F6925E /* Debug */,
+				2C6D6B6F3012599D00F6925E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2CB1800830125A0000F6925E /* Build configuration list for PBXNativeTarget "ColorKitCLI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CB1800630125A0000F6925E /* Debug */,
+				2CB1800730125A0000F6925E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2CB1801730125A0000F6925E /* Build configuration list for PBXNativeTarget "ColorKitCLITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CB1801530125A0000F6925E /* Debug */,
+				2CB1801630125A0000F6925E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2C6D6B3C3012599C00F6925E /* Project object */;
+}

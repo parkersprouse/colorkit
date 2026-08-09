@@ -135,7 +135,7 @@ const fixture = {
   cases,
 };
 
-const out = join(here, "..", "Color ToolkitTests", "Fixtures", "parse-vectors.json");
+const out = join(here, "..", "ColorKitTests", "Fixtures", "parse-vectors.json");
 writeFileSync(out, JSON.stringify(fixture, null, 1));
 console.log(`parse cases  ${cases.length}`);
 console.log(`written to   ${out}`);

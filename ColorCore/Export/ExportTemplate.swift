@@ -1,6 +1,6 @@
 //
 //  ExportTemplate.swift
-//  Color Toolkit
+//  ColorKit
 //
 
 import Foundation

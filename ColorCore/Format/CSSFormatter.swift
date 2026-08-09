@@ -1,6 +1,6 @@
 //
 //  CSSFormatter.swift
-//  Color Toolkit
+//  ColorKit
 //
 
 import Foundation
@@ -53,7 +53,7 @@ nonisolated enum CSSOutputFormat: Hashable, Sendable {
 
 /// Written by hand rather than derived: `CSSOutputFormat` is not `RawRepresentable`
 /// (`.color` carries a `ColorSpace`), so there is no raw value for `Codable` synthesis
-/// to key off. The spelling below is the same one `ColorToolkitCLI/Names.swift` uses for
+/// to key off. The spelling below is the same one `ColorKitCLI/Names.swift` uses for
 /// its `--format` argument — the `color()` cases named by their space's own raw value,
 /// which *is* the CSS identifier — chosen for the same reason, not shared code: the two
 /// targets cannot import one another (see the CLI/app module split in CLAUDE.md), so

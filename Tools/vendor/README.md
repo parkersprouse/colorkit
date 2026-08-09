@@ -8,7 +8,7 @@ the *simulation matrices* from:
 > IEEE TVCG, 15(6), 1291–1298 — **Table 1: Simulation matrices**.
 
 It is the pinned input to `Tools/generate-cvd-matrices.py`, which emits
-`Color Toolkit/ColorCore/Analysis/CVDMatrices.swift`. It is vendored rather than
+`ColorKit/ColorCore/Analysis/CVDMatrices.swift`. It is vendored rather than
 transcribed for the same reason the colorjs.io matrices are generated and never
 hand-copied: retyping 33 3×3 matrices is the Bradford failure mode at scale.
 

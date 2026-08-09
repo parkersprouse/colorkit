@@ -14,7 +14,7 @@
 #
 # Emits:
 #   ColorCore/Analysis/CVDMatrices.swift            (the 33 matrices)
-#   Color ToolkitTests/Fixtures/cvd-vectors.json    (pipeline cross-check)
+#   ColorKitTests/Fixtures/cvd-vectors.json    (pipeline cross-check)
 
 import ast
 import json
@@ -27,7 +27,7 @@ SWIFT_OUT = os.path.join(
     HERE, "..", "ColorCore", "Analysis", "CVDMatrices.swift"
 )
 FIXTURE_OUT = os.path.join(
-    HERE, "..", "Color ToolkitTests", "Fixtures", "cvd-vectors.json"
+    HERE, "..", "ColorKitTests", "Fixtures", "cvd-vectors.json"
 )
 
 DEFICIENCIES = ["Protanomaly", "Deuteranomaly", "Tritanomaly"]
@@ -120,7 +120,7 @@ def emit_swift(m):
     out = [
         "//",
         "//  CVDMatrices.swift",
-        "//  Color Toolkit",
+        "//  ColorKit",
         "//",
         "//  GENERATED FILE — DO NOT EDIT BY HAND.",
         "//  Regenerate with: python3 Tools/generate-cvd-matrices.py",

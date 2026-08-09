@@ -7,7 +7,7 @@
 	     file. UTExportedTypeDeclarations is an array of dictionaries, which has no
 	     INFOPLIST_KEY_ spelling, so it has to live here.
 
-	     It sits at the repo root rather than in "Color Toolkit/" because that folder is a
+	     It sits at the repo root rather than in "ColorKit/" because that folder is a
 	     PBXFileSystemSynchronizedRootGroup: it claims every file inside it, so an
 	     Info.plist there is both the target's Info.plist *and* a bundled resource. That
 	     builds, and warns, and ships a duplicate in Contents/Resources.
@@ -20,9 +20,9 @@
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>me.parkersprouse.color-toolkit.saved-color-position</string>
+			<string>me.parkersprouse.colorkit.saved-color-position</string>
 			<key>UTTypeDescription</key>
-			<string>Color Toolkit Saved Color Position</string>
+			<string>ColorKit Saved Color Position</string>
 			<!-- CodableRepresentation encodes as JSON, so this is what it actually is.
 			     public.json already conforms to public.data. -->
 			<key>UTTypeConformsTo</key>

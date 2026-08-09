@@ -88,7 +88,7 @@ const fixture = {
 	pairs,
 };
 
-const out = join(here, "..", "Color ToolkitTests", "Fixtures", "contrast-vectors.json");
+const out = join(here, "..", "ColorKitTests", "Fixtures", "contrast-vectors.json");
 writeFileSync(out, JSON.stringify(fixture));
 console.log(`pairs       ${pairs.length}`);
 console.log(`written to  ${out}`);

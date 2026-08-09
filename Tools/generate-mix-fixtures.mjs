@@ -151,7 +151,7 @@ const fixture = {
   mixes,
 };
 
-const out = join(here, "..", "Color ToolkitTests", "Fixtures", "mix-vectors.json");
+const out = join(here, "..", "ColorKitTests", "Fixtures", "mix-vectors.json");
 writeFileSync(out, JSON.stringify(fixture));
 console.log(`mixes         ${mixes.length}`);
 console.log(`skipped       ${skipped} pair/space combinations (out of gamut)`);

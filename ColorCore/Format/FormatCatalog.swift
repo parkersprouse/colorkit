@@ -1,6 +1,6 @@
 //
 //  FormatCatalog.swift
-//  Color Toolkit
+//  ColorKit
 //
 
 import Foundation
