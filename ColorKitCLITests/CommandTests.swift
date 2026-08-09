@@ -206,12 +206,12 @@ struct ConvertCommandTests {
     // as input, so a `mix` subcommand would be a second door into one room. If this ever
     // stops working, that argument stops holding and the CLI is missing a feature.
     let mixed = ColorKitCLI.run(["convert", "color-mix(in oklch, red, blue)",
-                                     "--format", "oklch"])
+                                 "--format", "oklch"])
     #expect(mixed.status == .success)
     #expect(CSSColorParser.color(mixed.output) != nil)
 
     let relative = ColorKitCLI.run(["convert", "rgb(from red calc(r / 2) g b)",
-                                        "--format", "rgb"])
+                                    "--format", "rgb"])
     #expect(relative.status == .success)
     #expect(relative.output == "rgb(127.5 0 0)")
   }
@@ -219,9 +219,9 @@ struct ConvertCommandTests {
   @Test("--precision changes the value's decimals and 11 is refused")
   func precisionIsHonouredAndBounded() {
     let coarse = ColorKitCLI.run(["convert", "#3b82f6", "--format", "oklch",
-                                      "--precision", "2"])
+                                  "--precision", "2"])
     let fine = ColorKitCLI.run(["convert", "#3b82f6", "--format", "oklch",
-                                    "--precision", "8"])
+                                "--precision", "8"])
     #expect(coarse.output != fine.output)
     #expect(coarse.output.count < fine.output.count)
     #expect(ColorKitCLI.run(["convert", "red", "--precision", "11"]).status == .usage)
@@ -281,7 +281,7 @@ struct ContrastCommandTests {
     let background = try #require(CSSColorParser.color("#ffffff"))
     for level in ["aa", "aa-large", "aaa"] {
       let outcome = ColorKitCLI.run(["solve", "#3b82f6", "--on", "#ffffff",
-                                         "--level", level])
+                                     "--level", level])
       #expect(outcome.status == .success)
       let value = try #require(printedColors(outcome.output).first)
       let solved = try #require(CSSColorParser.color(value))
@@ -301,7 +301,7 @@ struct ContrastCommandTests {
     let requirement = ContrastRequirement.aaNormalText
 
     let coarse = ColorKitCLI.run(["solve", "#3b82f6", "--on", "#ffffff",
-                                      "--level", "aa", "--precision", "4"])
+                                  "--level", "aa", "--precision", "4"])
     let coarseText = try #require(printedColors(coarse.output).first)
     let coarseValue = try #require(CSSColorParser.color(coarseText))
     #expect(!coarseValue.meets(requirement, on: background))
@@ -309,7 +309,7 @@ struct ContrastCommandTests {
     #expect(coarse.status == .success, "the color is fine; only its spelling is short")
 
     let fine = ColorKitCLI.run(["solve", "#3b82f6", "--on", "#ffffff",
-                                    "--level", "aa", "--precision", "10"])
+                                "--level", "aa", "--precision", "10"])
     let fineText = try #require(printedColors(fine.output).first)
     let fineValue = try #require(CSSColorParser.color(fineText))
     #expect(fineValue.meets(requirement, on: background))
@@ -322,13 +322,13 @@ struct ContrastCommandTests {
     // answers; against white there is nowhere lighter to go. That the count differs is
     // the cheapest statement that `--all` reports the search rather than a fixed pair.
     let both = ColorKitCLI.run(["solve", "#808080", "--on", "#808080",
-                                    "--target", "3", "--all"])
+                                "--target", "3", "--all"])
     #expect(both.output.split(separator: "\n").count == 2)
     #expect(both.output.contains("lighter"))
     #expect(both.output.contains("darker"))
 
     let one = ColorKitCLI.run(["solve", "#3b82f6", "--on", "#ffffff",
-                                   "--level", "aaa", "--all"])
+                               "--level", "aaa", "--all"])
     #expect(one.output.split(separator: "\n").count == 1)
   }
 
@@ -338,7 +338,7 @@ struct ContrastCommandTests {
     // √21 ≈ 4.58 — so this is the failure that has to be reported rather than
     // approximated. AA body text, at 4.5, is always reachable.
     let outcome = ColorKitCLI.run(["solve", "#3b82f6", "--on", "#767676",
-                                       "--level", "aaa"])
+                                   "--level", "aaa"])
     #expect(outcome.status == .failure)
     #expect(outcome.output.isEmpty)
     #expect(outcome.diagnostic.contains("the best any color can do"))
@@ -348,7 +348,7 @@ struct ContrastCommandTests {
   func solveRejectsAmbiguousArguments() {
     #expect(ColorKitCLI.run(["solve", "red"]).status == .usage)
     #expect(ColorKitCLI.run(["solve", "red", "--on", "white",
-                                 "--level", "aa", "--target", "4.5"]).status == .usage)
+                             "--level", "aa", "--target", "4.5"]).status == .usage)
   }
 }
 
@@ -429,7 +429,7 @@ struct TransformCommandTests {
     // not the ramp's clamp, and it fails. At ten decimals what comes back is the
     // `ColorValue` the ramp produced, and *that* is what has to be in gamut.
     for value in printedColors(ColorKitCLI.run(["ramp", "#3b82f6",
-                                                    "--precision", "10"]).output)
+                                                "--precision", "10"]).output)
     {
       let color = try #require(CSSColorParser.color(value))
       #expect(color.inGamut(of: .srgb, epsilon: ColorValue.gamutNoiseTolerance),
@@ -490,9 +490,9 @@ struct TransformCommandTests {
     // at zero the simulation is the identity, and a flag that was being dropped would
     // make these two agree.
     let none = ColorKitCLI.run(["cvd", "#e11d48", "--type", "deuteranomaly",
-                                    "--severity", "0"])
+                                "--severity", "0"])
     let full = ColorKitCLI.run(["cvd", "#e11d48", "--type", "deuteranomaly",
-                                    "--severity", "1"])
+                                "--severity", "1"])
     #expect(none.output != full.output)
     #expect(ColorKitCLI.run(["cvd", "red", "--severity", "2"]).status == .usage)
   }

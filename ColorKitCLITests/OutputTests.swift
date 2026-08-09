@@ -37,20 +37,20 @@ struct OutputOptionTests {
     // into the block a browser reaches precisely when it *cannot* do wide gamut — and a
     // `--format` that changed nothing would look like it had worked.
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "p3-with-fallback",
-                                 "--format", "hex"]).status == .usage)
+                             "--format", "hex"]).status == .usage)
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "p3-with-fallback"])
       .status == .success)
 
     // `usesName` and `usesTemplate` are complements: a bare declaration has nowhere to
     // put a family name, and a shape that writes its own properties has no template slot.
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "declaration",
-                                 "--name", "brand"]).status == .usage)
+                             "--name", "brand"]).status == .usage)
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "declaration",
-                                 "--template", "border"]).status == .success)
+                             "--template", "border"]).status == .success)
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "custom-properties",
-                                 "--template", "border"]).status == .usage)
+                             "--template", "border"]).status == .usage)
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "custom-properties",
-                                 "--name", "brand"]).status == .success)
+                             "--name", "brand"]).status == .success)
 
     // Without a shape there is no document at all, so both are inert.
     #expect(ColorKitCLI.run(["ramp", "red", "--name", "brand"]).status == .usage)
@@ -60,7 +60,7 @@ struct OutputOptionTests {
   @Test("--name reaches the document it names")
   func nameReachesTheOutput() {
     let outcome = ColorKitCLI.run(["ramp", "#3b82f6", "--shape", "custom-properties",
-                                       "--name", "accent"])
+                                   "--name", "accent"])
     #expect(outcome.output.contains("--accent-50:"))
     #expect(!outcome.output.contains("--brand-"))
     #expect(ColorKitCLI.run(["ramp", "red", "--shape", "json", "--name", " "])
@@ -73,12 +73,12 @@ struct OutputOptionTests {
     // Hex cannot represent an out-of-gamut color at all; oklch is unbounded and never
     // moves one — which is why the same command says different things under each.
     let hex = ColorKitCLI.run(["harmony", "color(display-p3 0 1 0)", "triad",
-                                   "--format", "hex"])
+                               "--format", "hex"])
     #expect(hex.diagnostic.contains("brought into gamut"))
     #expect(hex.diagnostic.contains("hex"))
 
     let oklch = ColorKitCLI.run(["harmony", "color(display-p3 0 1 0)", "triad",
-                                     "--format", "oklch"])
+                                 "--format", "oklch"])
     #expect(oklch.diagnostic.isEmpty)
   }
 
@@ -88,7 +88,7 @@ struct OutputOptionTests {
     // media block would report nothing mapped while the hex line right underneath has
     // been rounded. This is the CLI reading the same answer rather than a second rule.
     let outcome = ColorKitCLI.run(["harmony", "color(display-p3 0 1 0)", "triad",
-                                       "--shape", "p3-with-fallback"])
+                                   "--shape", "p3-with-fallback"])
     #expect(outcome.status == .success)
     #expect(outcome.diagnostic.contains("brought into gamut"))
     #expect(outcome.diagnostic.contains("hex"))
@@ -101,7 +101,7 @@ struct OutputOptionTests {
     // a *harmony* is what produces one, because harmonies are never gamut-mapped where
     // every ramp stop already is. Asking a ramp for this would have tested nothing.
     let outcome = ColorKitCLI.run(["harmony", "color(display-p3 0 1 0)", "triad",
-                                       "--format", "hex"])
+                                   "--format", "hex"])
     #expect(!outcome.diagnostic.isEmpty)
     for line in outcome.output.split(separator: "\n") {
       let fields = line.split(separator: " ").filter { !$0.isEmpty }
@@ -193,7 +193,7 @@ struct TokensCommandTests {
       // A document has one format by construction, so asking for a shape is asking for
       // one spelling — and then the authored spaces are gone by design, not by accident.
       let shaped = ColorKitCLI.run(["tokens", path, "--shape",
-                                        Names.name(for: .customProperties)])
+                                    Names.name(for: .customProperties)])
       #expect(!shaped.output.contains("color(srgb "))
       #expect(shaped.status == .success)
     }
