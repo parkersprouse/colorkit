@@ -213,7 +213,10 @@ struct ImportTextSheet: View {
   }
 
   private func shapeAndNameControls(_ palette: ImportedPalette) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
+    let colors = palette.groups.count(where: { $0.soleColor != nil })
+    let palettes = palette.groups.count - colors
+
+    return VStack(alignment: .leading, spacing: 10) {
       LabeledContent("Shape") {
         Picker(
           "Shape",
@@ -226,6 +229,16 @@ struct ImportTextSheet: View {
         .labelsHidden()
         .accessibilityIdentifier("importSheetShape")
       }
+
+      // The split is named before the save, not discovered after it — a single unkeyed
+      // color imports as a loose color and a scale as a palette, and this line is where
+      // "which is which" becomes visible. It reads the same ``ImportedGroup/soleColor``
+      // predicate `performImport` routes on, so the preview and the confirmation cannot
+      // disagree about what just happened.
+      Text("Imports as \(Self.splitPhrase(colors: colors, palettes: palettes)).")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .accessibilityIdentifier("importSheetSplit")
 
       if palette.groups.count == 1 {
         LabeledContent("Name") {
@@ -249,17 +262,46 @@ struct ImportTextSheet: View {
         // already at its post-parse value and nothing fires: the field would show the
         // placeholder while `name` silently stays empty, and `performImport` would
         // fall back to the group's own name without the field ever having offered it.
+        //
+        // `defaultName` ("brand") is filtered out at the seed **only when the sole group
+        // is a loose color**, not for any group that happens to be named "brand". It is a
+        // placeholder `parseLooseColors` and headerless `parseDeclarations` reach for a
+        // *single color*, so seeding a lone color's field to it would render "brand" as
+        // real text while the saved color ends up nameless — a preview contradicting its
+        // own outcome, the same defect M8 had. A genuine palette whose `commonFamily` is
+        // literally "brand" (`--brand-500`, `--brand-600`) is a real name and keeps it:
+        // the field shows "brand" and the palette saves as "brand". `performImport`'s own
+        // `== defaultName` filter, gated on `soleColor` the same way, covers the
+        // multi-group documents where this field never renders.
         .onChange(of: palette.detectedName, initial: true) { _, detected in
           guard !nameEdited else { return }
-          name = detected ?? ""
+          let soleColor = palette.groups.first?.soleColor != nil
+          name = soleColor && detected == ExportOptions.defaultName ? "" : (detected ?? "")
         }
       } else {
-        Text("\(palette.groups.count) palettes will be created: "
-          + palette.groups.map(\.name).joined(separator: ", "))
+        // The names only — the counts are on the "Imports as …" line above, and calling
+        // these all "palettes" would be wrong the moment one of them is a loose color.
+        Text("From: " + palette.groups.map(\.name).joined(separator: ", "))
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
+    }
+  }
+
+  /// Phrases a colors/palettes split for both the preview caption and the confirmation
+  /// summary, so the two are one string built one way and cannot drift — the anti-drift
+  /// property ``ImportedGroup/soleColor`` exists to give the *counts*, extended to the
+  /// copy. Editorial wording lives here in the UI layer; the predicate stays in ColorCore.
+  private static func splitPhrase(colors: Int, palettes: Int) -> String {
+    func plural(_ count: Int, _ noun: String) -> String {
+      "\(count) \(noun)\(count == 1 ? "" : "s")"
+    }
+    switch (colors, palettes) {
+    case (0, 0): return "nothing"
+    case (_, 0): return plural(colors, "color")
+    case (0, _): return plural(palettes, "palette")
+    default: return "\(plural(colors, "color")) and \(plural(palettes, "palette"))"
     }
   }
 
@@ -334,16 +376,32 @@ struct ImportTextSheet: View {
         try library.createProject(named: newProjectName)
       }
 
-      var savedCount = 0
+      var savedColors = 0
+      var savedPalettes = 0
       for group in palette.groups {
         let entries = resolvedEntries(group.entries)
         guard !entries.isEmpty else { continue }
-        let groupName = palette.groups.count == 1 && !name.isEmpty ? name : group.name
-        try library.savePalette(importing: entries, named: groupName, to: project)
-        savedCount += entries.count
+        // The name a single group takes from the editable field; a group in a
+        // multi-group document takes its own header/JSON/family name.
+        let resolvedName = palette.groups.count == 1 && !name.isEmpty ? name : group.name
+
+        // The route is `soleColor`, the same predicate the preview counted with —
+        // computed on the original group because `resolvedEntries` touches only the text,
+        // never the key or the count. A single unkeyed color goes through the fifth door
+        // as a loose color; anything with a real key stays a palette.
+        if group.soleColor != nil, let entry = entries.first {
+          // The group name unless it is the `defaultName` placeholder, in which case the
+          // tile falls back to the CSS text rather than being labelled "brand".
+          let colorName = resolvedName == ExportOptions.defaultName ? "" : resolvedName
+          try library.saveColor(importing: entry, named: colorName, to: project)
+          savedColors += 1
+        } else {
+          try library.savePalette(importing: entries, named: resolvedName, to: project)
+          savedPalettes += 1
+        }
       }
 
-      var summary = "Imported \(savedCount) color\(savedCount == 1 ? "" : "s")"
+      var summary = "Imported \(Self.splitPhrase(colors: savedColors, palettes: savedPalettes))"
       summary += palette.skipped.isEmpty ? "." : ", skipped \(palette.skipped.count)."
       onImported(project.uuid, summary)
       dismiss()

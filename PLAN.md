@@ -3333,7 +3333,31 @@ reading, and are not to be re-litigated when implementing:**
 Order is M30 → M31 → M32 → M33 → M34, each its own commit. M31 inherits M30's fix, which
 is the reason for that pairing rather than the reverse.
 
-### M30 – A single color imports as a color
+### ✅ M30 – A single color imports as a color
+
+**Built.** `ImportedGroup.soleColor` (the empty-key predicate, mirror of
+`ColorExport.soleEntry`), the fifth save door `ProjectLibrary.saveColor(importing:named:to:)`
+(verbatim text + `notes`), and `ImportTextSheet`'s group-counted split — one `splitPhrase`
+helper feeds both the preview caption and the confirmation, and the name seed filters
+`defaultName` so the field never shows "brand" for a color it will store nameless. Three
+tests: the recorded `project-export-p3-with-fallback.css` fixture (7 colors, 3 palettes),
+a round trip over `.customProperties`/`.json`/`.tailwindConfig` (one color + one
+one-entry palette), and a `ProjectStoreTests` verbatim-storage check on the new door. The
+`entries.count == 1` mutation was run and failed exactly the three round-trip cases with
+the fixture green, as planned below. All 539 `ColorKitTests` + 59 `ColorKitCLITests` pass.
+
+**One UI-test edit is reasoned but unverified**, the same honesty this file extends to
+`NSOpenPanel`/`NSSavePanel` and `updateGlobalShortcut`'s rejection branch.
+`ProjectsSmokeTests.testImportingPastedCustomPropertiesCreatesAPalette` asserted the
+old entry-counting summary `"Imported 2 colors"`; M30 counts *kinds of group*, so a
+two-entry `brand` family is now `"Imported 1 palette"` and the assertion was updated to
+match. The runner could not be exercised here — `xcodebuild` failed twice at
+*"Timed out while enabling automation mode"*, a host capability failure rather than a
+test result (Mac idle, no orphan runners, so not the frontmost-app cause documented in
+CLAUDE.md). The trace is straightforward — one `brand` family of two →
+`splitPhrase(0, 1)` → `"Imported 1 palette"`, and the name field still reads `"brand"`
+because `commonFamily`'s "brand" is `soleColor`-negative so the seed filter leaves it —
+but it was not run.
 
 **The discriminator is an empty key, not a count of one, and the export layer settled this
 first.** `ColorExport.soleEntry` decides whether a group nests as a JSON object or
@@ -3471,7 +3495,13 @@ already sends a token document to `parseDesignTokens`, which delegates to the sa
 files start working, and file import inherits the shape override, the storage-format
 control, the destination picker and the preview instead of running a second, silent path.
 It also means **M30's fix covers file imports for free** rather than two paths having to
-agree about what a single color is.
+agree about what a single color is. It also reconciles a vocabulary M30 left split:
+`ProjectsPanel.importTokens` (the surviving file-picker path) still builds its confirmation
+by counting *entries* through `Self.summary`, where the sheet now counts *kinds of group*
+("2 colors and 1 palette"). The file path always produces a palette so its count is not
+wrong, only phrased differently — and routing it through the sheet here retires
+`Self.summary` and the divergence with it, rather than patching two summary builders to
+agree.
 
 It also fixes the reported confusion at the root rather than at the message: the app's own
 JSON export has no `$value`, so `detect` routes it to `.json` and it imports, where today

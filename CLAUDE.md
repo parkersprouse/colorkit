@@ -261,6 +261,17 @@ standard library**: it reads a vendored, pinned copy of Machado's Table 1 in
 `Tools/vendor/machado2010.py` (colour-science 0.4.7, BSD-3, provenance in
 `Tools/vendor/README.md`), no `pip install` required.
 
+**`ColorKitTests/Fixtures/project-export-p3-with-fallback.css` (M30) is the one fixture
+that inverts the rule above.** The five `*-vectors.json` files are machine-generated and
+the standing instruction is *regenerate, never hand-edit*. This one is the opposite: a
+**recorded artifact**, a real document this app exported from a real project on
+2026-08-09 — the one that prompted M30. Re-exporting it from a current build would
+destroy exactly what it is for: the moment it stops matching what a newer exporter writes
+is the moment the test (`PaletteImportTests.projectExportSplitsColorsFromPalettes`) has
+something to say. Do not refresh it to make it agree; a disagreement is a finding. It has
+no in-file provenance comment on purpose — a comment would itself be a hand-edit to the
+artifact — so its "do not regenerate" note lives in the test's doc comment and here.
+
 ```bash
 python3 Tools/generate-cvd-matrices.py    # → ColorCore/Analysis/CVDMatrices.swift, Fixtures/cvd-vectors.json
 ```
@@ -548,6 +559,22 @@ Layered so the numeric core stays independently testable and UI-free:
   inviting the merge. Palette keys from a hand-picked set are **deduplicated**, and so are
   imported ones (against the sanitized key — see below) — two entries sharing a key
   collapse into one CSS property and a color vanishes from the export silently.
+- **M30 added a *fifth* save door, and it is a `saveColor`, not a `savePalette`:
+  `saveColor(importing: ImportedEntry, named:to:)`.** An imported group whose sole entry
+  has an *empty* key (`ImportedGroup.soleColor`) is a loose color, not a palette of one —
+  the import-side mirror of `ColorExport.soleEntry`, keyed on the empty key and *not* on
+  `count == 1` for the identical reason (a one-stop ramp keyed `1` is still a scale). The
+  door writes `ColorRecord(entry.color, text: entry.text)` **verbatim**, never
+  `.derived(_:preferring:)` — the same verbatim promise the fourth `savePalette` overload
+  protects, which is exactly why it is its own door rather than a widened
+  `saveColor(_:named:to:)`: a shared door is how that promise gets re-broken. It also
+  carries `notes` (a design token's `$description`), which the plain `saveColor` has no
+  parameter for. The color's name is the group's, *unless* that name is
+  `ExportOptions.defaultName` ("brand", a placeholder the loose-color and headerless
+  paths reach for), where the caller passes empty and the tile falls back to the CSS
+  text. `ImportTextSheet` counts **groups** (colors vs. palettes) through `soleColor` for
+  both its preview caption and its confirmation summary — one `splitPhrase` helper feeds
+  both, so a preview and a confirmation cannot disagree about what just happened.
 - **Never assert a gamut-containment claim from reasoning.** Space "widths" do not
   nest (Rec.2020 does not contain Display P3). Query the oracle.
 - One predicate — `ColorValue.isGamutMapped(as:options:epsilon:)` — decides both the

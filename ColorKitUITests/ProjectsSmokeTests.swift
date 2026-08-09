@@ -404,7 +404,14 @@ final class ProjectsSmokeTests: XCTestCase {
       app.buttons["paletteExport-0"].waitForExistence(timeout: 15),
       "No palette row appeared after import. Tree was:\n\(app.debugDescription)",
     )
-    XCTAssertTrue(readout("importSummary").hasPrefix("Imported 2 colors"))
+    // `--brand-500` and `--brand-600` share the `brand` family, so this is one palette
+    // of two — and M30's summary counts *kinds of group*, not entries. Pre-M30 this read
+    // "Imported 2 colors", counting entries; that is exactly the preview/confirmation
+    // disagreement M30 removed (the preview above counts groups too).
+    XCTAssertTrue(
+      readout("importSummary").hasPrefix("Imported 1 palette"),
+      "Summary was: \(readout("importSummary"))",
+    )
   }
 
   // MARK: Private

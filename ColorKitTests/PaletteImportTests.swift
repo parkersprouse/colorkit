@@ -314,6 +314,106 @@ struct PaletteImportTests {
     #expect(imported.skipped.count == 1)
   }
 
+  // MARK: - M30: a single color imports as a color
+
+  /// A **recorded artifact**, not a self-consistent round trip: `Fixtures/
+  /// project-export-p3-with-fallback.css` is a real document this app produced — exported
+  /// by Parker from a real project on 2026-08-09 and the artifact that prompted M30, not a
+  /// string hand-written to match what the parser already does. That is why it earns its
+  /// place beside a render-then-parse test: it catches the one failure a round trip
+  /// structurally cannot, both halves drifting *together* and still agreeing.
+  ///
+  /// **Do not re-export this file to make it agree.** Unlike the five machine-generated
+  /// fixtures (CLAUDE.md's "regenerate, never hand-edit"), this one is the opposite: the
+  /// moment it stops matching what a newer exporter writes is the moment it has something
+  /// to say. A disagreement here is a finding, not stale data.
+  ///
+  /// It reads as `p3WithFallback` (the `@media (color-gamut` test runs before `:root {`),
+  /// so only the `@media` override block is read — the imported values are the
+  /// `color(display-p3 …)` spellings, never the lossy hex fallback above them. Three
+  /// palettes of eleven, seven loose colors. Two honest limitations, stated here rather
+  /// than discovered: the seven colors come back named after the **sanitized** header
+  /// (`cssIdentifier` is lossy and has no inverse — M17's limitation, and what M32 exists
+  /// to repair), and their values are Display P3 rounded to the export's precision, not
+  /// the original hex.
+  @Test("A real project export splits into loose colors and palettes")
+  func projectExportSplitsColorsFromPalettes() throws {
+    let url = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent()
+      .appendingPathComponent("Fixtures/project-export-p3-with-fallback.css")
+    let document = try String(contentsOf: url, encoding: .utf8)
+
+    #expect(PaletteImport.detect(document) == .p3WithFallback)
+    let imported = try PaletteImport.parse(document, as: .p3WithFallback)
+
+    let colors = imported.groups.filter { $0.soleColor != nil }
+    let palettes = imported.groups.filter { $0.soleColor == nil }
+    #expect(colors.count == 7)
+    #expect(palettes.count == 3)
+
+    // The three palettes keep their names and all eleven stops — `Primary-Base` is a
+    // separate loose color and must **not** be absorbed into the `Primary` family, which
+    // naive prefix inference would do. A header is authoritative over segment inference.
+    #expect(Set(palettes.map(\.name)) == ["Greyscale", "Primary", "Accent"])
+    for palette in palettes {
+      #expect(palette.entries.count == 11, "\(palette.name) had \(palette.entries.count) entries")
+    }
+
+    // The seven come back named after the sanitized header, empty-keyed.
+    #expect(Set(colors.map(\.name)) == [
+      "Primary-Base", "Backgound", "Body-Text-Base", "Body-Text-Callout",
+      "Body-Text-Callout-Strong", "Body-Text-Accent", "Body-Text-Accent-Strong",
+    ])
+
+    // The override block was read, not the hex fallback: every stored text is a
+    // `color(display-p3 …)` spelling. A `.derived(_:preferring:)` regression in the save
+    // door — or reading the hex block here — fails this immediately.
+    for color in colors {
+      let entry = try #require(color.soleColor)
+      #expect(entry.key.isEmpty)
+      #expect(
+        entry.text.hasPrefix("color(display-p3"),
+        "\(color.name) stored \(entry.text), not a P3 override spelling",
+      )
+    }
+  }
+
+  /// The opposite failure from the fixture above: the two halves disagreeing *today*. A
+  /// project export holding one loose color **and** one one-entry palette, rendered and
+  /// parsed back — the only test of the pair that discriminates the palette-of-one case,
+  /// since the fixture has no one-entry palette in it. Asserting only that loose colors
+  /// survive would pass under the naive `count == 1` rule, the lesson `json` and
+  /// `tailwindConfig` taught at both cardinalities in M8.
+  ///
+  /// `.declaration` and `.tailwindTheme` are left out on purpose, not by oversight: the
+  /// first derives keys through the trailing `/* key */` comment and the second strips a
+  /// `color-` namespace, and neither is obviously safe for a mixed empty-key/keyed
+  /// multi-group document — a claim for its own milestone, not to be forced here.
+  @Test(
+    "A loose color and a one-entry palette come back as one of each",
+    arguments: [ExportShape.customProperties, .json, .tailwindConfig],
+  )
+  func looseColorAndOneEntryPaletteRoundTrip(shape: ExportShape) throws {
+    var options = ExportOptions.default
+    options.shape = shape
+    let groups = [
+      // Empty key: a loose color, `soleEntry`/`soleColor`'s "this is a color" signal.
+      PaletteGroup(name: "brand", entries: [PaletteEntry(color: Self.blue)]),
+      // A real key: a palette of one, which must stay a palette.
+      PaletteGroup(name: "ramp", entries: [PaletteEntry(key: "1", color: Self.red)]),
+    ]
+    let document = options.render(groups, formatting: .lossless)
+
+    let imported = try PaletteImport.parse(document, as: Self.importShape(for: shape))
+    let colors = imported.groups.filter { $0.soleColor != nil }
+    let palettes = imported.groups.filter { $0.soleColor == nil }
+
+    #expect(colors.map(\.name) == ["brand"], "from:\n\(document)")
+    #expect(palettes.map(\.name) == ["ramp"], "from:\n\(document)")
+    #expect(colors.first?.soleColor?.color.deltaEOK(to: Self.blue) ?? .infinity < 1e-6)
+    #expect(palettes.first?.entries.first?.key == "1")
+  }
+
   // MARK: Private
 
   private static func importShape(for shape: ExportShape) -> ImportShape {

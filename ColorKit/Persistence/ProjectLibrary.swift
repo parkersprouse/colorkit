@@ -98,6 +98,45 @@ struct ProjectLibrary {
     return color
   }
 
+  /// Saves one color read out of a pasted document (M30) as a loose color.
+  ///
+  /// **A fifth save door, deliberately — not a widened ``saveColor(_:named:to:)``.** It
+  /// writes `ColorRecord(entry.color, text: entry.text)` **verbatim**, never
+  /// `.derived(_:preferring:)`, which is the identical rule the fourth `savePalette`
+  /// overload exists to protect: the storage-format control's default is "keep as
+  /// pasted", and that promise is only real if the stored text is the literal substring
+  /// ``PaletteImport`` found rather than a round trip through ``ColorValue`` and back. A
+  /// new door into that room is exactly how the rule gets re-broken, so this is its own
+  /// door with its own reason rather than a `record:` the caller had to build correctly.
+  ///
+  /// It also carries ``ImportedEntry/notes``, which ``saveColor(_:named:to:)`` has no
+  /// parameter for and which a design token's `$description` rides in on — the second
+  /// reason a shared door would not fit.
+  ///
+  /// The name is the caller's already-resolved choice: an imported color takes its
+  /// group's name, *unless* that name is ``ExportOptions/defaultName`` (a placeholder the
+  /// loose-color and headerless paths both reach for), in which case the caller passes
+  /// empty and the tile falls back to displaying the CSS text. That decision lives at the
+  /// call site, beside the same one it already makes for a palette's name.
+  @discardableResult
+  func saveColor(
+    importing entry: ImportedEntry,
+    named name: String = "",
+    to project: Project,
+  ) throws -> SavedColor {
+    let color = SavedColor(
+      record: ColorRecord(entry.color, text: entry.text),
+      name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+      notes: entry.notes,
+      sortIndex: Self.nextIndex(after: project.colors.map(\.sortIndex)),
+    )
+    context.insert(color)
+    color.project = project
+    project.touch()
+    try context.save()
+    return color
+  }
+
   /// Commits an edit made by binding straight to the model — a renamed color, a note.
   ///
   /// Bindings write to the object the moment a key is pressed, so this is not what makes

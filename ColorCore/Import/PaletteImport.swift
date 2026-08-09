@@ -73,6 +73,25 @@ nonisolated struct ImportedGroup: Sendable, Hashable, Identifiable {
     name
   }
 
+  /// The one entry, when this group is a single *unkeyed* color rather than a palette —
+  /// the import-side mirror of ``ColorExport``'s `soleEntry`, and keyed the same way, on
+  /// the entry's key being **empty** and not on `entries.count == 1`. A harmony of one is
+  /// still a scale: a one-stop ramp keyed `1` should nest like an eleven-stop one, so
+  /// that a consumer's `brand.1` does not become `brand` when the stepper moves. The
+  /// import side was simply not reading a signal the export side already writes.
+  ///
+  /// `nil` means "this is a palette"; a non-`nil` result is the color to save loose. One
+  /// computed property rather than the test written out at each call site — the sheet's
+  /// preview and its save both consult it and must not drift about what "this is a color"
+  /// means — the same one-predicate discipline as ``ColorValue/isGamutMapped`` and
+  /// `pulledInto`, and it makes the rule unit-testable without a save.
+  var soleColor: ImportedEntry? {
+    guard entries.count == 1, let first = entries.first, first.key.isEmpty else {
+      return nil
+    }
+    return first
+  }
+
   /// The bridge to the export layer's own vocabulary. Nothing in this file calls it —
   /// it exists for the round-trip tests, which check an imported document against what
   /// ``ExportOptions/render(_:formatting:)`` would make of it, and for any future caller

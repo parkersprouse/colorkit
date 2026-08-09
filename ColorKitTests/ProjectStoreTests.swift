@@ -285,6 +285,30 @@ struct ProjectStoreTests {
     }
   }
 
+  /// M30's fifth save door. `saveColor(importing:)` is the loose-color sibling of the
+  /// fourth `savePalette` overload and carries the same verbatim promise: the stored text
+  /// is the literal pasted substring, never a `.derived(_:preferring:)` round trip that
+  /// would re-spell it. Same out-of-gamut `oklch()` as `importedEntryTextIsStoredVerbatim`,
+  /// which `.lossless` preserves but reformats to its own precision — so a regression that
+  /// routed through `.derived` changes the string and fails here. `notes` is the *other*
+  /// reason this door exists (a design token's `$description` rides in on it) and is
+  /// otherwise untested for a loose color, so it is asserted too.
+  @Test("An imported loose color stores its text verbatim and keeps its notes")
+  func importedLooseColorIsStoredVerbatim() throws {
+    let library = try Self.makeLibrary()
+    let project = try library.createProject(named: "Site")
+    let pasted = "oklch(0.7 0.5 140.123456789)"
+    let color = try CSSColorParser.parse(pasted).color
+    let entry = ImportedEntry(key: "", color: color, text: pasted, notes: "Primary brand color")
+
+    try library.saveColor(importing: entry, named: "Brand base", to: project)
+
+    let saved = try #require(try library.projects().first?.orderedColors.first)
+    #expect(saved.text == pasted)
+    #expect(saved.notes == "Primary brand color")
+    #expect(saved.name == "Brand base")
+  }
+
   /// An orphaned `SavedColor` belongs to no project, so no view would ever show it and
   /// nobody would ever know it was there. The cascade is declared on the relationships;
   /// this is what proves it reaches both of them — the loose colors *and* the ones two
