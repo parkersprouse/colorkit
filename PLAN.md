@@ -3388,13 +3388,72 @@ the preview above it counted groups would put a preview and a confirmation on sc
 contradict each other about what just happened, which is the same defect as M8's
 placeholder disagreeing with its own fallback.
 
-**Tests.** The discriminating one is a **whole-project round trip**: export a project
-holding one loose color *and* one one-entry palette, import it, assert one color and one
-palette come back. Asserting only that loose colors survive passes under the naive rule
-too, so it would not discriminate – the same lesson `json` and `tailwindConfig` taught at
-both cardinalities in M8. Mutation: flip the guard to `entries.count == 1` and confirm the
-failure set is exactly the JSON/Tailwind one-entry-object cases plus the palette-of-one
-case, nothing wider.
+**Tests – two of them, making different claims.** They look like one test and are not, and
+the difference is the reason for keeping both.
+
+1. **A recorded fixture**, `ColorKitTests/Fixtures/project-export-p3-with-fallback.css` –
+   **a real document this app produced**, exported by Parker from a real project on
+   2026-08-09 and the artifact that prompted this milestone, not a string a test author
+   hand-wrote to match what the parser already does. It pins the parser against something
+   the app actually shipped, so it catches the failure a self-consistent round trip cannot:
+   both halves drifting *together* and still agreeing.
+2. **A render-then-parse round trip**, built in the test: export a project holding one loose
+   color *and* one one-entry palette, import it, assert one color and one palette come back.
+   This catches the opposite failure – the two halves disagreeing *today* – and it is the
+   only one of the pair that discriminates the palette-of-one case, since the fixture has
+   no one-entry palette in it. Asserting only that loose colors survive would pass under
+   the naive rule, which is the lesson `json` and `tailwindConfig` taught at both
+   cardinalities in M8.
+
+**The fixture's expected reading, traced against the parser before it was adopted:**
+`detect` answers `p3WithFallback` (the `@media (color-gamut` test runs before the `:root {`
+one, and the document satisfies both), so only the `@media` block is read; `headeredBlocks`
+finds ten `/* From "…" */` blocks; and the key derivation at
+`parsePropertyBlock`'s headered branch splits them:
+
+| Blocks | Property vs. header | key | Imports as |
+|---|---|---|---|
+| `Greyscale`, `Primary`, `Accent` (11 entries each) | `Greyscale-50` has prefix `Greyscale-` | `50` … `950` | 3 palettes |
+| `Primary-Base`, `Backgound`, `Body-Text-Base`, `Body-Text-Callout`, `Body-Text-Callout-Strong`, `Body-Text-Accent`, `Body-Text-Accent-Strong` | `name == header` exactly | `""` | 7 loose colors |
+
+Today that same file yields **ten palettes**, seven of them holding one color, and an empty
+Colors section – the reported defect, reproduced from a real artifact rather than described.
+
+**Three further facts the fixture pins for free**, each of which already has a rule and none
+of which currently has a test built on a genuine document: that `p3WithFallback` reads the
+`@media` override and never the hex fallback (the imported values are the `color(display-p3
+…)` spellings, materially different strings from the hex block above them); that a header is
+authoritative over segment inference (`Primary-Base` must **not** be absorbed into the
+`Primary` family, which naive prefix inference would do); and that
+`saveColor(importing:)` stores `entry.text` **verbatim** – the assertion is that the seven
+colors' stored text is the `color(display-p3 …)` substring, which a `.derived(_:preferring:)`
+regression fails immediately.
+
+Load it the way every other fixture here is loaded – `URL(fileURLWithPath: #filePath)` up to
+the test directory, then `Fixtures/…` – which is **source-relative, not a bundle resource**,
+so a new file type needs no project configuration and no copy phase. The same document also
+serves M31 as the file that gets opened rather than pasted.
+
+**It is also the first fixture in this repo that is not machine-generated, and that inverts
+the rule the other five carry.** `reference-vectors.json`, `parse-vectors.json`,
+`contrast-vectors.json`, `mix-vectors.json` and `cvd-vectors.json` all come from
+`Tools/`, and CLAUDE.md's standing instruction for them is *regenerate, never hand-edit*.
+This one is the opposite: it is a **recorded artifact**, and re-exporting it from a current
+build would destroy exactly what it is for – the moment the document stops matching what a
+newer exporter writes is the moment the test has something to say. Do not refresh it to make
+it agree; if it disagrees, that is a finding. A note to this effect belongs beside it and in
+CLAUDE.md's fixture rules when M30 lands.
+
+Two honest limitations to state in the test rather than discover later: the seven colors
+come back **named after the sanitized header** (`Body-Text-Callout-Strong`), because
+`cssIdentifier` is lossy and has no inverse – M17's recorded limitation, and what M32 exists
+to let a user repair; and their values are Display P3 spellings rounded to the export's
+precision, not the original hex, which is what reading the override block means.
+
+**Mutation:** flip the guard to `entries.count == 1` and confirm the failure set is exactly
+the JSON/Tailwind one-entry-object cases plus the round trip's palette-of-one, and that the
+fixture test still passes – it contains no one-entry palette, so a mutation run that fails it
+too means something wider broke than the rule under test.
 
 **CLAUDE.md when this lands:** the "four `savePalette` overloads" bullet gains a fifth
 door with its own reason.
@@ -3658,7 +3717,9 @@ parameter; and the intro paragraph's "six document shapes" becomes seven.
 - **ColorKit/Features/Export** – `ExportPresentation.swift` (title, summary, `mappedNote`),
   `ExportPanel.swift` (badge hidden on a `nil` count format).
 - **ColorKitCLI** – `Names.swift` (one row), `PaletteCommands.swift` (usage text).
-- **Tests** – `PaletteImportTests` (the sole-color rule, the project round trip),
+- **Tests** – `ColorKitTests/Fixtures/project-export-p3-with-fallback.css` (already in the
+  tree; a real export, the first fixture here that is not machine-generated),
+  `PaletteImportTests` (the sole-color rule, the fixture reading, the project round trip),
   `ProjectStoreTests` (three renames, the rekey collision, the imported loose color),
   `ExportTests` (the token shape at both cardinalities, the DTCG naming rule),
   `ExportStoreTests` (the optional mapped-count format), `ProjectsSmokeTests` (the global

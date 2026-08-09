@@ -16,14 +16,14 @@
 			containerPortal = 2C6D6B3C3012599C00F6925E /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 2C6D6B433012599C00F6925E;
-			remoteInfo = "ColorKit";
+			remoteInfo = ColorKit;
 		};
 		2C6D6B5E3012599D00F6925E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2C6D6B3C3012599C00F6925E /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 2C6D6B433012599C00F6925E;
-			remoteInfo = "ColorKit";
+			remoteInfo = ColorKit;
 		};
 		2CB1801A30125A0000F6925E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -49,9 +49,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		2C6D6B443012599C00F6925E /* ColorKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ColorKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2C6D6B533012599D00F6925E /* ColorKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ColorKitTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2C6D6B5D3012599D00F6925E /* ColorKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ColorKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C6D6B443012599C00F6925E /* ColorKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ColorKit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C6D6B533012599D00F6925E /* ColorKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColorKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C6D6B5D3012599D00F6925E /* ColorKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColorKitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CB1800030125A0000F6925E /* colorkit */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = colorkit; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CB1801030125A0000F6925E /* ColorKitCLITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ColorKitCLITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -59,17 +59,17 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2C6D6B463012599C00F6925E /* ColorKit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "ColorKit";
+			path = ColorKit;
 			sourceTree = "<group>";
 		};
 		2C6D6B563012599D00F6925E /* ColorKitTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "ColorKitTests";
+			path = ColorKitTests;
 			sourceTree = "<group>";
 		};
 		2C6D6B603012599D00F6925E /* ColorKitUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "ColorKitUITests";
+			path = ColorKitUITests;
 			sourceTree = "<group>";
 		};
 		2CA1C0DE3012599C00F6925E /* ColorCore */ = {
@@ -180,10 +180,10 @@
 				2C6D6B463012599C00F6925E /* ColorKit */,
 				2CA1C0DE3012599C00F6925E /* ColorCore */,
 			);
-			name = "ColorKit";
+			name = ColorKit;
 			packageProductDependencies = (
 			);
-			productName = "ColorKit";
+			productName = ColorKit;
 			productReference = 2C6D6B443012599C00F6925E /* ColorKit.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -203,10 +203,10 @@
 			fileSystemSynchronizedGroups = (
 				2C6D6B563012599D00F6925E /* ColorKitTests */,
 			);
-			name = "ColorKitTests";
+			name = ColorKitTests;
 			packageProductDependencies = (
 			);
-			productName = "ColorKitTests";
+			productName = ColorKitTests;
 			productReference = 2C6D6B533012599D00F6925E /* ColorKitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -226,10 +226,10 @@
 			fileSystemSynchronizedGroups = (
 				2C6D6B603012599D00F6925E /* ColorKitUITests */,
 			);
-			name = "ColorKitUITests";
+			name = ColorKitUITests;
 			packageProductDependencies = (
 			);
-			productName = "ColorKitUITests";
+			productName = ColorKitUITests;
 			productReference = 2C6D6B5D3012599D00F6925E /* ColorKitUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
@@ -325,7 +325,7 @@
 				2C6D6B433012599C00F6925E /* ColorKit */,
 				2C6D6B523012599D00F6925E /* ColorKitTests */,
 				2C6D6B5C3012599D00F6925E /* ColorKitUITests */,
-				2CB1800530125A0000F6925E /* colorkit */,
+				2CB1800530125A0000F6925E /* ColorKitCLI */,
 				2CB1801430125A0000F6925E /* ColorKitCLITests */,
 			);
 		};
@@ -406,7 +406,7 @@
 		};
 		2CB1801B30125A0000F6925E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2CB1800530125A0000F6925E /* colorkit */;
+			target = 2CB1800530125A0000F6925E /* ColorKitCLI */;
 			targetProxy = 2CB1801A30125A0000F6925E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -553,7 +553,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "ColorKit";
+				INFOPLIST_KEY_CFBundleDisplayName = ColorKit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Parker Sprouse. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -561,7 +561,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.colorkit";
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.colorkit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -591,7 +591,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "ColorKit";
+				INFOPLIST_KEY_CFBundleDisplayName = ColorKit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Parker Sprouse. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -599,7 +599,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.colorkit";
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.colorkit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -622,7 +622,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitTests";
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.ColorKitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -644,7 +644,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitTests";
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.ColorKitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -664,14 +664,14 @@
 				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.ColorKitUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TEST_TARGET_NAME = "ColorKit";
+				TEST_TARGET_NAME = ColorKit;
 			};
 			name = Debug;
 		};
@@ -684,14 +684,14 @@
 				DEVELOPMENT_TEAM = 6H4PL5UQ2R;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "me.parkersprouse.ColorKitUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = me.parkersprouse.ColorKitUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TEST_TARGET_NAME = "ColorKit";
+				TEST_TARGET_NAME = ColorKit;
 			};
 			name = Release;
 		};
