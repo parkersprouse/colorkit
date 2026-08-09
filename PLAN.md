@@ -3276,6 +3276,394 @@ which a table entry never can be. `needsProfileLineMessageDoesNotAssertPathIsMis
 pins it, confirmed by mutation: reverting to the old assertive wording fails both of
 its assertions, not zero and not one.
 
+## Planned: M30–M34 – close the import/export round trip
+
+M0–M29 are done, so this is a sixth series rather than more of the old list. Four of the
+five come from Parker using the built app on 2026-08-09; the fifth is the asymmetry that
+report uncovered while the first four were being scoped. They are all one theme – **what
+this app writes, it should read back, and it should say plainly what it speaks**:
+
+- **A single imported color becomes a palette of one.** Import a whole-project export and
+  the Colors section comes back empty while the Palettes section fills with one-entry
+  palettes, even though those values were loose colors when they left.
+- **Import reads a *file* only in the one format the app cannot write.** The Import menu
+  offers "From Token File…" and nothing else file-shaped, so exporting a `.css` and
+  re-opening it means going through the paste box – and picking the app's own JSON export
+  in that panel produces *"That JSON file contains no design tokens"*, which is correct
+  and reads like a bug.
+- **Nothing saved can be renamed.** A project can (`ProjectsPanel.swift:219`); a palette,
+  a loose color and a palette entry cannot. `ProjectLibrary.rename(_ palette:to:)` has been
+  written and unwired since M9.
+- **Import is unreachable until a project exists.** The Import menu lives inside
+  `saveControls(_:)`, which only renders under a selected project, so the feature is
+  invisible to anyone who has not already made one and nothing says that is the order.
+- **The app writes six document shapes and reads seven, plus a bare color list.** M17
+  built design token *import* only. That was a deliberate scoping call and it is nowhere
+  stated, so the Import menu appears to advertise a format the app can produce. (Stated
+  this way rather than "reads eight" because `ImportShape.looseColors` is not a document
+  shape at all – the two enums differ in both directions, which is the argument M26 made
+  for keeping them separate. Design tokens are the one shape genuinely missing from
+  export.)
+
+**Five decisions were settled with Parker before planning, each overriding a more obvious
+reading, and are not to be re-litigated when implementing:**
+
+1. **Token support is extended, not removed.** Removal was Parker's first instinct once
+   the asymmetry was confirmed, and it was costed rather than waved off: ~950 lines in
+   `DesignTokens.swift` and `DesignTokenImportTests.swift` before any call site, plus
+   `ImportShape.designTokens` (so the paste box would stop reading tokens too),
+   `ProjectLibrary`'s third `savePalette` overload, four message helpers in
+   `ProjectsPanel`, and **one of the CLI's nine commands** – `colorkit tokens`, which
+   never had the asymmetry problem and is useful exactly as it stands. M34 adds the
+   missing direction instead.
+2. **"From Token File…" becomes "From File…", a superset rather than a swap.** Replacing
+   it with "From CSS File" – the literal request – would delete a working, spec-conformant
+   decoder on the strength of a premise that turned out to be false.
+3. **Palette-entry renaming is in scope for M32**, having been scoped out of the first
+   draft on the grounds that an entry's name *is* its export key. It is in with guard
+   rails rather than out, because the keys are visible under every swatch in `paletteRow`
+   and a user who can see them can reasonably expect to change them.
+4. **A single-entry group imports as a loose color when its key is empty** – not on
+   `count == 1`. See M30; this mirrors an argument the export layer already wrote down.
+5. **The format is named by its actual name wherever it appears** – "Design tokens
+   (DTCG)", not "tokens". It was the *lack of transparency* that produced the confusion,
+   not the missing shape alone, so naming it is part of M34's deliverable rather than a
+   nicety attached to it.
+
+Order is M30 → M31 → M32 → M33 → M34, each its own commit. M31 inherits M30's fix, which
+is the reason for that pairing rather than the reverse.
+
+### M30 – A single color imports as a color
+
+**The discriminator is an empty key, not a count of one, and the export layer settled this
+first.** `ColorExport.soleEntry` decides whether a group nests as a JSON object or
+flattens to a bare string, and it keys on the entry's key being empty *with the count test
+explicitly rejected in its own doc comment*: "a harmony of one is still a scale – a
+one-stop ramp keyed `1` should nest like an eleven-stop one, so that a consumer's
+`brand.1` does not become `brand` when the stepper moves." The import side simply is not
+reading a signal the export side already writes. The rule here is that function's mirror,
+and citing it is what keeps this from reading as a coin flip.
+
+Checked against every shape before committing to it, because the obvious counter-argument
+– that a header carries the *raw* group name while a property carries the sanitized one,
+so `name == header` would fail for any color named with a space – **is false for documents
+this app writes**: `groupedPropertyLines` writes `group.identifier`, which is already
+through `cssIdentifier` (`ColorExport.swift:347`), so `/* From "text-color" */` sits above
+`--text-color` and the key strips to empty. The rule holds for:
+
+| Input | Result |
+|---|---|
+| `--text-color` under its own header (project export) | key `""` → color |
+| `--brand-500`, `--brand-600` under `/* From "brand" */` | keys `500`, `600` → palette |
+| `{"Primary": {"50": …}}` – JSON object | palette |
+| `{"Primary-Base": "oklch(…)"}` – JSON string | color |
+| hand-authored `--brand: #fff; --accent: #000;` (no shared segment) | two colors |
+| one pasted color (`parseLooseColors` already special-cases it to an empty key) | color |
+
+**Where the rule lives.** `ImportedGroup.soleColor: ImportedEntry?` in
+`ColorCore/Import/PaletteImport.swift`, one computed property rather than the test written
+out at each site – the sheet's preview and its save both consult it and must not drift
+about what "this is a color" means. Same one-predicate discipline as `isGamutMapped` and
+`pulledInto`, and it makes the rule unit-testable without a save.
+
+**The save is a fifth door, deliberately.** `ProjectLibrary.saveColor(importing entry:
+ImportedEntry, to:)`, not a widened `saveColor(_:named:to:)`. It writes
+`ColorRecord(entry.color, text: entry.text)` **verbatim** – never `.derived(_:preferring:)`
+– which is the identical rule the fourth `savePalette` overload exists to protect, and a
+new door into that room is exactly how it gets re-broken. It also carries `notes`, which
+the existing `saveColor` has no parameter for and which a design token's `$description`
+currently rides in on through the palette overload.
+
+**What becomes the color's name:** the group name, *unless* it is `ExportOptions
+.defaultName` (`"brand"`). That value is a placeholder – `parseLooseColors` and headerless
+`parseDeclarations` both reach for it – so storing it would label a pasted color "brand" as
+if somebody had chosen that. Leave the name empty there and let the tile fall back to
+displaying the CSS text, which it already does.
+
+**UI:** `ImportTextSheet`'s preview says which is which ("2 colors and 1 palette"), so the
+split is visible before the save rather than discovered after it – **and the summary
+`onImported` hands back to `ProjectsPanel.importSummary` splits the same way.**
+`performImport` currently builds "Imported 3 colors", counting entries; leaving that while
+the preview above it counted groups would put a preview and a confirmation on screen that
+contradict each other about what just happened, which is the same defect as M8's
+placeholder disagreeing with its own fallback.
+
+**Tests.** The discriminating one is a **whole-project round trip**: export a project
+holding one loose color *and* one one-entry palette, import it, assert one color and one
+palette come back. Asserting only that loose colors survive passes under the naive rule
+too, so it would not discriminate – the same lesson `json` and `tailwindConfig` taught at
+both cardinalities in M8. Mutation: flip the guard to `entries.count == 1` and confirm the
+failure set is exactly the JSON/Tailwind one-entry-object cases plus the palette-of-one
+case, nothing wider.
+
+**CLAUDE.md when this lands:** the "four `savePalette` overloads" bullet gains a fifth
+door with its own reason.
+
+### M31 – Import from a file, in any shape it was written
+
+The Import menu becomes **"From Text…"** (unchanged) and **"From File…"**, accepting
+`.css`, `.json`, `.javaScript`, plain text and the existing dynamic `.tokens` type. The
+file's bytes are read, then `ImportTextSheet` opens **pre-filled** with them and a name
+suggested from the filename.
+
+**Routing through the sheet is the point, not a convenience.** `PaletteImport.detect`
+already sends a token document to `parseDesignTokens`, which delegates to the same
+`DesignTokenImport` decoder the file picker uses today – so token files keep working, CSS
+files start working, and file import inherits the shape override, the storage-format
+control, the destination picker and the preview instead of running a second, silent path.
+It also means **M30's fix covers file imports for free** rather than two paths having to
+agree about what a single color is.
+
+It also fixes the reported confusion at the root rather than at the message: the app's own
+JSON export has no `$value`, so `detect` routes it to `.json` and it imports, where today
+it reaches the token decoder and is correctly refused.
+
+**One honest loss, recorded rather than hidden:** `ProjectsPanel.summary`'s "Ignored N
+tokens of other types" has no equivalent in `PaletteImport`'s designTokens path, which
+keeps `skipped` but not `otherTypeCount`. Accepted – threading a count through
+`ImportedPalette` for one shape's benefit is worse than the sentence is worth. The CLI's
+`colorkit tokens` still reports it in full.
+
+**The file read itself is a recorded manual check**, the same boundary as M17's read and
+M8b's write: `fileImporter`/`NSOpenPanel` is a separate process XCUITest cannot drive, and
+driving it from outside needs assistive access `osascript` does not have here. The tests
+stop at asserting the control exists and is hittable; the decode is
+`PaletteImportTests`/`DesignTokenImportTests` and the save is `ProjectStoreTests`.
+
+**CLAUDE.md when this lands:** the M26 sentence describing the Import menu ("beside the
+pre-existing token-file picker") no longer describes it.
+
+### M32 – Rename what you saved
+
+**Two differently-named library methods, because a loose color's name and a palette
+entry's name are not the same kind of thing.** They both write `SavedColor.name`; that is
+precisely why they must not share a door.
+
+- `rename(_ color: SavedColor, to:)` – a **label**. Empty is legal; the tile falls back to
+  `saved.text`, which is the display rule everywhere (`saved.name.isEmpty ? saved.text :
+  saved.name`). It must **not** route through `cleaned(_:fallback:)`.
+- `rekey(_ entry: SavedColor, to:)` – **syntax**. `SavedColor.name` is the export key for a
+  palette entry (`paletteEntry: PaletteEntry(key: name, …)`), and keys become CSS custom
+  properties *and* bare JavaScript object keys. Empty falls back to the entry's position
+  (`1`, `2`, …), matching `paletteKeys(for:)`; the result is deduplicated against its
+  siblings' **sanitized** keys with the same `-2`/`-3` loop `DesignTokenImport.keyed` and
+  `ProjectLibrary.paletteKeys` already use – two entries sharing a key do not produce a
+  duplicate property, they produce *one* property, and a color vanishes from the export
+  with nothing in the document to say so.
+- `rename(_ palette:to:)` **already exists and is finally wired** – it has been the
+  library's only unwired mutation since M9. It keeps `cleaned(_:fallback: kind.title)`.
+
+Three renames, three different empty-name answers, and that is the substance of the
+milestone rather than an inconsistency to tidy: a project falls back to "Untitled
+Project", a palette to its kind, a color to nothing at all, and a key to its position.
+
+**The rekey field shows the resulting identifier live underneath it**, because
+`cssIdentifier` is lossy: typing `Triad 2` yields `--brand-triad-2`, and that belongs in
+front of the user before they commit rather than in an export they read later. This is the
+same honesty M17 recorded when it noted that a name leaving through export does not return
+through import unchanged.
+
+**UI.** Palettes get an `Edit` button beside Export and Delete on `paletteRow`, identifier
+`paletteEdit-\(index)` matching the row's convention. Loose colors fold the name into the
+existing notes popover, retitled Edit – it already binds straight to the model and stamps
+once via `library.touch(saved)` on disappear, so this is a field, not a mechanism. Palette
+entries get their rekey field from the same popover, reached from `SwatchButton`'s menu on
+the entry swatch – **which means `paletteRow`'s swatches gain a menu closure they do not
+have today**, so `palette-\(index)-swatch-\(entryIndex)` becomes a menu-bearing element.
+That is the exact shape CLAUDE.md's "a SwiftUI `Button` is one accessibility element" rule
+warns about: the popover is presented from the row, not layered over the button, and
+anything interactive that has to sit beside a swatch goes in a `ZStack` sibling rather
+than an `.overlay` – the trap `savedColorTile`'s selection tick already documents.
+
+**Tests.** `ProjectStoreTests` for all three, including a rekey collision (two entries
+renamed onto one key must not collapse), the asymmetric empty-name fallbacks, and a
+round-trip claim that a rekeyed entry exports under its new key. The rekey dedupe is the
+one worth a mutation: remove the suffix loop and confirm a color disappears from the
+rendered document.
+
+**CLAUDE.md when this lands:** the "`ProjectLibrary.rename(_ palette:to:)` is still the
+library's only unwired mutation" bullet is retired, and `rekey` is added to the list of
+places that decide a palette key alongside `ExportOptions.javaScriptKey` and
+`cssIdentifier`.
+
+### M33 – Import without a project first
+
+A global Import button in both of the places the feature is currently invisible from: in
+`emptyState`'s actions beside New Project, and in its own row above the project header
+once projects exist. **One identifier, `projectsImport`, used in both branches** – safe for
+the reason `projectsNew` already appears twice at `ProjectsPanel.swift:170` and `:194`:
+the branches are mutually exclusive. Its own row, **not** a fifth control in the
+`LabeledContent("Project")` HStack, which already carries four; crowding it is the tool
+switcher's overflow lesson waiting to be re-learned at a different scale.
+
+Three mechanical blockers, each of which silently produces a button that does nothing:
+
+- The `.sheet(isPresented: $isImportingText)` hangs off `saveControls(_:)`, which only
+  renders when a project exists **and** is selected. It moves to `body` level.
+- `ImportTextSheet.onAppear` hardcodes `creatingNewProject = projects.isEmpty`. The global
+  entry point needs a `preferringNewProject: Bool` so it defaults to New Project even when
+  projects exist – "defaults to creating a new project from the content" is the requested
+  behavior.
+- `canImport` requires a non-empty `newProjectName` when creating, so the global path would
+  open with Import disabled and nothing saying why. Prefill `newProjectName` from the
+  parsed `detectedName`, using the **reseed-until-touched** discipline already in
+  `shapeAndNameControls` – and `initial: true` on the `onChange` for the reason recorded
+  there, since the control does not exist until the first successful parse.
+
+**Testing hazard, not hypothetical:** new controls push content down inside a `ScrollView`,
+and a swatch below the window's bottom edge produces the "never became hittable" failure
+with an all-`Disabled` tree – the *second* cause documented in CLAUDE.md's Testing section
+(a window shorter than its content), which retrying does not clear and which the app's
+own `.defaultSize(width: 620, height: 700)` makes reachable on a fresh bundle.
+
+### M34 – Design token export, and saying which one
+
+The direction M17 left out, plus the transparency that would have made its absence
+legible. Two halves of one milestone: without the naming work the shape ships and the
+confusion that prompted it stays possible.
+
+#### The seventh shape
+
+`ExportShape.designTokens = "design-tokens"`, writing the W3C Design Tokens (DTCG) format
+the app already reads. **The color math is the identity**, which is the whole reason this
+is a shape and not a subsystem: DTCG `components` are CSS Color 4's *number* forms and this
+app stores number forms, so there is no arithmetic and no range table – the correction M17
+recorded against its own plan ("`fullScale` is a precision hint, not a bound") cuts the
+same way in reverse. A writer picks the space, emits the three stored components, and emits
+`alpha` when it is not 1. The work is shape plumbing.
+
+Palettes become groups, loose colors become top-level tokens, and `$type: "color"` is
+declared **once at the document root** rather than on every token – idiomatic, and
+materially smaller on an eleven-stop ramp.
+
+**That this app's own decoder honors a root-level `$type` was checked before the shape was
+planned around it, not assumed.** It is the plan's riskiest assumption – if the root did
+not inherit, the writer would have to stamp `$type` on every token (larger documents) or
+M17's decoder would need changing (scope creep into a milestone that is done), and either
+answer arrives after the writer is built. `DesignTokenImport.collect` is called as
+`collect(root, path: [], inheritedType: nil, …)`, and the root node has no `$value`, so it
+takes the group branch at `DesignTokens.swift:269` – `node["$type"] as? String ??
+inheritedType` – and threads the root's type into every child. The root **is** a group by
+construction rather than by analogy, and the `where !name.hasPrefix("$")` filter on the
+recursion is what keeps `$type` itself from being read as a token. No branch point
+remains.
+
+```json
+{
+  "$type": "color",
+  "Greyscale": {
+    "50":  { "$value": { "colorSpace": "oklch", "components": [0.97, 0, 0] } },
+    "100": { "$value": { "colorSpace": "oklch", "components": [0.9068, 0, 0] } }
+  },
+  "Primary-Base": { "$value": { "colorSpace": "oklch", "components": [0.5236, 0.1839, 309.99] } }
+}
+```
+
+**Each token is written in its own color's space, never in one format across the
+document.** This is the same rule `savePalette(importing tokens:)` and `colorkit tokens`'
+default listing already keep – a token's `colorSpace` is authored information, like a typed
+`rebeccapurple` – and it is what makes the round trip an identity on components rather than
+a canonicalization. It is also why `usesFormat` is **false** for this shape: a
+`CSSOutputFormat` names a CSS spelling and a `$value` has none. That is a *second* reason
+for a `false` there, different in kind from `p3WithFallback`'s (which hides a control that
+would be actively harmful); the flag's doc comment needs to say so or it reads as one rule
+with two instances.
+
+**No `hex` fallback is emitted.** The field is optional in the format and this app's own
+decoder reads it *only* for a `colorSpace` it does not recognize – and every space this app
+writes is one the spec defines, so it would never be read on the way back. Emitting it
+would put a rounded sRGB approximation beside exact components for precisely the wide-gamut
+colors that motivate an OKLCH pipeline: the p3WithFallback hex-fallback trap, in a format
+that does not need the fallback at all.
+
+**Three things a seventh case ripples into, two of which do not break the way they look
+like they will:**
+
+- `fileExtension` answers `json`, so `contentTypesAreDistinct` still finds three types and
+  `writableContentTypes.count == 3` still holds – designTokens shares JSON's `UTType`.
+  Neither test needs relaxing, which is worth stating because both look like they must.
+- `suggestedFilename` should propose `brand.tokens.json`, the format's convention, via a
+  new per-shape stem suffix (empty for every other shape). `ProjectsPanel.paletteName(for:)`
+  **already strips a `.tokens` stem** on the way back in, so the filename round trip closes
+  without touching the import side – a small piece of evidence that M17 anticipated this
+  direction.
+- `mappedCountFormat` currently answers `shape.usesFormat ? format : Self.fallbackFormat`,
+  and hex is the wrong answer here: a token file never gamut-maps, so the badge would count
+  out-of-sRGB colors and claim they were brought into gamut, which is **false of every one
+  of them**. It becomes `CSSOutputFormat?`, `nil` meaning "this shape does not map";
+  `ColorStore.exportGamutMappedCount` returns 0 for `nil` and `ExportPanel` hides the badge.
+  The count and the copy stay one decision, as CLAUDE.md requires.
+
+**Group naming needs a second sanitizer, and `resolvedGroups` is where it goes.** DTCG
+forbids `.`, `{` and `}` in a name and reserves a leading `$`, but it permits spaces and
+case – so `cssIdentifier` would flatten `Body Text Base` to `body-text-base` and throw away
+a name the format can carry verbatim. `resolvedGroups` gains a naming parameter defaulting
+to `cssIdentifier`, so the uniquing loop stays single and the naming rule becomes per shape;
+`render(_ groups:)` passes `shape`'s. Entry keys take the same treatment – the token writer
+builds nested JSON and never reaches `propertyName`.
+
+**`isWebFriendly` is false**, on the same structural grounds as `p3WithFallback` rather
+than a per-export gamut check: a token file exists to carry authored color spaces between
+tools, and web-friendly mode is about what can be hand-typed into a stylesheet. A judgment
+call, recorded as one.
+
+**CLI:** one row in `Names.shapes` (`("design-tokens", .designTokens)`), which makes
+`colorkit tokens file.json --shape design-tokens` a token-file round trip through the
+tool. The existing test requiring every shape name to round-trip and be lowercase covers
+the new row.
+
+**Tests.** The oracle is this app's own importer, exactly as `Export/`'s oracle is its own
+parser: render, feed the document back through `DesignTokenImport.decode`, and require the
+colors to survive **in their own spaces** – not merely to parse. Both cardinalities, since
+the lone-color and scale branches differ. One honest limitation to assert rather than
+paper over: keys come back through `cssIdentifier`, so a group named `Body Text Base`
+returns as `Body-Text-Base` – the name is *not* round-trip-identical, the colors are.
+
+#### Saying which format, everywhere it appears
+
+The reported confusion was not only the missing shape; it was that nothing anywhere names
+the format. Every surface that mentions tokens says **"Design tokens (DTCG)"**:
+
+- `ExportShape.designTokens.title` and its `summary`, in `ExportPresentation.swift` –
+  the summary naming what reads it ("what Figma and Style Dictionary consume") the way the
+  Tailwind pair's summaries name what decides between them.
+- `ImportShape.designTokens.title` in `ImportTextSheet.swift`, currently "Design tokens".
+- `ImportTextSheet`'s paste-box hint, currently "a design token file".
+- `DesignTokenError.noTokens`'s message – the sentence in the report. It stays in ColorCore
+  (error text there is established: `TokenSkipReason.message`, `PaletteImportError.message`)
+  and names the format and the alternative rather than only what is absent. Note that after
+  M31 this error is much harder to reach at all, since a JSON document without `$value`
+  routes to the `json` shape; the wording is the belt, M31 is the braces.
+- `colorkit tokens`' usage text, and `--shape design-tokens` in `shapeList`.
+- README's feature list, which is the only place a reader outside the app could have
+  learned the direction was missing.
+
+**CLAUDE.md when this lands:** the `Names.shapes` table bullet gains a seventh row; the
+`usesFormat` bullet gains its second, differently-reasoned `false`; the mapped-count bullet
+becomes an optional format; the M20 `render` bullet notes `resolvedGroups`' naming
+parameter; and the intro paragraph's "six document shapes" becomes seven.
+
+### Files touched, by area (M30–M34)
+
+- **ColorCore/Import** – `PaletteImport.swift` (`ImportedGroup.soleColor`), M34's error
+  wording in `DesignTokens.swift`.
+- **ColorCore/Export** – `ColorExport.swift`: the seventh `ExportShape` case and its four
+  capability flags, `fileExtension`, the filename stem suffix, `mappedCountFormat` becoming
+  optional, `resolvedGroups`' naming parameter, and the token writer itself.
+- **ColorKit/Persistence** – `ProjectLibrary.swift`: `saveColor(importing:)`,
+  `rename(_ color:to:)`, `rekey(_:to:)`.
+- **ColorKit/Features/Projects** – `ProjectsPanel.swift` (the global Import button, the
+  file importer, the Edit button, the retitled popover), `ImportTextSheet.swift`
+  (`preferringNewProject`, the name prefill, the colors/palettes preview split).
+- **ColorKit/Features/Export** – `ExportPresentation.swift` (title, summary, `mappedNote`),
+  `ExportPanel.swift` (badge hidden on a `nil` count format).
+- **ColorKitCLI** – `Names.swift` (one row), `PaletteCommands.swift` (usage text).
+- **Tests** – `PaletteImportTests` (the sole-color rule, the project round trip),
+  `ProjectStoreTests` (three renames, the rekey collision, the imported loose color),
+  `ExportTests` (the token shape at both cardinalities, the DTCG naming rule),
+  `ExportStoreTests` (the optional mapped-count format), `ProjectsSmokeTests` (the global
+  Import button, the Edit button), `ColorKitCLITests` (the new shape name).
+
 ## Verification
 
 **A feature reached through a system loupe or a global chord has links no test can touch**, and they fail independently – so check them separately rather than as one gesture. For M4 that was: (1) does the menu bar show the chord, proving the OS accepted the registration and a scene's `.task` fired; (2) does the chord raise the loupe from *another* app, proving the key is captured and the C callback reaches the main actor; (3) does the picked color reach the field and the clipboard, proving the sandbox and the bridge. All three passed. Everything either side of them is covered by [ScreenSamplerTests](ColorKitTests/ScreenSamplerTests.swift) and [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift).
