@@ -289,22 +289,6 @@ struct ImportTextSheet: View {
     }
   }
 
-  /// Phrases a colors/palettes split for both the preview caption and the confirmation
-  /// summary, so the two are one string built one way and cannot drift — the anti-drift
-  /// property ``ImportedGroup/soleColor`` exists to give the *counts*, extended to the
-  /// copy. Editorial wording lives here in the UI layer; the predicate stays in ColorCore.
-  private static func splitPhrase(colors: Int, palettes: Int) -> String {
-    func plural(_ count: Int, _ noun: String) -> String {
-      "\(count) \(noun)\(count == 1 ? "" : "s")"
-    }
-    switch (colors, palettes) {
-    case (0, 0): return "nothing"
-    case (_, 0): return plural(colors, "color")
-    case (0, _): return plural(palettes, "palette")
-    default: return "\(plural(colors, "color")) and \(plural(palettes, "palette"))"
-    }
-  }
-
   // MARK: - Preview
 
   private func preview(_ palette: ImportedPalette) -> some View {
@@ -333,6 +317,22 @@ struct ImportTextSheet: View {
           .fixedSize(horizontal: false, vertical: true)
           .accessibilityIdentifier("importSheetSkipped")
       }
+    }
+  }
+
+  /// Phrases a colors/palettes split for both the preview caption and the confirmation
+  /// summary, so the two are one string built one way and cannot drift — the anti-drift
+  /// property ``ImportedGroup/soleColor`` exists to give the *counts*, extended to the
+  /// copy. Editorial wording lives here in the UI layer; the predicate stays in ColorCore.
+  private static func splitPhrase(colors: Int, palettes: Int) -> String {
+    func plural(_ count: Int, _ noun: String) -> String {
+      "\(count) \(noun)\(count == 1 ? "" : "s")"
+    }
+    switch (colors, palettes) {
+    case (0, 0): return "nothing"
+    case (_, 0): return plural(colors, "color")
+    case (0, _): return plural(palettes, "palette")
+    default: return "\(plural(colors, "color")) and \(plural(palettes, "palette"))"
     }
   }
 
