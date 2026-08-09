@@ -88,6 +88,16 @@ module name (from `PRODUCT_NAME`) is `colorkit`, which collides with the app's o
 `ColorKit.swiftmodule` in the shared build products directory the same way. Nothing
 elsewhere depends on the CLI's module name — see the architecture invariant on why no
 target ever `import`s it.
+**M30 is done too**: a single imported color now comes back a loose color, not a palette
+of one. `ImportedGroup.soleColor` — the import-side mirror of `ColorExport.soleEntry`,
+keyed on an **empty** entry key rather than `count == 1` — decides it, and a fifth save
+door `ProjectLibrary.saveColor(importing:named:to:)` writes the pasted text verbatim and
+carries `notes`, the same keep-as-pasted promise the fourth `savePalette` overload
+protects. `ImportTextSheet` counts groups (colors vs. palettes) through that one predicate
+for both its preview caption and its confirmation, so the two cannot disagree. Pinned by a
+**recorded artifact** — `project-export-p3-with-fallback.css`, a real project export, not
+a hand-written fixture — plus a render-then-parse round trip; see the fifth-save-door
+invariant below and the M30 entry in PLAN.md.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the

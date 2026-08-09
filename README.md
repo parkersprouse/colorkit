@@ -160,7 +160,10 @@ The only tool that remembers anything. Create a project, then:
 - Drag saved colors to reorder them, or use **Move Left** / **Move Right** from the
   right-click menu. Attach a note to any color.
 - **Import ▸ From Text…** — paste a stylesheet, a Tailwind config, a JSON file, a
-  design token file, or just a list of colors, and get a palette back.
+  design token file, or just a list of colors, and get its colors and palettes back. A
+  single color comes back a loose color, not a palette of one, and a project export
+  splits into exactly the colors and palettes it left as — the preview says which before
+  you commit.
 - **Import ▸ From Token File…** — read a W3C design token file from disk.
 - **Export Project** — hand every palette *and* every loose color to the Export tool as
   one document.

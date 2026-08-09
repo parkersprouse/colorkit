@@ -3276,9 +3276,10 @@ which a table entry never can be. `needsProfileLineMessageDoesNotAssertPathIsMis
 pins it, confirmed by mutation: reverting to the old assertive wording fails both of
 its assertions, not zero and not one.
 
-## Planned: M30–M34 – close the import/export round trip
+## M30–M34 – close the import/export round trip
 
-M0–M29 are done, so this is a sixth series rather than more of the old list. Four of the
+**M30 is built (see its ✅ entry below); M31–M34 remain planned.** M0–M29 were done when
+this series was scoped, so it is a sixth series rather than more of the old list. Four of the
 five come from Parker using the built app on 2026-08-09; the fifth is the asymmetry that
 report uncovered while the first four were being scoped. They are all one theme – **what
 this app writes, it should read back, and it should say plainly what it speaks**:
@@ -3482,7 +3483,7 @@ too means something wider broke than the rule under test.
 **CLAUDE.md when this lands:** the "four `savePalette` overloads" bullet gains a fifth
 door with its own reason.
 
-### M31 – Import from a file, in any shape it was written
+### ⬜ M31 – Import from a file, in any shape it was written
 
 The Import menu becomes **"From Text…"** (unchanged) and **"From File…"**, accepting
 `.css`, `.json`, `.javaScript`, plain text and the existing dynamic `.tokens` type. The
@@ -3522,7 +3523,7 @@ stop at asserting the control exists and is hittable; the decode is
 **CLAUDE.md when this lands:** the M26 sentence describing the Import menu ("beside the
 pre-existing token-file picker") no longer describes it.
 
-### M32 – Rename what you saved
+### ⬜ M32 – Rename what you saved
 
 **Two differently-named library methods, because a loose color's name and a palette
 entry's name are not the same kind of thing.** They both write `SavedColor.name`; that is
@@ -3575,7 +3576,7 @@ library's only unwired mutation" bullet is retired, and `rekey` is added to the 
 places that decide a palette key alongside `ExportOptions.javaScriptKey` and
 `cssIdentifier`.
 
-### M33 – Import without a project first
+### ⬜ M33 – Import without a project first
 
 A global Import button in both of the places the feature is currently invisible from: in
 `emptyState`'s actions beside New Project, and in its own row above the project header
@@ -3605,7 +3606,7 @@ with an all-`Disabled` tree – the *second* cause documented in CLAUDE.md's Tes
 (a window shorter than its content), which retrying does not clear and which the app's
 own `.defaultSize(width: 620, height: 700)` makes reachable on a fresh bundle.
 
-### M34 – Design token export, and saying which one
+### ⬜ M34 – Design token export, and saying which one
 
 The direction M17 left out, plus the transparency that would have made its absence
 legible. Two halves of one milestone: without the naming work the shape ships and the
@@ -3947,6 +3948,34 @@ Per milestone:
   `flags=0x10000(runtime)` under `codesign -d --verbose=2`, settling – by reading the
   signature, not the attribute's name – that `CodeSignOnCopy` alone is sufficient and
   no `ENABLE_HARDENED_RUNTIME` needed adding to `colorkit`'s own build settings.
+- **M30:** [PaletteImportTests](ColorKitTests/PaletteImportTests.swift) and
+  [ProjectStoreTests](ColorKitTests/ProjectStoreTests.swift), and the pair of import
+  tests make **different claims on purpose**. `projectExportSplitsColorsFromPalettes`
+  reads a **recorded artifact** — `project-export-p3-with-fallback.css`, a real project
+  export, the first fixture here not machine-generated — and pins seven loose colors and
+  three palettes out of it; that is the one failure a self-consistent round trip cannot
+  catch, both halves of the round trip drifting *together* and still agreeing. It pins
+  three facts for free that no prior test held against a genuine document: that
+  `p3WithFallback` reads the `@media` override and never the hex fallback (every stored
+  text is a `color(display-p3 …)` spelling), that a header is authoritative over segment
+  inference (`Primary-Base` is *not* absorbed into the `Primary` family), and that the
+  save door stores text verbatim. `looseColorAndOneEntryPaletteRoundTrip` is the opposite
+  failure — the two halves disagreeing *today* — and is the only one of the pair that
+  discriminates the palette-of-one case, since the fixture holds no one-entry palette;
+  it is parameterized over `.customProperties`/`.json`/`.tailwindConfig`, the three
+  shapes whose key derivation is safe for a mixed empty-key/keyed multi-group document.
+  The `entries.count == 1` **mutation was run** and failed exactly those three
+  round-trip cases while leaving the fixture test green, which is the sharpest available
+  statement that the empty-key rule — not a count of one — is what the round trip pins.
+  `importedLooseColorIsStoredVerbatim` mirrors the fourth overload's verbatim check on
+  the fifth save door, asserting `notes` carries too (the other reason that door exists).
+  All 539 `ColorKitTests` + 59 `ColorKitCLITests` pass. **One UI-test edit is reasoned
+  but unverified**, the same honesty this file extends to `NSOpenPanel` and
+  `updateGlobalShortcut`'s rejection branch: `ProjectsSmokeTests`' import summary now
+  reads `"Imported 1 palette"` (group-counted) rather than the old entry-counted
+  `"Imported 2 colors"`, but the runner failed twice at *"Timed out while enabling
+  automation mode"* — a host capability failure, not a result — so the assertion was
+  updated to match the traced behavior and left run-on-a-working-host.
 - **M3/M4 (UI):** run the app and verify interactively. Spot-check conversions against a browser's DevTools color picker, which implements the same spec – a fast, honest end-to-end sanity check.
 
 The scheme is shared and works from the command line:
