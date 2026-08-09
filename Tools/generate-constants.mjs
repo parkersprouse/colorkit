@@ -116,7 +116,7 @@ const [d65to50, d50to65] = adaptBlocks.map((b, i) =>
 
 let out = `//
 //  Matrices.swift
-//  Color Toolkit
+//  ColorKit
 //
 //  GENERATED FILE — DO NOT EDIT BY HAND.
 //  Regenerate with: node Tools/generate-constants.mjs
@@ -145,7 +145,7 @@ console.log(`Matrices.swift        ${matrices.length + 2} matrices`);
 const names = Object.keys(KEYWORDS).sort();
 let kw = `//
 //  NamedColors.swift
-//  Color Toolkit
+//  ColorKit
 //
 //  GENERATED FILE — DO NOT EDIT BY HAND.
 //  Regenerate with: node Tools/generate-constants.mjs

@@ -1,6 +1,6 @@
 //
 //  WCAGContrast.swift
-//  Color Toolkit
+//  ColorKit
 //
 
 import Foundation
