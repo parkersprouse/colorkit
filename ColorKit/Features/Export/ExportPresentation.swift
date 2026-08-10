@@ -166,11 +166,10 @@ nonisolated extension ExportShape {
   static func webFriendlyHiddenShapesNote(hidden: [ExportShape]) -> String? {
     guard !hidden.isEmpty else { return nil }
     let names = hidden.map(\.title)
-    let list: String
-    switch names.count {
-    case 1: list = names[0]
-    case 2: list = "\(names[0]) and \(names[1])"
-    default: list = names.dropLast().joined(separator: ", ") + ", and " + names[names.count - 1]
+    let list: String = switch names.count {
+    case 1: names[0]
+    case 2: "\(names[0]) and \(names[1])"
+    default: names.dropLast().joined(separator: ", ") + ", and " + names[names.count - 1]
     }
     return "Web-friendly mode hides \(list). Turn it off in Settings to use "
       + "\(hidden.count == 1 ? "it" : "them")."
