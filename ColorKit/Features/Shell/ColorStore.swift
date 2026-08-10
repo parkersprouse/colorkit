@@ -249,7 +249,32 @@ final class ColorStore {
   var exportOptions = ExportOptions.default
 
   /// Hides exotic formats and keeps every value inside sRGB. See M22 in PLAN.md.
-  var webFriendly = false
+  ///
+  /// A `didSet` (matching ``recentLimit``'s shape, not ``globalShortcut``'s
+  /// computed-property-with-rollback one, since nothing here can fail and need reverting)
+  /// so that toggling the mode reassigns any now-restricted export choice to a safe one
+  /// *and stashes the original*, rather than leaving the stored value inert behind a
+  /// picker that no longer offers it. See ``reconcileExportOptions()``.
+  var webFriendly = false {
+    didSet {
+      guard webFriendly != oldValue else { return }
+      reconcileExportOptions()
+    }
+  }
+
+  /// The export ``ExportShape`` the user was on before ``webFriendly`` restricted it,
+  /// stashed so turning the mode back off (without meanwhile *using* the reassigned
+  /// choice) restores it. `nil` when nothing is stashed — either the mode is off, or the
+  /// stored shape was already web-friendly when it went on.
+  ///
+  /// Session-only, deliberately: there is no ``Preferences`` field, so quitting before
+  /// the mode is toggled off or the choice is used simply loses the stash. See the M34
+  /// follow-up entry in PLAN.md for why launch is treated as an ordinary transition.
+  private(set) var restrictedExportShape: ExportShape?
+
+  /// The export ``CSSOutputFormat`` counterpart to ``restrictedExportShape``, stashed and
+  /// restored the same way and independently — restricting only one leaves the other `nil`.
+  private(set) var restrictedExportFormat: CSSOutputFormat?
 
   /// Whether the recents row is shown. Off is a legitimate preference for someone who
   /// never uses it, not a way to clear the list — ``recents`` keeps filling either way.
@@ -404,6 +429,16 @@ final class ColorStore {
       // straight from `PreferenceStore.load()` — is not trusted as-is. `isEligible`
       // rejects a chord with no modifier that could still type a character.
       globalShortcut = newValue.globalShortcut.isEligible ? newValue.globalShortcut : .sampleColor
+      // `webFriendly = newValue.webFriendly` above fires the `didSet` *before*
+      // `exportOptions.shape`/`.format` receive their final values a few lines up, so
+      // that reconcile ran against `init` defaults and found nothing restricted. Redo it
+      // now that the real, possibly-restricted values are in place — and clear any stash
+      // first, because a "Reset to Defaults" (`store.preferences = Preferences()`) takes
+      // the `false` branch, which would otherwise write a stale stash back over the
+      // freshly-assigned defaults. Safe to call unconditionally because it is diff-driven.
+      restrictedExportShape = nil
+      restrictedExportFormat = nil
+      reconcileExportOptions()
     }
   }
 
@@ -470,11 +505,13 @@ final class ColorStore {
   /// names the grouped document is the whole point of keeping.
   ///
   /// Reads ``ExportOptions/effective(webFriendly:)`` rather than ``exportOptions``
-  /// directly (M22). `shape` and `format` are persisted preferences, so the mode can
-  /// come up with `p3WithFallback` or a `color()` format already chosen from before
-  /// the flag existed — hiding the picker for those does not change the stored value,
-  /// only what a control offers, so the document itself has to be the one place that
-  /// cannot emit what the mode promised to hide.
+  /// directly (M22). Since the M34 follow-up, ``reconcileExportOptions()`` keeps the
+  /// stored shape/format valid under ``webFriendly``, so in normal operation this
+  /// substitution is a no-op — but it stays as the last line of defense, the one place
+  /// that cannot emit a wide-gamut document even if a restricted value reaches
+  /// ``exportOptions`` some other way (a raw write in a test, a future code path that
+  /// skips the `select`/reconcile seam). Removing it is caught by
+  /// ``WebFriendlyExportStoreTests/exportDocumentClampsARawRestrictedShape()``.
   var exportDocument: String {
     let options = exportOptions.effective(webFriendly: webFriendly)
     if exportSource == .project {
@@ -589,6 +626,81 @@ final class ColorStore {
     guard !exportDocument.isEmpty else { return }
     Clipboard.copy(exportDocument)
     remember()
+    // Producing a real export "confirms" whatever is on screen as the intended
+    // configuration, so any pending revert to a restricted choice is discarded. After
+    // the empty-document guard: a no-op copy of nothing is not using the configuration.
+    confirmExportChoices()
+  }
+
+  // MARK: - Web-friendly export reconciliation (M34 follow-up)
+
+  /// Keeps ``exportOptions``'s shape and format valid under ``webFriendly`` by reassigning
+  /// any restricted choice to a safe one and stashing the original, and restoring the
+  /// stash on the way back out.
+  ///
+  /// Called from ``webFriendly``'s `didSet` on every real transition, and once more at the
+  /// end of the ``preferences`` setter (see there for why). It is **diff-driven** — it
+  /// reuses ``ExportOptions/effective(webFriendly:)`` and reassigns only a field whose
+  /// current value actually differs from the safe one — so calling it twice in a row is a
+  /// no-op the second time and it never overwrites a stash it already set.
+  ///
+  /// This is what lets ``ExportPanel``'s pickers bind to the *raw* stored value again: the
+  /// stored shape/format is now always a value the web-friendly picker still offers. That
+  /// invariant is held here, not by the type — the only writers of `exportOptions.shape`/
+  /// `.format` are this method, the ``preferences`` setter (which calls this afterward),
+  /// and the pickers' setters (which route through ``selectExportShape(_:)`` /
+  /// ``selectExportFormat(_:)``). A new writer that skips those can reintroduce the blank
+  /// picker; it must reconcile after, or route through a `select` method.
+  func reconcileExportOptions() {
+    if webFriendly {
+      let safe = exportOptions.effective(webFriendly: true)
+      if exportOptions.shape != safe.shape {
+        restrictedExportShape = exportOptions.shape
+        exportOptions.shape = safe.shape
+      }
+      if exportOptions.format != safe.format {
+        restrictedExportFormat = exportOptions.format
+        exportOptions.format = safe.format
+      }
+    } else {
+      if let shape = restrictedExportShape {
+        exportOptions.shape = shape
+        restrictedExportShape = nil
+      }
+      if let format = restrictedExportFormat {
+        exportOptions.format = format
+        restrictedExportFormat = nil
+      }
+    }
+  }
+
+  /// Sets the export shape from an explicit user pick and clears *only* the shape's own
+  /// stash — an explicit pick "confirms" that field's current value as intended (even
+  /// re-picking the value already shown), discarding the ability to revert it. It says
+  /// nothing about whether the Format control was consciously chosen, so that stash is
+  /// left alone. The picker's `Binding` setter routes here.
+  func selectExportShape(_ shape: ExportShape) {
+    exportOptions.shape = shape
+    restrictedExportShape = nil
+  }
+
+  /// The ``selectExportShape(_:)`` counterpart for the Format picker.
+  func selectExportFormat(_ format: CSSOutputFormat) {
+    exportOptions.format = format
+    restrictedExportFormat = nil
+  }
+
+  /// Clears both stashes at once, "confirming" the whole configuration on screen.
+  ///
+  /// Called from ``copyExport()`` and ``ExportPanel``'s save-success branch: producing a
+  /// real export is evidence about the entire configuration at once, not one control in
+  /// isolation. (``ExportShape/usesFormat`` and ``ExportShape/isWebFriendly`` are the same
+  /// predicate today, so whenever Shape's narrowed list is in play, Format is relevant too
+  /// — but that is why confirming both together is *correct* now, not why it was designed
+  /// this way; the two predicates could diverge later.)
+  func confirmExportChoices() {
+    restrictedExportShape = nil
+    restrictedExportFormat = nil
   }
 
   /// Exchanges foreground and background, text and all.

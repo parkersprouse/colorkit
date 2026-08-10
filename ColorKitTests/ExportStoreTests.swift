@@ -459,12 +459,13 @@ struct WebFriendlyExportStoreTests {
     #expect(!store.exportEntries.allSatisfy { $0.color.inGamut(of: .srgb) })
   }
 
-  /// The integration version of ``WebFriendlyExportTests/renderedDocumentNeverEscapes``:
-  /// a *stored* `p3WithFallback` preference (M19 persists it) plus the flag turned on
-  /// must not reach the clipboard as a wide-gamut document, even though nothing here
-  /// touches `store.exportOptions.shape` to work around it.
-  @Test("exportDocument never writes @media or color() while webFriendly is on")
-  func exportDocumentNeverEscapesUnderWebFriendly() {
+  /// Turning the mode on with a restricted shape already stored reassigns the *stored*
+  /// value to a web-friendly one and stashes the original (M34 follow-up), so the document
+  /// stays inside sRGB and the picker's display equals its value. Was
+  /// `exportDocumentNeverEscapesUnderWebFriendly`, whose final `== .p3WithFallback`
+  /// assertion is now false by design — the stored value is reassigned, not left inert.
+  @Test("Enabling webFriendly reassigns a restricted stored shape and stashes it")
+  func enablingWebFriendlyReassignsARestrictedShape() {
     let store = ColorStore(initialInput: "#3b82f6")
     store.exportSource = .color
     store.exportOptions.shape = .p3WithFallback
@@ -473,8 +474,163 @@ struct WebFriendlyExportStoreTests {
     let document = store.exportDocument
     #expect(!document.contains("@media"))
     #expect(!document.contains("color("))
-    // The stored preference itself is untouched — turning the flag back off
-    // restores the shape the panel showed before.
+    // The stored value itself is now web-friendly, and the original is recoverable.
+    #expect(store.exportOptions.shape.isWebFriendly)
+    #expect(store.restrictedExportShape == .p3WithFallback)
+  }
+
+  /// The last-line-of-defense claim `enablingWebFriendlyReassignsARestrictedShape` can no
+  /// longer make: since the reassign keeps the stored shape valid, `effective` inside
+  /// `exportDocument` is a no-op in normal operation, so that test would pass even if
+  /// `exportDocument` stopped calling `effective`. This deliberately constructs the state
+  /// reconcile *cannot* produce — a raw write of a restricted shape *after* the mode is on,
+  /// bypassing the `select`/reconcile seam — so only `effective` in `exportDocument` keeps
+  /// the document clean. Delete that call and this is the test that fails.
+  @Test("exportDocument clamps a restricted shape written raw under webFriendly")
+  func exportDocumentClampsARawRestrictedShape() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportSource = .color
+    store.webFriendly = true
+    // Raw write, not through `selectExportShape` — nothing reconciles it.
+    store.exportOptions.shape = .p3WithFallback
+
+    let document = store.exportDocument
+    #expect(!document.contains("@media"))
+    #expect(!document.contains("color("))
+  }
+
+  /// Shape and Format stash independently: restricting only one leaves the other's stash
+  /// `nil`, since a color-family format is orthogonal to a wide-gamut shape.
+  @Test("A restricted format stashes on its own, leaving an already-safe shape alone")
+  func enablingWebFriendlyReassignsARestrictedFormat() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .customProperties // already web-friendly
+    store.exportOptions.format = .color(.displayP3) // restricted
+    store.webFriendly = true
+
+    #expect(CSSOutputFormat.webFriendly.contains(store.exportOptions.format))
+    #expect(store.restrictedExportFormat == .color(.displayP3))
+    // Shape was safe, so nothing was stashed for it.
+    #expect(store.restrictedExportShape == nil)
+  }
+
+  /// No spurious stash when both choices are already web-friendly: the true transition is
+  /// a pure no-op, so turning the mode off afterward has nothing to restore.
+  @Test("Enabling webFriendly stashes nothing when both choices are already safe")
+  func enablingWebFriendlyStashesNothingWhenSafe() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .customProperties
+    store.exportOptions.format = .oklch
+    store.webFriendly = true
+
+    #expect(store.restrictedExportShape == nil)
+    #expect(store.restrictedExportFormat == nil)
+    #expect(store.exportOptions.shape == .customProperties)
+    #expect(store.exportOptions.format == .oklch)
+  }
+
+  /// The reverse transition restores both stashes and clears them, so a second toggle has
+  /// nothing left to restore.
+  @Test("Disabling webFriendly restores a pending stash and clears it")
+  func disablingWebFriendlyRestoresTheStash() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .p3WithFallback
+    store.exportOptions.format = .color(.displayP3)
+    store.webFriendly = true
+    store.webFriendly = false
+
     #expect(store.exportOptions.shape == .p3WithFallback)
+    #expect(store.exportOptions.format == .color(.displayP3))
+    #expect(store.restrictedExportShape == nil)
+    #expect(store.restrictedExportFormat == nil)
+  }
+
+  /// A false transition with nothing pending leaves the (already web-friendly) choices
+  /// exactly where they were — it must not blank them.
+  @Test("Disabling webFriendly with nothing stashed is a no-op")
+  func disablingWebFriendlyWithNothingStashedIsANoOp() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .customProperties
+    store.exportOptions.format = .oklch
+    store.webFriendly = true
+    store.webFriendly = false
+
+    #expect(store.exportOptions.shape == .customProperties)
+    #expect(store.exportOptions.format == .oklch)
+  }
+
+  /// Using a choice "confirms" it: an explicit pick clears only that field's stash, so
+  /// turning the mode off no longer reverts it — but the *other* field's stash survives,
+  /// since one pick says nothing about the other control.
+  @Test("selectExportShape clears only the shape stash")
+  func selectingAShapeConfirmsOnlyItsOwnStash() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .p3WithFallback
+    store.exportOptions.format = .color(.displayP3)
+    store.webFriendly = true
+
+    store.selectExportShape(.json)
+    #expect(store.exportOptions.shape == .json)
+    #expect(store.restrictedExportShape == nil)
+    // The format stash is untouched — one pick confirms one control.
+    #expect(store.restrictedExportFormat == .color(.displayP3))
+
+    store.webFriendly = false
+    // Shape was confirmed, so it stays; format was not, so it reverts.
+    #expect(store.exportOptions.shape == .json)
+    #expect(store.exportOptions.format == .color(.displayP3))
+  }
+
+  /// The Format counterpart: `selectExportFormat` clears only the format stash.
+  @Test("selectExportFormat clears only the format stash")
+  func selectingAFormatConfirmsOnlyItsOwnStash() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .p3WithFallback
+    store.exportOptions.format = .color(.displayP3)
+    store.webFriendly = true
+
+    store.selectExportFormat(.hex)
+    #expect(store.exportOptions.format == .hex)
+    #expect(store.restrictedExportFormat == nil)
+    #expect(store.restrictedExportShape == .p3WithFallback)
+  }
+
+  /// `confirmExportChoices()` clears both at once — producing a real export is evidence
+  /// about the whole configuration. Asserted directly rather than through `copyExport()`,
+  /// which writes the real pasteboard (see the suite note above about `copy(_:)`).
+  @Test("confirmExportChoices clears both stashes")
+  func confirmingClearsBothStashes() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    store.exportOptions.shape = .p3WithFallback
+    store.exportOptions.format = .color(.displayP3)
+    store.webFriendly = true
+
+    store.confirmExportChoices()
+    #expect(store.restrictedExportShape == nil)
+    #expect(store.restrictedExportFormat == nil)
+
+    store.webFriendly = false
+    // Nothing to restore — both were confirmed.
+    #expect(store.exportOptions.shape.isWebFriendly)
+    #expect(CSSOutputFormat.webFriendly.contains(store.exportOptions.format))
+  }
+
+  /// The `preferences`-setter fix: assigning `preferences` with `webFriendly: true` plus a
+  /// restricted stored shape must reconcile *after* the shape lands, not against the
+  /// `init` defaults `webFriendly`'s `didSet` would have seen mid-assignment. Both the
+  /// live shape is web-friendly and the original is stashed for restore.
+  @Test("Assigning preferences with webFriendly + a restricted shape reconciles it")
+  func assigningPreferencesReconcilesARestrictedShape() {
+    let store = ColorStore(initialInput: "#3b82f6")
+    var prefs = store.preferences
+    prefs.webFriendly = true
+    prefs.exportShape = .p3WithFallback
+    prefs.exportFormat = .color(.displayP3)
+    store.preferences = prefs
+
+    #expect(store.exportOptions.shape.isWebFriendly)
+    #expect(store.restrictedExportShape == .p3WithFallback)
+    #expect(CSSOutputFormat.webFriendly.contains(store.exportOptions.format))
+    #expect(store.restrictedExportFormat == .color(.displayP3))
   }
 }

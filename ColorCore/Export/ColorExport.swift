@@ -305,11 +305,19 @@ nonisolated struct ExportOptions: Sendable, Equatable {
   /// on with `p3WithFallback` or a `color()` format already selected from an earlier
   /// session — before this existed, that combination was merely offered; now it is
   /// stored. **Hiding the picker does not change the stored value underneath it**, so
-  /// ``ColorStore/exportDocument`` must read this rather than ``self`` directly, or
-  /// the document keeps writing the wide-gamut spelling the panel no longer shows a
-  /// control for. The stored preference itself is left untouched — exactly the
-  /// `mixSpace`/`mixHueMethod` precedent — so turning the mode back off restores
-  /// whatever was chosen before it went on.
+  /// ``ColorStore/exportDocument`` reads this rather than ``self`` directly, as a last
+  /// line of defense, so the document can never write the wide-gamut spelling the panel
+  /// no longer shows a control for.
+  ///
+  /// This function itself is a pure value transform and does not mutate anything. Since
+  /// the M34 follow-up, ``ColorStore/reconcileExportOptions()`` is the thing that keeps
+  /// the *stored* preference valid — reassigning a restricted choice to the safe one this
+  /// computes, and stashing the original so turning the mode off restores it. (Before that
+  /// follow-up, the stored value was left untouched and only the picker's display was
+  /// substituted, which Parker rejected on principle: a display must equal its value.
+  /// The narrowed Mix pickers this once cited as precedent are *not* the same shape — the
+  /// whole Mix section is hidden under web-friendly mode, so no value there ever falls
+  /// outside a narrowed list.)
   func effective(webFriendly: Bool) -> ExportOptions {
     guard webFriendly else { return self }
     var options = self

@@ -3967,7 +3967,20 @@ wiring is a one-line mechanical connection to it — the same boundary that keep
 above unit- rather than UI-tested.
 
 **A third report — Parker rejected the second report's fix on principle, and this section
-is the planned replacement, not yet built.** The display-only `Binding` above was
+was the planned replacement. ✅ Now built** (2026-08-10), exactly as specified below —
+reassign-and-stash in `ColorStore` (`webFriendly`'s `didSet` → `reconcileExportOptions()`,
+the session-only `restrictedExportShape`/`restrictedExportFormat` stashes, the
+`selectExportShape`/`selectExportFormat`/`confirmExportChoices` "use" hooks), the
+`preferences`-setter reconcile-after-assignment fix, both Export pickers rebound to the
+raw value, the sheet-local `ImportTextSheet` mechanism, and the doc-comment corrections.
+Tests: nine cases in `WebFriendlyExportStoreTests` (reassign/stash, no-spurious-stash,
+restore-and-clear, no-op, per-field `select`, `confirm` both, the `preferences`-setter fix,
+and the raw-write `exportDocumentClampsARawRestrictedShape` last-line-of-defense),
+`PreferencesTests.colorStoreAppliesLoadedPreferences` rewritten to assert the on-load
+reconcile of a restricted format rather than raw round-trip equality. Both the gutted-
+`reconcileExportOptions` mutation (8 tests fail) and the drop-`effective`-from-
+`exportDocument` mutation (the raw-write test fails) were run and reverted. The
+`ImportTextSheet` half is unit-untestable as flagged; recorded, not covered. The display-only `Binding` above was
 functioning exactly as designed (the getter reads through `effective(webFriendly:)`, the
 stored value is left alone) — but Parker's objection was to the design itself: *"It's
 ALWAYS poor user experience to present a display that doesn't match its associated

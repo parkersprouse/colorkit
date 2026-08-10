@@ -956,12 +956,45 @@ Layered so the numeric core stays independently testable and UI-free:
   may share a door with another.
 - **`ExportOptions.shape` and `.format` are persisted preferences (M19), which predates
   web-friendly mode (M22) — so the mode can be turned on with `p3WithFallback` or a
-  `color()` format already chosen from an earlier session.** Hiding those choices from
-  the picker does not touch the stored value underneath it.
-  `ColorStore.exportDocument`/`exportGamutMappedCount` read
-  `ExportOptions.effective(webFriendly:)` rather than `exportOptions` directly, and
-  `effective` never mutates the stored preference — turning the mode back off restores
-  exactly what was chosen before, the same promise `mixSpace`/`mixHueMethod` keep.
+  `color()` format already chosen from an earlier session.** The M34 follow-up
+  **reassigns** the stored value in that case rather than only substituting the picker's
+  display: turning web-friendly on stashes the restricted choice in
+  `ColorStore.restrictedExportShape`/`restrictedExportFormat` (session-only, no
+  `Preferences` field) and reassigns the stored value to the safe one, so the picker's
+  display always equals its value — Parker's principle, *"a display must always match its
+  associated value."* Turning the mode back off restores the stash **unless** the choice
+  was meanwhile *used* — an explicit re-pick (`selectExportShape`/`selectExportFormat`,
+  clearing only that field) or a real export (`confirmExportChoices()`, from `copyExport()`
+  and the save-success branch, clearing both). `reconcileExportOptions()` (fired from
+  `webFriendly`'s `didSet`, and again at the end of the `preferences` setter — see the
+  next bullet) is the one seam; it is **diff-driven** off `effective(webFriendly:)`, so
+  calling it twice is safe and it never overwrites a stash it already set.
+  `ColorStore.exportDocument`/`exportGamutMappedCount` still read
+  `effective(webFriendly:)` as a **last line of defense** — in normal operation the stored
+  value is already valid so the substitution is a no-op, but it is the one place that
+  cannot emit a wide-gamut document if a restricted value reaches `exportOptions` some
+  other way (a raw test write; `exportDocumentClampsARawRestrictedShape` pins it). The
+  Export panel's Shape **and** Format pickers now bind to the raw stored value (the Format
+  one had the identical blank-picker bug, never reported), routing their setters through
+  the `select` methods. `ImportTextSheet`'s ephemeral `storageFormat` carries a
+  sheet-local copy of the whole mechanism (`restrictedStorageFormat`, a
+  `.onChange(of: store.webFriendly)` on the sheet root, the picker setter and
+  `performImport`'s success path) — none of it unit-testable, a recorded gap. **This is
+  *not* the `mixSpace`/`mixHueMethod` shape** (which those pickers were once cited as): the
+  whole Mix section is hidden under web-friendly mode, so no value there falls outside a
+  narrowed list — nothing to reassign or restore.
+- **The `preferences` setter must reconcile export options *after* every field is
+  assigned, not rely on `webFriendly`'s `didSet`.** That setter writes
+  `webFriendly = newValue.webFriendly` several lines *before* `exportOptions.shape`/
+  `.format` get their final values, so the `didSet`'s reconcile runs against `init`
+  defaults (finding nothing restricted) and the real, possibly-restricted values land
+  unreconciled after it — the exact blank-picker bug, reintroduced on every launch that
+  restored web-friendly-on with a restricted shape, and a stale stash left on every "Reset
+  to Defaults." The setter therefore clears both stashes and calls
+  `reconcileExportOptions()` once more at its end, unconditionally (safe because
+  diff-driven). `PreferencesTests.preferencesObservesEveryPersistedField` already mutates
+  `webFriendly` and would catch `@Observable` silently losing track of it now that it has a
+  `didSet` — the "sharper edge than it looks" the `recentLimit` bullet warns about.
 - **Transforms return OKLCH, never the input's space.** A round trip through hex
   quantizes onto the 8-bit grid, so a sub-1/255 nudge returns the original; and results
   that leave sRGB have no honest spelling in a bounded format. `TransformPanel` therefore

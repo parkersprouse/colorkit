@@ -1265,8 +1265,10 @@ struct WebFriendlyExportTests {
 
     #expect(effective.shape != .p3WithFallback)
     #expect(effective.shape.isWebFriendly)
-    // The stored preference is untouched — turning the mode back off restores it,
-    // the same promise `mixSpace`/`mixHueMethod` make.
+    // `effective` is a pure transform: the value it is called on is untouched, only the
+    // returned copy differs. (Keeping the *stored* `ColorStore` preference valid — and
+    // stashing the original for restore — is `reconcileExportOptions`'s job, tested in
+    // `WebFriendlyExportStoreTests`; this asserts only that `effective` is non-mutating.)
     #expect(options.shape == .p3WithFallback)
   }
 

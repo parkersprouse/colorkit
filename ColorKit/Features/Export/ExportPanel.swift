@@ -95,21 +95,18 @@ struct ExportPanel: View {
       LabeledContent("Shape") {
         // `p3WithFallback` is wide-gamut by definition — its whole job is a `@media`
         // block in `color(display-p3 …)` — so it (and `designTokens`, M34) is hidden
-        // under web-friendly mode (M22) rather than restricted. **Binding straight to
-        // `$store.exportOptions.shape` shows a blank control the moment the mode hides
-        // the row that value names** — SwiftUI has nothing to select once the
-        // `ForEach` below stops offering it, which is exactly the empty picker Parker
-        // found by turning the mode on with `designTokens` already chosen. The getter
-        // reads through `ExportOptions.effective(webFriendly:)` instead — the same
-        // substitution `store.exportDocument` already renders with, so the picker
-        // never claims a shape the document underneath it disagrees with — while the
-        // setter still writes `store.exportOptions.shape` directly, never the
-        // substitute. That split is what keeps the mode's other promise: turning it
-        // back off shows whatever was chosen before, because nothing here ever
-        // overwrote it — only what was *displayed* while it was hidden.
+        // under web-friendly mode (M22) rather than restricted. The getter binds
+        // straight to the *raw* stored value now (M34 follow-up): `ColorStore` keeps it
+        // valid under web-friendly mode via `reconcileExportOptions()`, reassigning a
+        // restricted shape to a safe one *and stashing the original*, so the value this
+        // reads is always a row the `ForEach` below still offers — no more blank picker,
+        // and the displayed value now genuinely equals the stored one rather than a
+        // display-only substitute. The setter routes through `selectExportShape(_:)`
+        // rather than a plain `$` binding so an explicit pick fires the "confirm" hook
+        // that discards the pending revert.
         let shapeSelection = Binding(
-          get: { store.exportOptions.effective(webFriendly: store.webFriendly).shape },
-          set: { store.exportOptions.shape = $0 },
+          get: { store.exportOptions.shape },
+          set: { store.selectExportShape($0) },
         )
         Picker("Shape", selection: shapeSelection) {
           ForEach(ExportShape.allCases.filter { store.webFriendly ? $0.isWebFriendly : true }) { shape in
@@ -178,10 +175,21 @@ struct ExportPanel: View {
       // entire job is being what a browser *without* wide-gamut support receives.
       if store.exportOptions.shape.usesFormat {
         LabeledContent("Format") {
+          // Same `Binding(get:set:)` shape as the Shape picker above, and for the same
+          // two reasons (M34 follow-up): a `color()` format left selected when the mode
+          // goes on used to blank this picker too — its own never-reported version of the
+          // Shape bug — now prevented by `reconcileExportOptions()` keeping the stored
+          // format valid; and the setter routes through `selectExportFormat(_:)` so an
+          // explicit pick confirms it and drops the pending revert.
+          //
           // `keyword` is absent, and structurally so — see `CSSOutputFormat.exportable`.
           // It names 148 colors, so a palette would come back part keywords and part
           // something else with nothing in the file to say so.
-          Picker("Format", selection: $store.exportOptions.format) {
+          let formatSelection = Binding(
+            get: { store.exportOptions.format },
+            set: { store.selectExportFormat($0) },
+          )
+          Picker("Format", selection: formatSelection) {
             ForEach(
               store.webFriendly ? CSSOutputFormat.webFriendlyExportable : CSSOutputFormat.exportable,
               id: \.self,
@@ -341,6 +349,11 @@ struct ExportPanel: View {
     case .success:
       saveError = nil
       store.remember()
+      // Same "reaching for a value confirms it" rule `remember()` above follows, applied
+      // to the web-friendly stash: a completed save confirms the whole configuration and
+      // discards any pending revert. Safe alongside `remember()` because a *cancelled*
+      // `.fileExporter` does not land on `.success` — see this method's doc comment.
+      store.confirmExportChoices()
     case let .failure(error):
       saveError = "Could not save: \(error.localizedDescription)"
     }

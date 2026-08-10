@@ -58,24 +58,39 @@ struct PreferencesTests {
     #expect(PreferenceStore.load(from: defaults) == Self.nonDefault)
   }
 
+  /// ``nonDefault`` deliberately pairs `webFriendly: true` with a restricted
+  /// `.color(.displayP3)` export format — a legal *serialized* combination (a hand-edited
+  /// file, or one an app version before the M34 follow-up saved) that the store now
+  /// **reconciles on load**: the format is reassigned to a web-friendly one and the
+  /// original stashed, so a later toggle-off restores it. Every other field applies
+  /// verbatim. This is the persistence-layer counterpart to
+  /// ``WebFriendlyExportStoreTests/assigningPreferencesReconcilesARestrictedShape()``,
+  /// which exercises the same setter fix against a restricted *shape*.
   @MainActor
-  @Test("ColorStore applies a loaded Preferences and re-emits an equal one")
-  func colorStoreRoundTripsPreferences() {
+  @Test("ColorStore applies a loaded Preferences, reconciling a restricted export choice")
+  func colorStoreAppliesLoadedPreferences() {
     let store = ColorStore()
 
     store.preferences = Self.nonDefault
 
-    #expect(store.preferences == Self.nonDefault)
     #expect(store.webFriendly == true)
     #expect(store.showsRecents == false)
     #expect(store.recentLimit == 25)
     #expect(store.pickerMode == .oklch)
     #expect(store.cvdDeficiency == .protanomaly)
-    #expect(store.exportOptions.shape == .tailwindConfig)
+    #expect(store.exportOptions.shape == .tailwindConfig) // already web-friendly, unchanged
     #expect(store.exportOptions.template == .border)
-    #expect(store.exportOptions.format == .color(.displayP3))
     #expect(store.formatOptions == Self.nonDefault.formatOptions)
     #expect(store.globalShortcut == Self.nonDefault.globalShortcut)
+
+    // The restricted format was reassigned and the original stashed, not applied verbatim.
+    #expect(CSSOutputFormat.webFriendly.contains(store.exportOptions.format))
+    #expect(store.restrictedExportFormat == .color(.displayP3))
+    #expect(store.restrictedExportShape == nil)
+
+    // Turning the mode off (without meanwhile using the choice) brings displayP3 back.
+    store.webFriendly = false
+    #expect(store.exportOptions.format == .color(.displayP3))
   }
 
   /// The M27 counterpart to ``negativeRecentLimitIsClamped`` above: a chord with no

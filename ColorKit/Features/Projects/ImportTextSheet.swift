@@ -116,6 +116,18 @@ struct ImportTextSheet: View {
       // parse this line triggers. Empty for the paste path, so it is a no-op there.
       pastedText = initialText
     }
+    // The `storageFormat` counterpart to `ColorStore`'s export reconciliation (M34
+    // follow-up): if the mode is toggled on (in Settings, a *different* `Scene` sharing
+    // this `ColorStore`) while a non-web-friendly format is selected, reassign it to a
+    // safe one and stash the original; toggling back off restores the stash unless the
+    // control was used meanwhile. On the sheet's *root* view, not on `storageFormatControl`
+    // — that only renders once a parse succeeds, so scoping the observer there would miss
+    // a toggle made before anything is pasted and then surface a stale value the instant a
+    // parse does succeed. No `initial:`: `storageFormat` starts `nil` (never restricted)
+    // every time the sheet opens, so there is nothing to reconcile on appear.
+    .onChange(of: store.webFriendly) { _, isOn in
+      reconcileStorageFormat(webFriendly: isOn)
+    }
   }
 
   // MARK: Private
@@ -131,6 +143,13 @@ struct ImportTextSheet: View {
   @State private var name = ""
   @State private var nameEdited = false
   @State private var storageFormat: CSSOutputFormat?
+  /// The `storageFormat` the user was on before web-friendly mode restricted it, stashed
+  /// so toggling the mode back off restores it. A single optional, not a pair: the stash
+  /// is always a specific restricted format, never `nil`/"Keep as pasted", which is never
+  /// itself restricted. Sheet-local `@State`, so — like the rest of this mechanism — none
+  /// of it is unit-testable and XCUITest cannot drive the cross-scene Settings toggle; see
+  /// the M34 follow-up entry in PLAN.md for this recorded gap.
+  @State private var restrictedStorageFormat: CSSOutputFormat?
   @State private var destinationProjectID: UUID?
   @State private var creatingNewProject = false
   @State private var newProjectName = ""
@@ -194,7 +213,18 @@ struct ImportTextSheet: View {
 
   private var storageFormatControl: some View {
     LabeledContent("Storage format") {
-      Picker("Storage format", selection: $storageFormat) {
+      // Routed through a `Binding` that clears the stash on an explicit pick (M34
+      // follow-up), the sheet-local counterpart to `ColorStore.selectExportFormat(_:)`:
+      // picking any value — including re-picking the reassigned one — confirms it and
+      // discards the pending revert to the restricted format.
+      let selection = Binding(
+        get: { storageFormat },
+        set: {
+          storageFormat = $0
+          restrictedStorageFormat = nil
+        },
+      )
+      Picker("Storage format", selection: selection) {
         Text("Keep as pasted").tag(CSSOutputFormat?.none)
         ForEach(availableFormats, id: \.self) { format in
           Text(format.title).tag(CSSOutputFormat?.some(format))
@@ -202,6 +232,32 @@ struct ImportTextSheet: View {
       }
       .labelsHidden()
       .accessibilityIdentifier("importSheetFormat")
+    }
+  }
+
+  /// Reassigns a now-restricted `storageFormat` to a safe one and stashes the original on
+  /// a true transition; restores the stash on a false transition. The `storageFormat`
+  /// analogue of ``ColorStore/reconcileExportOptions()`` — see the `.onChange` in `body`.
+  private func reconcileStorageFormat(webFriendly: Bool) {
+    if webFriendly {
+      // `newValue`-derived rather than reading `store.webFriendly`/`availableFormats`,
+      // which would depend on observation having settled before this runs. `nil` ("Keep
+      // as pasted") is never restricted, so only a concrete out-of-list format reassigns.
+      guard let current = storageFormat,
+            !CSSOutputFormat.webFriendlyExportable.contains(current)
+      else { return }
+      restrictedStorageFormat = current
+      // The fallback reuses `ExportOptions.effective(webFriendly:)` (→ `.oklch`) rather
+      // than hardcoding it a second time. Falling back to `nil`/"Keep as pasted" was
+      // rejected: that preserves the *pasted text* verbatim, which can itself be spelled
+      // in a non-web-friendly notation — the worse outcome under a mode whose whole point
+      // is staying web-friendly.
+      var probe = ExportOptions.default
+      probe.format = current
+      storageFormat = probe.effective(webFriendly: true).format
+    } else if let stashed = restrictedStorageFormat {
+      storageFormat = stashed
+      restrictedStorageFormat = nil
     }
   }
 
@@ -474,6 +530,11 @@ struct ImportTextSheet: View {
           savedPalettes += 1
         }
       }
+
+      // A completed import confirms the storage-format choice, discarding the pending
+      // revert — the success-path counterpart to `ColorStore.confirmExportChoices()`. Not
+      // unconditional: a failed or aborted import (the `catch` below) used nothing.
+      restrictedStorageFormat = nil
 
       var summary = "Imported \(Self.splitPhrase(colors: savedColors, palettes: savedPalettes))"
       summary += palette.skipped.isEmpty ? "." : ", skipped \(palette.skipped.count)."
