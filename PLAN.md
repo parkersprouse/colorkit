@@ -3278,7 +3278,7 @@ its assertions, not zero and not one.
 
 ## M30–M34 – close the import/export round trip
 
-**M30 is built (see its ✅ entry below); M31–M34 remain planned.** M0–M29 were done when
+**M30 and M31 are built (see their ✅ entries below); M32–M34 remain planned.** M0–M29 were done when
 this series was scoped, so it is a sixth series rather than more of the old list. Four of the
 five come from Parker using the built app on 2026-08-09; the fifth is the asymmetry that
 report uncovered while the first four were being scoped. They are all one theme – **what
@@ -3483,7 +3483,48 @@ too means something wider broke than the rule under test.
 **CLAUDE.md when this lands:** the "four `savePalette` overloads" bullet gains a fifth
 door with its own reason.
 
-### ⬜ M31 – Import from a file, in any shape it was written
+### ✅ M31 – Import from a file, in any shape it was written
+
+**Built.** The Import menu is now **"From Text…"** and **"From File…"**.
+`ProjectsPanel.importFile` reads the chosen file's bytes, guards the UTF-8 decode with its
+own sentence (the app's only file read is the only place a sandbox denial surfaces), and
+hands the text to `ImportTextSheet` through a fresh `ImportRequest` payload driving
+`.sheet(item:)` — the shape `colorsSection`'s notes popover already uses, chosen over a
+`Bool` + loose "pending text" state so a stale-contents window is structurally impossible.
+`ImportTextSheet` gained `initialText`/`initialName` inputs (`var` with defaults so the
+paste call site is untouched), seeds the paste box in `onAppear` before the first parse, and
+lets the filename win over the document's own `detectedName` in the single-group name field
+via `initialName ?? detected` inside the existing `initial: true` reseed. The open panel
+admits `.css`, `.json`, `.javaScript`, plain text and the dynamic `.tokens` type
+(`importableFileTypes`; `css`/`tokens` built from their extensions). Retiring the old
+`importTokens` path removed its four token-only summary helpers
+(`summary`/`nothingImported`/`skippedNote`/`counted`) and the panel's direct
+`DesignTokenImport` reference, collapsing the entries-vs-groups summary divergence M30 left
+into the sheet's single group-counted phrasing.
+
+**Two honest losses, recorded not hidden:** (1) as the plan below already notes,
+`otherTypeCount`'s "Ignored N tokens of other types" has no equivalent on the
+`designTokens` paste path. (2) A *readable* token file whose tokens are **all non-color**
+(e.g. pure spacing tokens) no longer gets the specific "No color tokens in that file — its
+N tokens have some other $type" sentence; `DesignTokenImport.decode` returns an
+empty-colors document without throwing, `parseDesignTokens` builds an empty palette, and
+the sheet shows its generic *"Nothing recognizable in that text yet."* A file with **zero**
+tokens still throws `noTokens` and shows that error's message, unchanged. The generic line
+is not wrong (a color app found no colors), only less specific — accepted as part of the one
+unified path, and M34 reworks `noTokens`'s wording besides. The CLI's `colorkit tokens`
+still reports both in full.
+
+**What was verified versus reasoned.** 539 `ColorKitTests` and both drivable
+`ProjectsSmokeTests` import tests pass — the host cooperated this run (unlike M30's
+`"Timed out while enabling automation mode"`). `testTheImportMenuOffersBothImportPaths`
+confirms the renamed items; `testImportingPastedCustomPropertiesCreatesAPalette` confirms
+the new `.sheet(item:)` **presents correctly and pre-fills** when `importRequest` is set
+from a menu button — which is the whole sheet mechanism minus one seam. The one seam left
+unverified is the same boundary as M17's read and M8b's write: `fileImporter`/`NSOpenPanel`
+is a separate process XCUITest cannot drive and `osascript` cannot reach here, so whether
+setting `importRequest` *inside the file-picker completion* presents the sheet — the same-tick
+concern — is a **recorded manual check**, not something a green suite proves. Pick a `.css`
+this app exported and confirm the sheet appears pre-filled, not merely that the open panel did.
 
 The Import menu becomes **"From Text…"** (unchanged) and **"From File…"**, accepting
 `.css`, `.json`, `.javaScript`, plain text and the existing dynamic `.tokens` type. The

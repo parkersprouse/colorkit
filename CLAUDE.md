@@ -49,10 +49,11 @@ click naming an exact format must not be second-guessed.
 **M26 is done too**: the other half of the export round trip — `PaletteImport` reads a
 pasted stylesheet, Tailwind config, JSON document, design-token file or bare color list
 back into groups, keys and colors, and `ImportTextSheet` (behind Projects' new
-`Menu("Import")`, beside the pre-existing token-file picker) saves them. Family
+`Menu("Import")`) saves them. Family
 grouping prefers this app's own `/* From "…" */` export headers when present and falls
 back to segment-wise hyphen-prefix inference otherwise; `p3WithFallback` reads only its
-`@media` override, never the lossy hex fallback.
+`@media` override, never the lossy hex fallback. (M26 originally sat *beside* a separate
+token-file picker; **M31 replaced that picker** — see the M31 entry below.)
 **M27 is done too**: the system-wide sampling shortcut is user-customizable — the only
 keyboard shortcut anywhere in this app — through a Settings recorder (`Shortcuts`
 section) built on `ColorStore.updateGlobalShortcut(_:)`. `GlobalShortcut` gained
@@ -98,6 +99,19 @@ for both its preview caption and its confirmation, so the two cannot disagree. P
 **recorded artifact** — `project-export-p3-with-fallback.css`, a real project export, not
 a hand-written fixture — plus a render-then-parse round trip; see the fifth-save-door
 invariant below and the M30 entry in PLAN.md.
+**M31 is done too**: the Import menu is now **"From Text…"** and **"From File…"** — the
+latter a *superset* of M26's old "From Token File…", not a swap. `ProjectsPanel.importFile`
+reads the chosen file's bytes and opens `ImportTextSheet` **pre-filled** (a fresh
+`ImportRequest` payload driving `.sheet(item:)`, the shape `colorsSection`'s notes popover
+already uses) with a name suggested from the filename, so `.css`, `.json`, `.javaScript`,
+plain-text and `.tokens` files all decode through the *one* path a paste takes — inheriting
+the shape override, storage-format control, destination picker and preview, and M30's
+single-color fix for free. That retired `importTokens` and its four token-only summary
+helpers (`summary`/`nothingImported`/`skippedNote`/`counted`), so the panel no longer
+references `DesignTokenImport` directly and the two summary vocabularies (entries vs. kinds
+of group) collapse to the sheet's. The filename wins over a document's own detected name in
+the single-group name field. See the M31 entry in PLAN.md for the two honest losses and
+what was verified by hand versus reasoned.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the

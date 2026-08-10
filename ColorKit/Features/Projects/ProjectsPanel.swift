@@ -38,6 +38,22 @@ private nonisolated extension UTType {
   )
 }
 
+/// A pending import: the text to pre-fill ``ImportTextSheet`` with and a name to suggest.
+///
+/// Carried as one `Identifiable` value driving `.sheet(item:)` rather than a `Bool` plus
+/// loose "pending text" state, so there is no window in which the sheet is up but its
+/// contents are stale — the same shape `colorsSection`'s `.popover(item: $noteTarget)`
+/// already uses. A fresh `id` each time re-presents the sheet even for a repeat import.
+private struct ImportRequest: Identifiable {
+  let id = UUID()
+
+  /// Empty for "From Text…"; the file's bytes for "From File…".
+  var text: String = ""
+
+  /// A name suggested from the file's name, or `nil` for the paste path.
+  var name: String?
+}
+
 /// The colors you decided to keep.
 ///
 /// Every other tool answers a question about the color in the field and forgets it the
@@ -104,19 +120,18 @@ struct ProjectsPanel: View {
   @State private var errorMessage: String?
   @State private var confirmingProjectDeletion = false
 
-  /// Whether the open panel is up, and what the last import came back with.
+  /// Whether the file open panel is up, and what the last import came back with.
   ///
   /// The summary is separate from ``errorMessage`` rather than folded into it because an
-  /// import routinely half-succeeds — eleven colors in, three tokens skipped — and that is
+  /// import routinely half-succeeds — eleven colors in, three skipped — and that is
   /// neither an error nor silence.
   @State private var isImporting = false
   @State private var importSummary: String?
 
-  /// Whether the M26 paste-a-document sheet is up. Shares ``importSummary`` with the
-  /// token-file import above it — both are "the last thing Import did", and a user
-  /// switching between the two menu items should not need two different places to look
-  /// for what happened.
-  @State private var isImportingText = false
+  /// The pending import sheet — `nil` when closed, otherwise the text to pre-fill and a
+  /// name to suggest. Both menu items (M31's "From Text…" and "From File…") set this;
+  /// "From File…" fills it after reading the chosen file's bytes.
+  @State private var importRequest: ImportRequest?
 
   /// Which saved color's notes are open. A `@Model` is `Identifiable`, so this drives
   /// `.popover(item:)` directly.
@@ -284,10 +299,16 @@ struct ProjectsPanel: View {
         // test opens the menu through, matching every other `menuButton` query in
         // ``ProjectsSmokeTests``.
         Menu("Import") {
-          Button("From Text…") { isImportingText = true }
+          Button("From Text…") { importRequest = ImportRequest() }
             .accessibilityIdentifier("importFromText")
-          Button("From Token File…") { isImporting = true }
-            .accessibilityIdentifier("importTokens")
+          // "From File…" (M31), a superset of the old "From Token File…" rather than a
+          // swap: it raises the open panel, reads the chosen file's bytes, and hands them
+          // to the same sheet the paste path uses — so token files keep working, and CSS,
+          // JSON, JavaScript and plain-text exports start working, all through one path
+          // that inherits the shape override, storage-format control, destination picker
+          // and preview instead of a second silent decode.
+          Button("From File…") { isImporting = true }
+            .accessibilityIdentifier("importFile")
         }
         .fixedSize()
         .accessibilityIdentifier("importMenu")
@@ -310,18 +331,24 @@ struct ProjectsPanel: View {
       .foregroundStyle(.tertiary)
       .fixedSize(horizontal: false, vertical: true)
     }
-    // `.json` covers the conventional `name.tokens.json`; the bare `.tokens` spelling
-    // exists too and has no registered type, so it is admitted by extension. A dynamic
-    // type is the whole cost of that, and the alternative is a file the panel refuses to
-    // show for no reason a user could work out.
+    // Every shape "From Text…" reads, as a file: `.css`, `.json`, `.javaScript` (a
+    // Tailwind config), plain text (a bare color list), and the conventional
+    // `name.tokens.json` design-token file. `css` and `tokens` are built from their
+    // extensions — `tokens` has no registered type at all, and `css` is admitted the same
+    // way so a file the panel would otherwise refuse to show, for no reason a user could
+    // work out, stays selectable whether or not the system happens to declare it.
     .fileImporter(
       isPresented: $isImporting,
-      allowedContentTypes: [.json] + (UTType(filenameExtension: "tokens").map { [$0] } ?? []),
+      allowedContentTypes: Self.importableFileTypes,
     ) { result in
-      importTokens(result, into: project)
+      importFile(result)
     }
-    .sheet(isPresented: $isImportingText) {
-      ImportTextSheet(initialProjectID: project.uuid) { importedProjectID, summary in
+    .sheet(item: $importRequest) { request in
+      ImportTextSheet(
+        initialProjectID: project.uuid,
+        initialText: request.text,
+        initialName: request.name,
+      ) { importedProjectID, summary in
         store.selectedProjectID = importedProjectID
         importSummary = summary
       }
@@ -585,48 +612,15 @@ struct ProjectsPanel: View {
     return stem.hasSuffix(".tokens") ? String(stem.dropLast(".tokens".count)) : stem
   }
 
-  private static func summary(_ document: DesignTokenDocument, from url: URL) -> String {
-    var parts = ["Imported \(counted(document.colors.count, "color")) from \(url.lastPathComponent)."]
-    if document.otherTypeCount > 0 {
-      parts.append("Ignored \(counted(document.otherTypeCount, "token")) of other types.")
-    }
-    if let note = skippedNote(document.skipped) {
-      parts.append(note)
-    }
-    return parts.joined(separator: " ")
-  }
-
-  /// Why a file that read perfectly well produced nothing.
+  /// The shapes the open panel admits (M31), one per vocabulary "From Text…" can read.
   ///
-  /// Distinct from every message above it: the file was found, opened and understood. One
-  /// of the two counts is necessarily non-zero here — a file with no tokens at all throws
-  /// ``DesignTokenError/noTokens`` and never reaches this.
-  private static func nothingImported(_ document: DesignTokenDocument) -> String {
-    guard let note = skippedNote(document.skipped) else {
-      return "No color tokens in that file — its \(counted(document.otherTypeCount, "token")) "
-        + "have some other “$type”."
-    }
-    return "No colors imported. " + note
-  }
-
-  /// The first failure in full, and a count of the rest.
-  ///
-  /// One reason rather than all of them, because the reasons repeat: a file with a
-  /// misspelled color space has that same complaint forty times, and forty lines of it
-  /// would bury the count.
-  ///
-  /// "Token", not "color token", and the imprecision is the honest direction: a token
-  /// whose reference does not resolve is reported before its `$type` can be known, so
-  /// some of these may not have been colors at all.
-  private static func skippedNote(_ skipped: [SkippedToken]) -> String? {
-    guard let first = skipped.first else { return nil }
-    let head = "Skipped \(counted(skipped.count, "token")) — “\(first.name)”: \(first.reason.message)"
-    return skipped.count == 1 ? head : head + " (\(skipped.count - 1) more like it.)"
-  }
-
-  private static func counted(_ count: Int, _ noun: String) -> String {
-    "\(count) \(noun)\(count == 1 ? "" : "s")"
-  }
+  /// `css` and `tokens` are built from their extensions rather than named as statics: a
+  /// bare `.tokens` file has no registered type, and admitting `css` the same way sidesteps
+  /// whether the running system happens to declare one. `compactMap` drops either if the
+  /// system cannot form it, leaving the file selectable by the other four types regardless.
+  private static let importableFileTypes: [UTType] =
+    [.json, .plainText, .javaScript]
+      + ["css", "tokens"].compactMap { UTType(filenameExtension: $0) }
 
   /// Palettes first, then one single-entry group per loose color — a ramp is the thing
   /// you came for and a loose color is a note beside it.
@@ -695,20 +689,24 @@ struct ProjectsPanel: View {
 
   // MARK: - Importing
 
-  /// Reads a W3C design token file and saves its colors as a palette.
+  /// Reads a chosen file (M31) and opens ``ImportTextSheet`` pre-filled with its bytes and
+  /// a name from its filename — every shape then decodes through the one path a paste takes,
+  /// so a single color imports as a color (M30's fix), and the app's own JSON export, which
+  /// has no `$value`, routes to `.json` and imports rather than being refused as a token file.
   ///
-  /// **Every failure mode gets its own sentence, and that is not politeness.** This is the
-  /// app's only file read, so it is the only place a *sandbox* denial can happen — and a
-  /// denial that reported as "no color tokens in that file" would be undiagnosable, since
-  /// the file plainly has them. So: the panel dismissal, the read, the decode, the
-  /// "readable file with nothing importable in it", and the save are five outcomes with
-  /// five messages.
+  /// **Only the file read happens here; nothing is decoded or saved.** So the outcomes are
+  /// the three a read can have — the panel was cancelled (say nothing), the file could not be
+  /// opened or read (report it), or the bytes are not UTF-8 text (report that) — and the
+  /// fourth, success, hands the text to the sheet. Decode and save diagnostics belong to the
+  /// sheet, which is where the shape, format and destination are actually chosen.
   ///
-  /// The security-scoped access is what makes the read legal at all. The app is sandboxed
-  /// with `ENABLE_USER_SELECTED_FILES = readonly`, which grants a URL the user chose in an
-  /// open panel — but the grant has to be *claimed*, and the failure without it is a
-  /// permission error on a file the user just picked.
-  private func importTokens(_ result: Result<URL, Error>, into project: Project) {
+  /// This is the app's only place a *sandbox* denial can surface, which is why a read
+  /// failure gets its own sentence rather than a generic "nothing imported". The
+  /// security-scoped access is what makes the read legal at all: the app is sandboxed with
+  /// `ENABLE_USER_SELECTED_FILES = readwrite`, which grants a URL the user chose in an open
+  /// panel — but the grant has to be *claimed*, and the failure without it is a permission
+  /// error on a file the user just picked.
+  private func importFile(_ result: Result<URL, Error>) {
     importSummary = nil
 
     guard case let .success(url) = result else {
@@ -733,27 +731,13 @@ struct ProjectsPanel: View {
       return
     }
 
-    let document: DesignTokenDocument
-    do {
-      document = try DesignTokenImport.decode(data)
-    } catch {
-      errorMessage = error.message
+    guard let text = String(data: data, encoding: .utf8) else {
+      errorMessage = "Could not read \(url.lastPathComponent) as text."
       return
     }
 
-    guard !document.colors.isEmpty else {
-      errorMessage = Self.nothingImported(document)
-      return
-    }
-
-    perform {
-      try library.savePalette(
-        importing: document.colors,
-        named: Self.paletteName(for: url),
-        to: project,
-      )
-      importSummary = Self.summary(document, from: url)
-    }
+    errorMessage = nil
+    importRequest = ImportRequest(text: text, name: Self.paletteName(for: url))
   }
 
   /// The ticked colors, in the order they appear rather than the order they were ticked.

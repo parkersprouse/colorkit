@@ -28,9 +28,22 @@ struct ImportTextSheet: View {
   /// looking at.
   let initialProjectID: UUID?
 
+  /// The document to pre-fill the paste box with. Empty for the "From Text…" path (the
+  /// user pastes their own); the file's bytes for M31's "From File…" path, which reads a
+  /// CSS/JSON/JavaScript/token/plain-text file and routes it through this same sheet
+  /// rather than a second, silent decode path. `var` with a default so the memberwise
+  /// initializer still admits the caller that passes neither this nor ``initialName``.
+  var initialText: String = ""
+
+  /// A name suggested from the imported file's name, or `nil` for the paste path. When
+  /// present it wins over the parsed document's own ``ImportedPalette/detectedName`` in
+  /// the single-group name field — the file is what the user named, so `accent.css` that
+  /// happens to carry a `/* From "brand" */` header still suggests "accent".
+  var initialName: String?
+
   /// Reports the project that ended up holding the import (so the panel can select it,
   /// even if this sheet created a new one) and a one-line summary — the same shape
-  /// `ProjectsPanel.importSummary` already shows after a token-file import.
+  /// `ProjectsPanel.importSummary` already shows after an import.
   let onImported: (UUID, String) -> Void
 
   var body: some View {
@@ -83,6 +96,11 @@ struct ImportTextSheet: View {
     .onAppear {
       destinationProjectID = initialProjectID ?? projects.first?.uuid
       creatingNewProject = projects.isEmpty
+      // Seeding here rather than in an `init` keeps the memberwise defaults above; it
+      // mirrors the `destinationProjectID` line and runs before the first body pass
+      // renders `shapeAndNameControls`, so the `initial: true` reseed below fires on the
+      // parse this line triggers. Empty for the paste path, so it is a no-op there.
+      pastedText = initialText
     }
   }
 
@@ -275,8 +293,16 @@ struct ImportTextSheet: View {
         // multi-group documents where this field never renders.
         .onChange(of: palette.detectedName, initial: true) { _, detected in
           guard !nameEdited else { return }
+          // A filename from the "From File…" path (M31) wins over the document's own
+          // detected name — the file is what the user named it. `initialName` is a
+          // constant, so watching `detectedName` still fires this on the first parse and
+          // on every re-parse; the paste path passes `nil` and is unchanged.
+          let suggestion = initialName ?? detected
           let soleColor = palette.groups.first?.soleColor != nil
-          name = soleColor && detected == ExportOptions.defaultName ? "" : (detected ?? "")
+          // The `defaultName` blanking is unchanged and now also catches a file literally
+          // named `brand` holding a lone color — consistent with the rule's intent, which
+          // is that "brand" is a placeholder, not a name a color should wear as real text.
+          name = soleColor && suggestion == ExportOptions.defaultName ? "" : (suggestion ?? "")
         }
       } else {
         // The names only — the counts are on the "Imports as …" line above, and calling

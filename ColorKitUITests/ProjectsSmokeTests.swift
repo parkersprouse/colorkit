@@ -320,19 +320,24 @@ final class ProjectsSmokeTests: XCTestCase {
     )
   }
 
-  /// **The token-file path's affordance, and deliberately not the import.**
+  /// **The file path's affordance, and deliberately not the import.**
   ///
   /// M26 moved the old plain `Button` behind `Menu("Import")` — the tool switcher's own
   /// lesson, so the save-controls row stays at four controls rather than growing a fifth.
-  /// Clicking "From Token File…" raises `NSOpenPanel`, which XCUITest cannot drive — the
-  /// same shape as the drag-and-drop this suite declines to test, and for the same
-  /// reason: a test that tried would fail whether the feature worked or not. So the
-  /// assertion stops at what a running app can honestly be asked: the menu opens and
-  /// both items are there, and neither is clicked. What happens after a file is chosen is
-  /// covered by ``DesignTokenImportTests`` and ``ProjectStoreTests`` between them, and
-  /// the *file read itself* — the sandbox, the security-scoped URL — is covered by
-  /// neither and wants a human once. See PLAN.md. "From Text…" is drivable and gets its
-  /// own test below, since it opens a sheet rather than a system panel.
+  /// Clicking "From File…" raises `NSOpenPanel`, which XCUITest cannot drive — the same
+  /// shape as the drag-and-drop this suite declines to test, and for the same reason: a
+  /// test that tried would fail whether the feature worked or not. So the assertion stops
+  /// at what a running app can honestly be asked: the menu opens and both items are there,
+  /// and neither is clicked.
+  ///
+  /// What M31 leaves uncovered here is the *file read* — the open panel, the sandbox, the
+  /// security-scoped URL, and whether the sheet then presents pre-filled with the file's
+  /// bytes. That last step is the milestone's one silently-fatal risk (a dead feature with
+  /// a green suite) and is a **recorded manual check**, the same boundary as M17's read and
+  /// M8b's write. The decode after the bytes reach the sheet is covered by
+  /// ``PaletteImportTests``/``DesignTokenImportTests`` and the save by ``ProjectStoreTests``.
+  /// "From Text…" is drivable and gets its own test below, since it opens a sheet rather
+  /// than a system panel.
   func testTheImportMenuOffersBothImportPaths() {
     click(radioButton: "Projects", "the tool switcher")
     createProject()
@@ -353,8 +358,8 @@ final class ProjectsSmokeTests: XCTestCase {
       "No “From Text…” item. Tree was:\n\(app.debugDescription)",
     )
     XCTAssertTrue(
-      app.menuItems["From Token File…"].waitForExistence(timeout: 15),
-      "No “From Token File…” item. Tree was:\n\(app.debugDescription)",
+      app.menuItems["From File…"].waitForExistence(timeout: 15),
+      "No “From File…” item. Tree was:\n\(app.debugDescription)",
     )
     app.typeKey(.escape, modifierFlags: [])
   }
