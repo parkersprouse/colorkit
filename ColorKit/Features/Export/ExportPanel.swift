@@ -93,12 +93,25 @@ struct ExportPanel: View {
       // this reads as vindication rather than caution: a sixth shape cost nothing here,
       // where a sixth *tool* is what swept the switcher into an overflow menu.
       LabeledContent("Shape") {
-        Picker("Shape", selection: $store.exportOptions.shape) {
-          // `p3WithFallback` is wide-gamut by definition — its whole job is a
-          // `@media` block in `color(display-p3 …)` — so it is hidden under
-          // web-friendly mode (M22) rather than restricted. Hiding the control
-          // does not touch the stored `shape`, which is why `store.exportDocument`
-          // separately reads `ExportOptions.effective(webFriendly:)`.
+        // `p3WithFallback` is wide-gamut by definition — its whole job is a `@media`
+        // block in `color(display-p3 …)` — so it (and `designTokens`, M34) is hidden
+        // under web-friendly mode (M22) rather than restricted. **Binding straight to
+        // `$store.exportOptions.shape` shows a blank control the moment the mode hides
+        // the row that value names** — SwiftUI has nothing to select once the
+        // `ForEach` below stops offering it, which is exactly the empty picker Parker
+        // found by turning the mode on with `designTokens` already chosen. The getter
+        // reads through `ExportOptions.effective(webFriendly:)` instead — the same
+        // substitution `store.exportDocument` already renders with, so the picker
+        // never claims a shape the document underneath it disagrees with — while the
+        // setter still writes `store.exportOptions.shape` directly, never the
+        // substitute. That split is what keeps the mode's other promise: turning it
+        // back off shows whatever was chosen before, because nothing here ever
+        // overwrote it — only what was *displayed* while it was hidden.
+        let shapeSelection = Binding(
+          get: { store.exportOptions.effective(webFriendly: store.webFriendly).shape },
+          set: { store.exportOptions.shape = $0 },
+        )
+        Picker("Shape", selection: shapeSelection) {
           ForEach(ExportShape.allCases.filter { store.webFriendly ? $0.isWebFriendly : true }) { shape in
             Text(shape.title).tag(shape)
           }

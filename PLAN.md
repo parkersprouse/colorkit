@@ -3947,6 +3947,25 @@ identical gap), so the sentence-building logic lives in `ExportPresentation.swif
 specifically so it is unit-testable — `webFriendlyHiddenShapesNoteIsUsable`, the 556th
 `ColorKitTests` test counted above — without needing to.
 
+**A second report, on the note itself.** Toggling web-friendly mode *on* while
+`designTokens` (or `p3WithFallback`) was already selected left the Shape picker showing
+a blank control — `Picker`'s `selection` binding was `$store.exportOptions.shape`
+directly, and once the `ForEach` stopped offering that row, SwiftUI had nothing to
+select. The stored preference was never the problem — `effective(webFriendly:)` already
+existed precisely to answer "what does this actually render as" without touching it —
+the picker's *binding* was simply reading around that answer instead of through it. The
+`Picker`'s `selection` is now a computed `Binding` whose getter reads
+`store.exportOptions.effective(webFriendly: store.webFriendly).shape` — the identical
+substitution `store.exportDocument` already renders with — and whose setter still writes
+`store.exportOptions.shape` directly, never the substitute. That split is what keeps
+both promises at once: the control shows a real, offered row the instant the mode goes
+on, and turning the mode back off still shows whatever was chosen before, because
+nothing in the getter ever overwrote it. No new test: the getter is exactly
+`ExportOptions.effective(webFriendly:)`, already pinned by
+`effectiveReplacesP3WithFallback` and `effectiveReplacesDesignTokens`, and the View
+wiring is a one-line mechanical connection to it — the same boundary that keeps the note
+above unit- rather than UI-tested.
+
 #### The seventh shape
 
 `ExportShape.designTokens = "design-tokens"`, writing the W3C Design Tokens (DTCG) format
