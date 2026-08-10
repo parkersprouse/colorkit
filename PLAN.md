@@ -3278,7 +3278,7 @@ its assertions, not zero and not one.
 
 ## M30–M34 – close the import/export round trip
 
-**M30, M31 and M32 are built (see their ✅ entries below); M33–M34 remain planned.** M0–M29 were done when
+**M30, M31, M32 and M33 are built (see their ✅ entries below); M34 remains planned.** M0–M29 were done when
 this series was scoped, so it is a sixth series rather than more of the old list. Four of the
 five come from Parker using the built app on 2026-08-09; the fifth is the asymmetry that
 report uncovered while the first four were being scoped. They are all one theme – **what
@@ -3712,35 +3712,64 @@ library's only unwired mutation" bullet is retired, and `rekey` is added to the 
 places that decide a palette key alongside `ExportOptions.javaScriptKey` and
 `cssIdentifier`.
 
-### ⬜ M33 – Import without a project first
+### ✅ M33 – Import without a project first
 
-A global Import button in both of the places the feature is currently invisible from: in
-`emptyState`'s actions beside New Project, and in its own row above the project header
-once projects exist. **One identifier, `projectsImport`, used in both branches** – safe for
-the reason `projectsNew` already appears twice at `ProjectsPanel.swift:170` and `:194`:
-the branches are mutually exclusive. Its own row, **not** a fifth control in the
-`LabeledContent("Project")` HStack, which already carries four; crowding it is the tool
-switcher's overflow lesson waiting to be re-learned at a different scale.
+**Built.** A global `Menu("Import")` now sits in both of the places the feature was
+previously invisible from: `emptyState`'s actions beside New Project, and its own row
+(`ProjectsPanel.importRow`) above `header` once projects exist. Both branches share one
+private computed view, `globalImportMenu`, so they share its identifiers —
+`projectsImport` for the menu itself — safely, for the reason `projectsNew` already
+appears at two mutually exclusive call sites: `projects.isEmpty` picks exactly one of
+them. The menu's own two items are `projectsImportFromText`/`projectsImportFromFile`,
+deliberately **not** reusing `saveControls(_:)`'s `importFromText`/`importFile` — that
+menu is visible *at the same time* as this one whenever a project is selected (this one
+gates on a project *existing*, that one on a project being *selected*), and sharing an
+identifier between two elements on screen together is the exact ambiguous XCUITest query
+CLAUDE.md's Testing section warns about.
 
-Three mechanical blockers, each of which silently produces a button that does nothing:
+The three mechanical blockers named in the plan below were all real and are all fixed
+exactly as sketched:
 
-- The `.sheet(isPresented: $isImportingText)` hangs off `saveControls(_:)`, which only
-  renders when a project exists **and** is selected. It moves to `body` level.
-- `ImportTextSheet.onAppear` hardcodes `creatingNewProject = projects.isEmpty`. The global
-  entry point needs a `preferringNewProject: Bool` so it defaults to New Project even when
-  projects exist – "defaults to creating a new project from the content" is the requested
-  behavior.
-- `canImport` requires a non-empty `newProjectName` when creating, so the global path would
-  open with Import disabled and nothing saying why. Prefill `newProjectName` from the
-  parsed `detectedName`, using the **reseed-until-touched** discipline already in
-  `shapeAndNameControls` – and `initial: true` on the `onChange` for the reason recorded
-  there, since the control does not exist until the first successful parse.
+- `.fileImporter` and `.sheet(item: $importRequest)` moved off `saveControls(_:)` onto
+  `body` itself, so both render whether or not a project is selected — the reason Import
+  was unreachable before a first project even existed.
+- `ImportRequest` (already the one value driving `.sheet(item:)`) gained a
+  `preferringNewProject: Bool` field, and `ImportTextSheet` a matching parameter of the
+  same name; `onAppear` now reads `creatingNewProject = preferringNewProject ||
+  projects.isEmpty` rather than `projects.isEmpty` alone. The global menu's "From Text…"
+  sets it directly (`ImportRequest(preferringNewProject: true)`); "From File…" can't —
+  the request isn't built until `importFile(_:)` runs, after the open panel closes — so a
+  new `pendingImportPrefersNewProject` state carries it across that gap, set at *both*
+  "From File…" actions (never left over from whichever was clicked last).
+- `destinationControl` now takes the parsed `ImportedPalette` and seeds `newProjectName`
+  from `initialName ?? palette.detectedName` with the identical reseed-until-touched
+  shape (a new `newProjectNameEdited` flag) and the identical `initial: true` reasoning
+  `shapeAndNameControls`'s own name field already documents — the view doesn't exist
+  until the first successful parse, so without `initial: true` the very first paste would
+  create the modifier already past the change it needs to see. Seeded unconditionally
+  (not gated on `creatingNewProject`), since `newProjectNameEdited` already stops it from
+  clobbering a typed name and gating it would only add a branch with nothing to protect.
 
-**Testing hazard, not hypothetical:** new controls push content down inside a `ScrollView`,
-and a swatch below the window's bottom edge produces the "never became hittable" failure
-with an all-`Disabled` tree – the *second* cause documented in CLAUDE.md's Testing section
-(a window shorter than its content), which retrying does not clear and which the app's
-own `.defaultSize(width: 620, height: 700)` makes reachable on a fresh bundle.
+**The testing hazard named below did not reproduce.** `importRow` adds one row above
+`header`, not inside a place any existing swatch grid sits, and both new tests below
+passed on the first run once written correctly — no "never became hittable" against an
+all-`Disabled` tree.
+
+**Tests.** Two new `ProjectsSmokeTests`, both confirmed to fail against the code before
+this milestone (a stash-and-rerun, not assumed): `testImportingFromTextWithNoProjectYetCreatesOneFromTheImport`
+drives the `emptyState` path end to end — paste, a seeded `importSheetNewProjectName`
+field reading "brand" (the parsed family name), confirm, and a project by that name
+holding the palette — and `testGlobalImportDefaultsToNewProjectEvenWhenOneAlreadyExists`
+is the one that actually exercises `preferringNewProject`: create a project, then reach
+Import through the *global* `projectsImport` menu rather than the project-scoped one, and
+confirm the sheet defaults to "New Project" (a name field, no `importSheetProjectPicker`)
+even though a project already exists and is selected — the project-scoped menu's own
+default is unchanged and untouched by this milestone. All 11 `ProjectsSmokeTests` pass,
+and 544 `ColorKitTests` + 59 `ColorKitCLITests` pass unaffected (this milestone touched no
+ColorCore or persistence code).
+
+**CLAUDE.md when this lands:** the "Import is unreachable until a project exists" gap
+listed at the top of this M30–M34 series is retired.
 
 ### ⬜ M34 – Design token export, and saying which one
 

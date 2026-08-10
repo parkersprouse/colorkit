@@ -52,6 +52,13 @@ private struct ImportRequest: Identifiable {
 
   /// A name suggested from the file's name, or `nil` for the paste path.
   var name: String?
+
+  /// M33: whether this request came from the global entry point (``ProjectsPanel/globalImportMenu``)
+  /// rather than the project-scoped one inside ``ProjectsPanel/saveControls(_:)``. The global
+  /// path defaults ``ImportTextSheet`` to "New Project" even when a project already exists
+  /// and is selected — that is the whole point of reaching Import before picking a project —
+  /// where the scoped path keeps defaulting to whatever project is already open.
+  var preferringNewProject = false
 }
 
 /// The colors you decided to keep.
@@ -85,6 +92,10 @@ struct ProjectsPanel: View {
         if projects.isEmpty {
           emptyState
         } else {
+          // M33: its own row, not a fifth control crowded into the `LabeledContent
+          // ("Project")` HStack below — the tool switcher's own overflow lesson at a
+          // different scale (see CLAUDE.md).
+          importRow
           header
           if let project = selectedProject {
             Divider()
@@ -96,6 +107,34 @@ struct ProjectsPanel: View {
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    // M33: moved here from `saveControls(_:)`, which only renders once a project exists
+    // *and* is selected — the reason Import was unreachable before a first project. Both
+    // the global entry points below and the project-scoped one inside `saveControls`
+    // share this one sheet and one file importer.
+    //
+    // Every shape "From Text…" reads, as a file: `.css`, `.json`, `.javaScript` (a
+    // Tailwind config), plain text (a bare color list), and the conventional
+    // `name.tokens.json` design-token file. `css` and `tokens` are built from their
+    // extensions — `tokens` has no registered type at all, and `css` is admitted the same
+    // way so a file the panel would otherwise refuse to show, for no reason a user could
+    // work out, stays selectable whether or not the system happens to declare it.
+    .fileImporter(
+      isPresented: $isImporting,
+      allowedContentTypes: Self.importableFileTypes,
+    ) { result in
+      importFile(result)
+    }
+    .sheet(item: $importRequest) { request in
+      ImportTextSheet(
+        initialProjectID: selectedProject?.uuid,
+        initialText: request.text,
+        initialName: request.name,
+        preferringNewProject: request.preferringNewProject,
+      ) { importedProjectID, summary in
+        store.selectedProjectID = importedProjectID
+        importSummary = summary
+      }
     }
   }
 
@@ -137,6 +176,13 @@ struct ProjectsPanel: View {
   /// neither an error nor silence.
   @State private var isImporting = false
   @State private var importSummary: String?
+
+  /// Which button raised `isImporting` — `globalImportMenu`'s "From File…" or
+  /// `saveControls(_:)`'s own. The chosen file's `ImportRequest` isn't built until
+  /// ``importFile(_:)`` runs, after the open panel closes, so this is the only place to
+  /// carry ``ImportRequest/preferringNewProject`` across that gap. Set at both "From
+  /// File…" actions — never left over from whichever was clicked last.
+  @State private var pendingImportPrefersNewProject = false
 
   /// The pending import sheet — `nil` when closed, otherwise the text to pre-fill and a
   /// name to suggest. Both menu items (M31's "From Text…" and "From File…") set this;
@@ -200,10 +246,53 @@ struct ProjectsPanel: View {
     } description: {
       Text("A project is somewhere to keep the colors and palettes you want back later.")
     } actions: {
-      Button("New Project") { create() }
-        .accessibilityIdentifier("projectsNew")
+      HStack(spacing: 8) {
+        Button("New Project") { create() }
+          .accessibilityIdentifier("projectsNew")
+        // M33: Import no longer needs a project to already exist — this is one of the
+        // two mutually exclusive places it is offered, so it shares `globalImportMenu`'s
+        // identifiers with `importRow` rather than duplicating the control.
+        globalImportMenu
+      }
     }
     .frame(maxWidth: .infinity)
+  }
+
+  /// M33's other entry point: once a project exists, Import moves out of `emptyState`'s
+  /// actions and into its own row here, above `header`. Mutually exclusive with
+  /// `emptyState` the same way `projectsNew` already is at two call sites, which is what
+  /// lets both branches share one `globalImportMenu` and its identifiers safely.
+  private var importRow: some View {
+    HStack {
+      globalImportMenu
+      Spacer()
+    }
+  }
+
+  /// The "From Text…" / "From File…" pair, reachable before a project exists and without
+  /// disturbing whichever one is currently selected — `saveControls(_:)` keeps its own,
+  /// separate `Menu("Import")` for the project-scoped case, because the two can be on
+  /// screen at once (this one shows whenever a project exists; that one shows whenever
+  /// one is *selected*) and a shared identifier between them would be the exact ambiguous
+  /// XCUITest query CLAUDE.md's Testing section warns about. Both branches above set
+  /// ``ImportRequest/preferringNewProject`` (or ``pendingImportPrefersNewProject`` for the
+  /// file path, since the file has not been chosen — and so no `ImportRequest` built —
+  /// yet), which is the actual behavioral difference: this menu defaults
+  /// ``ImportTextSheet`` to "New Project" even when a project already exists, because
+  /// reaching Import from here happens *before* deciding which project the import
+  /// belongs to.
+  private var globalImportMenu: some View {
+    Menu("Import") {
+      Button("From Text…") { importRequest = ImportRequest(preferringNewProject: true) }
+        .accessibilityIdentifier("projectsImportFromText")
+      Button("From File…") {
+        pendingImportPrefersNewProject = true
+        isImporting = true
+      }
+      .accessibilityIdentifier("projectsImportFromFile")
+    }
+    .fixedSize()
+    .accessibilityIdentifier("projectsImport")
   }
 
   private var header: some View {
@@ -326,8 +415,11 @@ struct ProjectsPanel: View {
           // JSON, JavaScript and plain-text exports start working, all through one path
           // that inherits the shape override, storage-format control, destination picker
           // and preview instead of a second silent decode.
-          Button("From File…") { isImporting = true }
-            .accessibilityIdentifier("importFile")
+          Button("From File…") {
+            pendingImportPrefersNewProject = false
+            isImporting = true
+          }
+          .accessibilityIdentifier("importFile")
         }
         .fixedSize()
         .accessibilityIdentifier("importMenu")
@@ -349,28 +441,6 @@ struct ProjectsPanel: View {
       .font(.caption)
       .foregroundStyle(.tertiary)
       .fixedSize(horizontal: false, vertical: true)
-    }
-    // Every shape "From Text…" reads, as a file: `.css`, `.json`, `.javaScript` (a
-    // Tailwind config), plain text (a bare color list), and the conventional
-    // `name.tokens.json` design-token file. `css` and `tokens` are built from their
-    // extensions — `tokens` has no registered type at all, and `css` is admitted the same
-    // way so a file the panel would otherwise refuse to show, for no reason a user could
-    // work out, stays selectable whether or not the system happens to declare it.
-    .fileImporter(
-      isPresented: $isImporting,
-      allowedContentTypes: Self.importableFileTypes,
-    ) { result in
-      importFile(result)
-    }
-    .sheet(item: $importRequest) { request in
-      ImportTextSheet(
-        initialProjectID: project.uuid,
-        initialText: request.text,
-        initialName: request.name,
-      ) { importedProjectID, summary in
-        store.selectedProjectID = importedProjectID
-        importSummary = summary
-      }
     }
   }
 
@@ -873,7 +943,11 @@ struct ProjectsPanel: View {
       return
     }
 
-    importRequest = ImportRequest(text: text, name: Self.paletteName(for: url))
+    importRequest = ImportRequest(
+      text: text,
+      name: Self.paletteName(for: url),
+      preferringNewProject: pendingImportPrefersNewProject,
+    )
   }
 
   /// The ticked colors, in the order they appear rather than the order they were ticked.

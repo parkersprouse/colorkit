@@ -419,6 +419,123 @@ final class ProjectsSmokeTests: XCTestCase {
     )
   }
 
+  /// M33: Import no longer needs a project to already exist. Before this, the sheet hung
+  /// entirely off `saveControls(_:)`, which only renders once a project is selected — so
+  /// the *only* way to reach it was to make a project first, and nothing said that was
+  /// the order. `emptyState`'s own `Menu("Import")` reaches the identical sheet, and an
+  /// import from there has to be able to create the project that ends up holding it,
+  /// since there is nothing yet for it to join.
+  func testImportingFromTextWithNoProjectYetCreatesOneFromTheImport() {
+    click(radioButton: "Projects", "the tool switcher")
+
+    XCTAssertTrue(
+      app.staticTexts["No projects yet"].waitForExistence(timeout: 15),
+      "Expected the empty state before any project exists. Tree was:\n\(app.debugDescription)",
+    )
+
+    select(menuItem: "From Text…", fromMenu: "projectsImport", "the global import menu")
+
+    let sheet = app.sheets.firstMatch
+    XCTAssertTrue(
+      sheet.waitForExistence(timeout: 15),
+      "No import sheet appeared. Tree was:\n\(app.debugDescription)",
+    )
+
+    let textBox = sheet.textViews["importSheetText"]
+    XCTAssertTrue(
+      textBox.waitForExistence(timeout: 15),
+      "No paste box in the import sheet. Tree was:\n\(app.debugDescription)",
+    )
+    textBox.click()
+    textBox.typeText(":root {\n  --brand-500: #3b82f6;\n  --brand-600: #ef4444;\n}")
+
+    // No project exists yet, so the destination has to default to "New Project" already —
+    // and that field needs a name from *somewhere*, since nothing here ever asked for one.
+    let newProjectField = sheet.textFields["importSheetNewProjectName"]
+    XCTAssertTrue(
+      newProjectField.waitForExistence(timeout: 15),
+      "No new-project name field. Tree was:\n\(app.debugDescription)",
+    )
+    XCTAssertEqual(
+      newProjectField.value as? String, "brand",
+      "The new-project name should be seeded from the parsed document, the same way the "
+        + "palette name field already is",
+    )
+
+    let confirm = sheet.buttons["importSheetConfirm"]
+    XCTAssertTrue(
+      waitUntilHittable(confirm),
+      "The Import button never became hittable. Tree was:\n\(app.debugDescription)",
+    )
+    confirm.click()
+
+    XCTAssertTrue(
+      app.buttons["paletteExport-0"].waitForExistence(timeout: 15),
+      "No palette row appeared after import. Tree was:\n\(app.debugDescription)",
+    )
+    XCTAssertEqual(
+      app.textFields["projectName"].value as? String, "brand",
+      "The project the import created should carry the detected name",
+    )
+  }
+
+  /// The behavioral half of M33, and the reason ``ImportRequest/preferringNewProject``
+  /// exists at all: the project-scoped `Menu("Import")` inside `saveControls(_:)` already
+  /// worked once a project existed, defaulting to whatever was selected — so the global
+  /// entry point has to behave *differently* from it, defaulting to "New Project" instead,
+  /// since reaching Import from up here is what happens before deciding which project the
+  /// import belongs to.
+  func testGlobalImportDefaultsToNewProjectEvenWhenOneAlreadyExists() {
+    click(radioButton: "Projects", "the tool switcher")
+    createProject()
+    let firstProjectName = app.textFields["projectName"].value as? String
+
+    select(menuItem: "From Text…", fromMenu: "projectsImport", "the global import menu")
+
+    let sheet = app.sheets.firstMatch
+    XCTAssertTrue(
+      sheet.waitForExistence(timeout: 15),
+      "No import sheet appeared. Tree was:\n\(app.debugDescription)",
+    )
+
+    // `destinationControl` does not render at all until something parses successfully
+    // (see `body`'s switch) — same as `shapeAndNameControls`'s own name field — so the
+    // destination assertions below have to come after there is something to parse.
+    let textBox = sheet.textViews["importSheetText"]
+    textBox.click()
+    textBox.typeText("#00ff00")
+
+    // A text field to name the new project, not a picker over the project that already
+    // exists — proving the default really is "New Project" and not just "no project" as
+    // it would incidentally have been before M33.
+    XCTAssertTrue(
+      sheet.textFields["importSheetNewProjectName"].waitForExistence(timeout: 15),
+      "The global entry point should default to creating a new project. Tree was:\n"
+        + "\(app.debugDescription)",
+    )
+    XCTAssertFalse(
+      sheet.popUpButtons["importSheetProjectPicker"].exists,
+      "The existing-project picker should not be showing when a new project is the default",
+    )
+
+    let confirm = sheet.buttons["importSheetConfirm"]
+    XCTAssertTrue(
+      waitUntilHittable(confirm),
+      "The Import button never became hittable. Tree was:\n\(app.debugDescription)",
+    )
+    confirm.click()
+
+    XCTAssertTrue(
+      app.buttons["savedColor-0"].waitForExistence(timeout: 15),
+      "The imported color should land in the newly created project. Tree was:\n"
+        + "\(app.debugDescription)",
+    )
+    XCTAssertNotEqual(
+      app.textFields["projectName"].value as? String, firstProjectName,
+      "A second project should have been created rather than the first one reused",
+    )
+  }
+
   // MARK: Private
 
   private var app: XCUIApplication!

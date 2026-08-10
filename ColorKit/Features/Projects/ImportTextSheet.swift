@@ -41,6 +41,14 @@ struct ImportTextSheet: View {
   /// happens to carry a `/* From "brand" */` header still suggests "accent".
   var initialName: String?
 
+  /// M33: defaults the destination to "New Project" even when projects already exist —
+  /// set by `ProjectsPanel`'s global Import entry points (`emptyState`'s actions, and
+  /// its own row above `header`), which by design have not asked which project this
+  /// import belongs to. `false` for the project-scoped `Menu("Import")` inside
+  /// `saveControls(_:)`, which keeps defaulting to whatever project is already open —
+  /// the memberwise default is what lets that call site go on omitting this entirely.
+  var preferringNewProject = false
+
   /// Reports the project that ended up holding the import (so the panel can select it,
   /// even if this sheet created a new one) and a one-line summary — the same shape
   /// `ProjectsPanel.importSummary` already shows after an import.
@@ -68,7 +76,7 @@ struct ImportTextSheet: View {
           case let .success(palette) where !palette.groups.isEmpty:
             shapeAndNameControls(palette)
             storageFormatControl
-            destinationControl
+            destinationControl(palette)
             preview(palette)
           case .success:
             Text("Nothing recognizable in that text yet.")
@@ -95,7 +103,13 @@ struct ImportTextSheet: View {
     .frame(width: 480, height: 580)
     .onAppear {
       destinationProjectID = initialProjectID ?? projects.first?.uuid
-      creatingNewProject = projects.isEmpty
+      // M33: `preferringNewProject` is what makes the global entry points default here
+      // even with projects already on hand. `projects.isEmpty` alone is what this sheet
+      // relied on before M33 — sufficient then only because the sheet could not open at
+      // all while `projects.isEmpty`, since it hung entirely off `saveControls(_:)`,
+      // which needs a selected project to render; M33 moved the sheet to `body` level
+      // precisely so that stops being true.
+      creatingNewProject = preferringNewProject || projects.isEmpty
       // Seeding here rather than in an `init` keeps the memberwise defaults above; it
       // mirrors the `destinationProjectID` line and runs before the first body pass
       // renders `shapeAndNameControls`, so the `initial: true` reseed below fires on the
@@ -120,6 +134,7 @@ struct ImportTextSheet: View {
   @State private var destinationProjectID: UUID?
   @State private var creatingNewProject = false
   @State private var newProjectName = ""
+  @State private var newProjectNameEdited = false
   @State private var saveError: String?
 
   private var library: ProjectLibrary {
@@ -190,7 +205,11 @@ struct ImportTextSheet: View {
     }
   }
 
-  private var destinationControl: some View {
+  /// Takes the parsed palette (unlike its M31-and-earlier self) so it can seed
+  /// ``newProjectName`` — needed since M33, when the global entry points can open here
+  /// with ``creatingNewProject`` already `true` even though projects exist, leaving Import
+  /// disabled behind an empty required field with nothing on screen saying why.
+  private func destinationControl(_ palette: ImportedPalette) -> some View {
     VStack(alignment: .leading, spacing: 8) {
       Picker("Destination", selection: $creatingNewProject) {
         Text("Existing Project").tag(false)
@@ -202,9 +221,13 @@ struct ImportTextSheet: View {
       .accessibilityIdentifier("importSheetDestinationKind")
 
       if creatingNewProject {
-        TextField("New project name", text: $newProjectName, prompt: Text("Untitled Project"))
-          .textFieldStyle(.roundedBorder)
-          .accessibilityIdentifier("importSheetNewProjectName")
+        TextField(
+          "New project name",
+          text: Binding(get: { newProjectName }, set: { newProjectName = $0; newProjectNameEdited = true }),
+          prompt: Text("Untitled Project"),
+        )
+        .textFieldStyle(.roundedBorder)
+        .accessibilityIdentifier("importSheetNewProjectName")
       } else {
         Picker("Project", selection: $destinationProjectID) {
           ForEach(projects) { project in
@@ -214,6 +237,22 @@ struct ImportTextSheet: View {
         .labelsHidden()
         .accessibilityIdentifier("importSheetProjectPicker")
       }
+    }
+    // The same "reseed until touched" discipline `shapeAndNameControls`' name field
+    // uses, and for the identical reason `initial: true` is load-bearing there: this
+    // `VStack` does not exist until the first successful parse (see the switch in
+    // `body`), so without `initial: true` the very first paste would create this
+    // modifier with `detectedName` already at its post-parse value and nothing would
+    // fire — the field would sit empty behind its placeholder and Import would stay
+    // disabled with nothing on screen explaining why. `initialName` (a filename from
+    // "From File…") wins over the parsed name, matching `shapeAndNameControls`. Seeded
+    // regardless of `creatingNewProject`, since the reachable-once-and-stay-cached shape
+    // (`onChange` fires whether or not the branch above is currently showing) is simpler
+    // than gating it — and cheaper than it looks, since `newProjectNameEdited` still
+    // stops it from clobbering anything typed.
+    .onChange(of: palette.detectedName, initial: true) { _, detected in
+      guard !newProjectNameEdited else { return }
+      newProjectName = initialName ?? detected ?? ""
     }
   }
 

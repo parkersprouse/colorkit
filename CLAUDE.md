@@ -128,6 +128,20 @@ All three renames guard `….modelContext != nil` first, because a popover's
 `.onDisappear` closes over the specific model it opened with, not over the `@State` a
 Delete button clears first — see the M32 entry in PLAN.md for why the guard is kept
 despite the regression test built for it not itself forcing the point.
+**M33 is done too**: Import no longer needs a project to exist first. A global
+`Menu("Import")` (`ProjectsPanel.globalImportMenu`) now sits in `emptyState`'s actions
+and in its own row above `header` once projects exist — two mutually exclusive call
+sites sharing one view and its identifiers, the same shape `projectsNew` already used.
+Reaching it required moving `.fileImporter`/`.sheet(item: $importRequest)` off
+`saveControls(_:)`, which only ever rendered under a selected project, onto `body`
+itself; `ImportRequest` and `ImportTextSheet` both gained a `preferringNewProject: Bool`
+so the global path defaults `ImportTextSheet` to "New Project" even when a project
+already exists and is selected, where the pre-existing project-scoped `Menu("Import")`
+keeps defaulting to whatever is open. `destinationControl` now takes the parsed
+`ImportedPalette` and seeds `newProjectName` from it with the same reseed-until-touched
+discipline `shapeAndNameControls`'s name field already used, so the global path never
+opens with Import silently disabled behind an empty required field. See the M33 entry
+in PLAN.md.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
