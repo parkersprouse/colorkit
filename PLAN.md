@@ -3573,11 +3573,16 @@ siblings' *sanitized* keys through a new private `dedupedKey(_:against:)`), and
 `rename(_ palette:to:)`, unwired since M9, now called from a new Edit button on
 `paletteRow`. `ProjectsPanel` gained `paletteEditTarget`/`entryEditTarget` state and two
 new popover views, `paletteNameEditor` and `entryKeyEditor`; the existing notes popover
-grew a Name field and its opening menu item was retitled "Edit…". Four new
-`ProjectStoreTests`: the empty-name asymmetry, the position fallback, the sanitized-key
-collision (mutation-confirmed — deleting the suffix loop fails exactly that one test and
-nothing else), and a rendered round trip proving a rekeyed entry exports under its new
-name. All 505 `ColorKitTests` + 59 `ColorKitCLITests` pass.
+grew a Name field and its opening menu item was retitled "Edit…", and its
+`.onDisappear` now calls `library.rename(saved, to: saved.name)` rather than the plainer
+`touch(saved)` it called before — see below for why leaving that as `touch` would have
+shipped `rename(_ color:to:)` unwired, the exact defect this milestone exists to fix.
+Five new `ProjectStoreTests`: the empty-name asymmetry, the position fallback, the
+sanitized-key collision (mutation-confirmed — deleting the suffix loop fails exactly
+that one test and nothing else), a rendered round trip proving a rekeyed entry exports
+under its new name, and a guard against renaming or rekeying an object already deleted
+from the context (see below — not itself mutation-forced, and said so rather than
+overclaimed). All 505 `ColorKitTests` + 59 `ColorKitCLITests` pass.
 
 **One deliberate deviation from the sketch below, recorded rather than silently
 resolved.** The plan's UI paragraph says a palette entry's rekey field comes "from the
@@ -3662,6 +3667,35 @@ XCUITest coverage and were not clicked by hand. The library-level rules they cal
 fully covered; the wiring from button to popover to `perform { try library.… }` is
 reasoned from the code, the same honesty extended elsewhere in this file to
 `NSOpenPanel`/`NSSavePanel` and the Settings recorder.
+
+**A first draft left `rename(_ color:to:)` unwired — exactly the defect this milestone
+exists to retire — and a design review caught it before it landed.** The reasoning at
+the time leaned on this very sketch's own words, "stamps once via `library.touch(saved)`
+on disappear," read as a constraint on what the popover's `.onDisappear` may call rather
+than as a description of the mechanism it happened to have before the method existed.
+`notesEditor`'s `.onDisappear` now calls `library.rename(saved, to: saved.name)` instead
+of `library.touch(saved)` — a strict superset (both relationships' `touch()`, one
+`save()`, which flushes the notes field's already-live edit for free) that adds the
+trim, so nothing about the notes-flushing behavior changed and the rename door is no
+longer a claim nothing in the app exercises.
+
+**The same review flagged a second, real hazard: a popover's `.onDisappear` closes over
+the specific model it was opened with, not over the `@State` that pointed at it.**
+Clearing `paletteEditTarget`/`entryEditTarget` before deleting (mirroring
+`savedColorMenu`'s own Delete) stops a *new* popover from opening on a stale target, but
+does not stop the *closing* popover's already-queued teardown from still calling
+`library.rename`/`rekey` against an object this context no longer has. `rename(_
+color:to:)`, `rename(_ palette:to:)` and `rekey(_:to:)` each open with `guard
+….modelContext != nil else { return }` for this reason. **Honestly: a mutation removing
+all three guards still passes the regression test built for this** —
+`renamingSomethingAlreadyDeletedDoesNothing` deletes a color and a palette in-memory,
+then calls all three, and writing a property on an already-deleted `@Model` and calling
+`save()` turned out to already be a harmless no-op in this container, not a crash or a
+resurrection. The guard is kept anyway: "safe in the one case this in-memory container
+can reproduce" is a narrower claim than "safe," and a live app's actual timing (a real
+on-disk store, a genuinely-mid-teardown `.onDisappear`) is not what a synchronous `try
+context.save()` in a unit test exercises. What the test *does* pin, unconditionally, is
+the API contract — none of the three may throw or resurrect what was deleted.
 
 **CLAUDE.md when this lands:** the "`ProjectLibrary.rename(_ palette:to:)` is still the
 library's only unwired mutation" bullet is retired, and `rekey` is added to the list of

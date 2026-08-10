@@ -340,7 +340,11 @@ struct ProjectLibrary {
     return palette
   }
 
+  /// - Note: Guarded against a palette that has already been deleted from this context
+  ///   — see the identical guard on ``rename(_ color:to:)`` and ``rekey(_:to:)`` for the
+  ///   reason (M32's `paletteNameEditor` popover).
   func rename(_ palette: Palette, to name: String) throws {
+    guard palette.modelContext != nil else { return }
     palette.name = Self.cleaned(name, fallback: palette.kind.title)
     palette.project?.touch()
     try context.save()
@@ -364,7 +368,17 @@ struct ProjectLibrary {
   /// it was saved with instead of a manufactured one. ``rekey(_:to:)`` exists because a
   /// palette entry's empty name means something different — it is the entry's *export
   /// key*, and leaving that blank is not "no label", it is "no property".
+  ///
+  /// - Note: Guarded against a color that has already been deleted from this context.
+  ///   A popover's `.onDisappear` closure closes over the model it was opened with, not
+  ///   over the `@State` that pointed at it — clearing that state before deleting (as
+  ///   `savedColorTile`'s own Delete already does, for a different reason) does not stop
+  ///   the popover's teardown from still running this against the now-deleted object.
+  ///   Writing a property on one is unspecified rather than merely wrong, so this is a
+  ///   defensive no-op rather than a correctness fix for a case that was ever reachable
+  ///   on purpose.
   func rename(_ color: SavedColor, to name: String) throws {
+    guard color.modelContext != nil else { return }
     color.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
     color.project?.touch()
     color.palette?.project?.touch()
@@ -388,7 +402,10 @@ struct ProjectLibrary {
   /// sharing a key do not produce a duplicate property — they collapse into one, and a
   /// color silently disappears from the export with nothing in the document to say so.
   func rekey(_ entry: SavedColor, to name: String) throws {
-    guard let palette = entry.palette else { return }
+    // Guarded the same way and for the same reason as `rename(_ color:to:)`: a palette
+    // delete cascades to its entries, and `entryKeyEditor`'s `.onDisappear` closes over
+    // this specific entry regardless of what `entryEditTarget` was cleared to first.
+    guard entry.modelContext != nil, let palette = entry.palette else { return }
     let ordered = palette.orderedEntries
     guard let position = ordered.firstIndex(where: {
       $0.persistentModelID == entry.persistentModelID

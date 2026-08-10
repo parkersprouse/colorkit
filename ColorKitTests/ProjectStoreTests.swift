@@ -743,6 +743,48 @@ struct ProjectStoreTests {
     #expect(!rendered.contains("--Brand-500"))
   }
 
+  /// A popover's `.onDisappear` closes over the model it was opened with, not over the
+  /// `@State` that pointed at it — so clearing that state before deleting (as every
+  /// Delete button here already does, for a different reason) does not stop the
+  /// teardown from still calling one of these three renames against an object this
+  /// context no longer has. All three carry a `modelContext != nil` guard for that
+  /// reason.
+  ///
+  /// **This test does not force that guard — it is defensive, not empirically
+  /// required.** Mutated out (all three `guard`s deleted), this in-memory container
+  /// still passes: writing a property on an already-deleted `@Model` and calling
+  /// `save()` is apparently already a harmless no-op here, not a crash or a silent
+  /// resurrection. Kept anyway, for the reason the guard is kept — a live app's timing
+  /// (an `.onDisappear` genuinely mid-teardown, a real on-disk store) is not what this
+  /// container's synchronous `try context.save()` reproduces, and "was safe in the one
+  /// case I could check" is a narrower claim than "is safe." What this test *does*
+  /// pin is the API contract either way: calling any of the three post-delete must not
+  /// throw and must not put the color or palette back.
+  @Test("Renaming or rekeying an already-deleted color or palette is a silent no-op")
+  func renamingSomethingAlreadyDeletedDoesNothing() throws {
+    let library = try Self.makeLibrary()
+    let project = try library.createProject(named: "Site")
+    let color = try library.saveColor(
+      ColorRecord(try CSSColorParser.parse("#ff0000").color, text: "#ff0000"),
+      named: "Brand Red",
+      to: project,
+    )
+    let entries = try [PaletteEntry(key: "500", color: CSSColorParser.parse("#00ff00").color)]
+    let palette = try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
+    let entry = try #require(palette.orderedEntries.first)
+
+    try library.delete(color)
+    try library.delete(palette)
+
+    // None of these three may throw, and none may resurrect what was just deleted.
+    try library.rename(color, to: "New Name")
+    try library.rename(palette, to: "New Name")
+    try library.rekey(entry, to: "new-key")
+
+    #expect(project.orderedColors.isEmpty)
+    #expect(project.orderedPalettes.isEmpty)
+  }
+
   // MARK: Private
 
   /// A store on disk, for the one test that has to leave memory.

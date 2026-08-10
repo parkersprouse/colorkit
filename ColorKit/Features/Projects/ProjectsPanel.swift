@@ -413,8 +413,10 @@ struct ProjectsPanel: View {
   /// The name field has no fallback, unlike everything else this panel lets you rename.
   /// `saved.name.isEmpty ? saved.text : saved.name` is the display rule everywhere a
   /// saved color is shown, so clearing this is how you tell the tile to show the CSS
-  /// again rather than a label nobody typed — ``ProjectLibrary/rename(_:to:)`` states
-  /// the same rule for a caller that is not a live binding.
+  /// again rather than a label nobody typed. That rule lives in
+  /// ``ProjectLibrary/rename(_:to:)`` — called on the way out below, trimming rather
+  /// than merely flushing, so the door M32 wrote is not a second, unreachable claim
+  /// about the same behavior this field's live binding already produces on its own.
   private func notesEditor(_ saved: SavedColor) -> some View {
     @Bindable var saved = saved
 
@@ -435,9 +437,12 @@ struct ProjectsPanel: View {
         .foregroundStyle(.secondary)
     }
     .padding(12)
-    // Bound straight to the model, so edits are live; the save is stamped once on the
-    // way out rather than on every keystroke.
-    .onDisappear { perform { try library.touch(saved) } }
+    // Bound straight to the model, so edits are live; the commit happens once on the
+    // way out rather than on every keystroke. `rename` (M32) rather than the plainer
+    // `touch` — it does everything `touch` did (both relationships' `touch()`, one
+    // `save()`, which flushes the notes field's already-live edit for free) plus
+    // trims the name, so this is a strict superset and not a second code path.
+    .onDisappear { perform { try library.rename(saved, to: saved.name) } }
   }
 
   /// One saved color: click to put it back in the field.
@@ -640,7 +645,11 @@ struct ProjectsPanel: View {
         // menu has something to hand `entryEditTarget` — a `PaletteEntry` is a plain
         // value with no model behind it to rekey. A row with no readable `colorValue`
         // renders nothing, the same silent skip `paletteEntries` already performs via
-        // `compactMap`.
+        // `compactMap` — but note `entryIndex` here counts *all* stored entries,
+        // including that skipped one, where it used to number only the renderable
+        // ones. Nothing keys off that number except this identifier string, which is
+        // untested and does not claim to be stable across a build that can't read a
+        // color it used to.
         ForEach(Array(orderedEntries.enumerated()), id: \.element.persistentModelID) {
           entryIndex, entry in
           if let color = entry.colorValue {
@@ -696,7 +705,16 @@ struct ProjectsPanel: View {
   /// is lossy and has no inverse: typing "Triad 2" writes `--brand-triad-2`, and that
   /// belongs in front of the user before they commit rather than in an export they
   /// read later — the same honesty M17 recorded when a name leaving through export
-  /// turned out not to return through import unchanged.
+  /// turned out not to return through import unchanged. The preview shows the
+  /// **sanitized** candidate, not the fully deduplicated one — a collision can only be
+  /// found by comparing against every sibling's current name, which `library.rekey`
+  /// does at the point of commit rather than on every keystroke.
+  ///
+  /// `onSubmit` and `onDisappear` can both fire ``ProjectLibrary/rekey(_:to:)`` for one
+  /// edit — pressing Return, then closing the popover. That runs the dedupe loop twice
+  /// rather than double-suffixing anything: the second call reads `entry.name` *after*
+  /// the first already wrote the deduplicated key, and siblings are compared by
+  /// `persistentModelID`, so an entry never collides with its own already-committed name.
   private func entryKeyEditor(_ entry: SavedColor) -> some View {
     @Bindable var entry = entry
     let position = (entry.palette?.orderedEntries.firstIndex {

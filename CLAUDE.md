@@ -124,6 +124,10 @@ its own popover reached from `SwatchButton`'s
 menu on the entry swatch, not the notes popover, because the two live on different
 `SavedColor` relationships (a project's loose colors vs. a palette's entries) — see the
 M32 entry in PLAN.md for why that reading of the original sketch did not survive contact.
+All three renames guard `….modelContext != nil` first, because a popover's
+`.onDisappear` closes over the specific model it opened with, not over the `@State` a
+Delete button clears first — see the M32 entry in PLAN.md for why the guard is kept
+despite the regression test built for it not itself forcing the point.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
