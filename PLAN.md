@@ -3967,20 +3967,40 @@ wiring is a one-line mechanical connection to it — the same boundary that keep
 above unit- rather than UI-tested.
 
 **A third report — Parker rejected the second report's fix on principle, and this section
-was the planned replacement. ✅ Now built** (2026-08-10), exactly as specified below —
-reassign-and-stash in `ColorStore` (`webFriendly`'s `didSet` → `reconcileExportOptions()`,
-the session-only `restrictedExportShape`/`restrictedExportFormat` stashes, the
-`selectExportShape`/`selectExportFormat`/`confirmExportChoices` "use" hooks), the
-`preferences`-setter reconcile-after-assignment fix, both Export pickers rebound to the
+was the planned replacement. ✅ Now built** (2026-08-10), following the mechanism specified
+below — reassign-and-stash in `ColorStore` (`webFriendly`'s `didSet` →
+`reconcileExportOptions()`, the session-only `restrictedExportShape`/`restrictedExportFormat`
+stashes, the `selectExportShape`/`selectExportFormat`/`confirmExportChoices` "use" hooks),
+the `preferences`-setter reconcile-after-assignment fix, both Export pickers rebound to the
 raw value, the sheet-local `ImportTextSheet` mechanism, and the doc-comment corrections.
-Tests: nine cases in `WebFriendlyExportStoreTests` (reassign/stash, no-spurious-stash,
-restore-and-clear, no-op, per-field `select`, `confirm` both, the `preferences`-setter fix,
-and the raw-write `exportDocumentClampsARawRestrictedShape` last-line-of-defense),
-`PreferencesTests.colorStoreAppliesLoadedPreferences` rewritten to assert the on-load
-reconcile of a restricted format rather than raw round-trip equality. Both the gutted-
+**Two things not anticipated by the plan's own test list, found during implementation:**
+(1) a raw-write last-line-of-defense test — `exportDocumentClampsARawRestrictedShape` —
+because once reconcile keeps the stored value valid, the reassign tests pass even if
+`exportDocument` stops calling `effective` (the "two sides derive from one source" trap
+this file warns about); it constructs the state reconcile cannot, a raw shape write *after*
+the mode is on. (2) A fixture collision the plan missed: `PreferencesTests`' `nonDefault`
+deliberately pairs `webFriendly: true` with a restricted `.color(.displayP3)` format (both
+load-bearing for the pure-`Codable` round-trip tests), which the on-load reconcile now
+rewrites — so `colorStoreAppliesLoadedPreferences` was rewritten to assert the reconcile
+(a whole-struct equality against `nonDefault` with `exportFormat` set to the reassigned
+`.oklch`, plus the stash facts) rather than raw round-trip equality; the fixture itself is
+unchanged. Nine cases total in `WebFriendlyExportStoreTests`. Both the gutted-
 `reconcileExportOptions` mutation (8 tests fail) and the drop-`effective`-from-
-`exportDocument` mutation (the raw-write test fails) were run and reverted. The
-`ImportTextSheet` half is unit-untestable as flagged; recorded, not covered. The display-only `Binding` above was
+`exportDocument` mutation (the raw-write test fails) were run and reverted. **The
+`ImportTextSheet` half is unit-untestable *and* was not manually verified** — driving the
+cross-scene Settings toggle plus the modal sheet needs assistive access this environment
+does not grant, the same limitation `ShortcutRecorderField` and the web-friendly toggle
+already carry. Its one non-obvious correctness dependency: `reconcileStorageFormat` writes
+`storageFormat` directly, and the stash-clearing logic lives in the `Picker`'s binding
+setter, so the mechanism only works if a macOS pop-up `Picker` does **not** invoke its
+setter when its selection changes programmatically or goes momentarily out of range. That
+is exactly what the original blank-picker bug this feature fixes already demonstrates: an
+out-of-range selection rendered *blank* with the stored value *unchanged* — had the Picker
+written back on an invalid selection, that bug would have surfaced as a silently-rewritten
+stored value, not an empty control. So the setter fires only on a real user pick, and the
+same reasoning covers the store-side `ExportPanel` pickers (which share the pattern and
+*are* store-tested). Still worth a hand check of the sheet's toggle-off restore before
+relying on it, since the cross-scene path itself has no automated coverage at all. The display-only `Binding` above was
 functioning exactly as designed (the getter reads through `effective(webFriendly:)`, the
 stored value is left alone) — but Parker's objection was to the design itself: *"It's
 ALWAYS poor user experience to present a display that doesn't match its associated

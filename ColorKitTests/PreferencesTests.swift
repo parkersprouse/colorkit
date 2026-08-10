@@ -73,17 +73,18 @@ struct PreferencesTests {
 
     store.preferences = Self.nonDefault
 
-    #expect(store.webFriendly == true)
-    #expect(store.showsRecents == false)
-    #expect(store.recentLimit == 25)
-    #expect(store.pickerMode == .oklch)
-    #expect(store.cvdDeficiency == .protanomaly)
-    #expect(store.exportOptions.shape == .tailwindConfig) // already web-friendly, unchanged
-    #expect(store.exportOptions.template == .border)
-    #expect(store.formatOptions == Self.nonDefault.formatOptions)
-    #expect(store.globalShortcut == Self.nonDefault.globalShortcut)
+    // Whole-struct equality against the *reconciled* expectation — the on-load reassign of
+    // the restricted format is the only field that differs from `nonDefault`. Asserted as
+    // a struct (not only field-by-field) so a setter that forgets to assign a field is
+    // still caught: a forgotten field keeps its default and the individual `#expect`s can
+    // coincide with it, but the struct comparison cannot.
+    var expected = Self.nonDefault
+    expected.exportFormat = .oklch // reassigned from the restricted .color(.displayP3)
+    #expect(store.preferences == expected)
 
-    // The restricted format was reassigned and the original stashed, not applied verbatim.
+    // And the specific reconcile facts the struct equality does not spell out: the
+    // reassigned format is web-friendly, the original is stashed, the (already safe) shape
+    // is not.
     #expect(CSSOutputFormat.webFriendly.contains(store.exportOptions.format))
     #expect(store.restrictedExportFormat == .color(.displayP3))
     #expect(store.restrictedExportShape == nil)
