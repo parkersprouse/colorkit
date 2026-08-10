@@ -3749,24 +3749,64 @@ exactly as sketched:
   create the modifier already past the change it needs to see. Seeded unconditionally
   (not gated on `creatingNewProject`), since `newProjectNameEdited` already stops it from
   clobbering a typed name and gating it would only add a branch with nothing to protect.
+  **This also changes the pre-existing project-scoped path** — its "New Project" segment
+  now pre-fills too, where before this milestone it never had a reason to seed anything.
+  Unclaimed by the plan below and not asked for, but harmless and arguably an improvement;
+  recorded rather than left to look accidental.
+
+**The plan's own third blocker turned out to be incompletely fixed by the sketch it
+proposed, and a design review caught it before landing.** Seeding `newProjectName` from
+`detectedName` only solves the disabled-Import problem for a **single-group** document —
+`ImportedPalette.detectedName` is `groups.count == 1 ? groups.first?.name : nil` by
+construction, so a multi-group paste (a two-group `customProperties` export, or — most
+likely of all for the global entry point specifically — a whole-project export) leaves
+`newProjectName` empty with nothing to fill it, and the original `canImport` required it
+non-empty. That is the exact defect this milestone exists to fix, just moved from "no
+Import control at all" to "an Import control that stays disabled and does not say why."
+The actual fix is in `canImport`, not the seed: it no longer requires `newProjectName`
+non-empty when creating, because `ProjectLibrary.createProject(named:)` already falls
+back to "Untitled Project" for an empty name — the same fallback the plain New Project
+button already relies on unconditionally, so there was never a real requirement to
+enforce. The seed stays, for the UX niceness of a single-group document offering a real
+name rather than a fallback.
 
 **The testing hazard named below did not reproduce.** `importRow` adds one row above
-`header`, not inside a place any existing swatch grid sits, and both new tests below
-passed on the first run once written correctly — no "never became hittable" against an
-all-`Disabled` tree.
+`header`, not inside a place any existing swatch grid sits, and every new test below
+passed once written correctly — no "never became hittable" against an all-`Disabled`
+tree.
 
-**Tests.** Two new `ProjectsSmokeTests`, both confirmed to fail against the code before
-this milestone (a stash-and-rerun, not assumed): `testImportingFromTextWithNoProjectYetCreatesOneFromTheImport`
-drives the `emptyState` path end to end — paste, a seeded `importSheetNewProjectName`
-field reading "brand" (the parsed family name), confirm, and a project by that name
-holding the palette — and `testGlobalImportDefaultsToNewProjectEvenWhenOneAlreadyExists`
-is the one that actually exercises `preferringNewProject`: create a project, then reach
-Import through the *global* `projectsImport` menu rather than the project-scoped one, and
-confirm the sheet defaults to "New Project" (a name field, no `importSheetProjectPicker`)
-even though a project already exists and is selected — the project-scoped menu's own
-default is unchanged and untouched by this milestone. All 11 `ProjectsSmokeTests` pass,
-and 544 `ColorKitTests` + 59 `ColorKitCLITests` pass unaffected (this milestone touched no
-ColorCore or persistence code).
+**Tests.** Three new `ProjectsSmokeTests`, and the mutation each one was checked against
+is named rather than left as "confirmed to fail," since a blunt mutation proves less than
+it looks like it does (CLAUDE.md's own M13 lesson):
+`testImportingFromTextWithNoProjectYetCreatesOneFromTheImport` drives the `emptyState`
+path end to end — paste, a seeded `importSheetNewProjectName` field reading "brand" (the
+parsed family name), confirm, and a project by that name holding the palette.
+`testGlobalImportDefaultsToNewProjectEvenWhenOneAlreadyExists` is the one that actually
+exercises `preferringNewProject`, and was checked against the **sharp** mutation, not
+just "does the code before this commit fail" — with the rest of the milestone intact,
+reverting only `onAppear`'s `creatingNewProject = preferringNewProject || projects.isEmpty`
+back to `projects.isEmpty` makes this one test fail (a project already exists, so the
+global menu should default to "New Project" and does not) while
+`testImportingFromTextWithNoProjectYetCreatesOneFromTheImport` still passes (no project
+exists either way, so that test can't tell the two rules apart). A first, blunter check —
+stashing both source files back to before this milestone — had both tests fail at
+`select()`, before either reached the behavior it is named for; that would have passed
+just as easily with `preferringNewProject` wired up but silently ignored, so it is
+recorded here as the weaker check it was, not the one this milestone rests its claim on.
+`testImportingAMultiGroupDocumentFromTheGlobalEntryPointIsNotBlockedByAnEmptyProjectName`
+is what pins the `canImport` fix above, confirmed against the original `canImport` (Import
+never becomes hittable) before the fix and against the shipped one (it does, and both
+loose colors land in a project that falls back to "Untitled Project" since nothing seeded
+a name). All 12 `ProjectsSmokeTests` pass, and 544 `ColorKitTests` + 59 `ColorKitCLITests`
+pass unaffected (this milestone touched no ColorCore or persistence code).
+
+**One open question, left to Parker rather than decided silently: now that a project can
+be selected, there are two menus both titled "Import" one row apart** — `importRow`'s
+global one (defaulting to "New Project") and `saveControls(_:)`'s project-scoped one
+(defaulting to whatever is selected) — with nothing on screen distinguishing which is
+which beyond that default. The plan below only asked for the global entry point to exist,
+not for the scoped one to be retired or relabeled, so it was left as built rather than
+guessed at.
 
 **CLAUDE.md when this lands:** the "Import is unreachable until a project exists" gap
 listed at the top of this M30–M34 series is retired.

@@ -139,9 +139,14 @@ so the global path defaults `ImportTextSheet` to "New Project" even when a proje
 already exists and is selected, where the pre-existing project-scoped `Menu("Import")`
 keeps defaulting to whatever is open. `destinationControl` now takes the parsed
 `ImportedPalette` and seeds `newProjectName` from it with the same reseed-until-touched
-discipline `shapeAndNameControls`'s name field already used, so the global path never
-opens with Import silently disabled behind an empty required field. See the M33 entry
-in PLAN.md.
+discipline `shapeAndNameControls`'s name field already used — real UX for a single-group
+document, but not what actually keeps Import enabled: `ImportedPalette.detectedName` is
+`nil` for any multi-group document (a whole-project export among them), so `canImport` no
+longer requires `newProjectName` non-empty at all when creating —
+`ProjectLibrary.createProject(named:)` already falls back to "Untitled Project" for an
+empty name, the same fallback the plain New Project button already relies on
+unconditionally. See the M33 entry in PLAN.md, including the open question it leaves
+about two menus both titled "Import" being visible at once.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
@@ -163,9 +168,9 @@ change without a mistake masquerading as an app regression:
 xcodebuild -project "ColorKit.xcodeproj" -target colorkit -destination 'platform=macOS' build && ./build/Release/colorkit --help
 ```
 
-Full test suite (~9 minutes, nearly all of it UI tests — the 505 + 59 Swift Testing
-tests finish in about a second, the 45 XCUITests take seven minutes and up). **There are
-two Swift Testing bundles now**: `ColorKitTests` (505 tests, 53 suites) and
+Full test suite (~9 minutes, nearly all of it UI tests — the 544 + 59 Swift Testing
+tests finish in about a second, the 48 XCUITests take seven minutes and up). **There are
+two Swift Testing bundles now**: `ColorKitTests` (544 tests, 54 suites) and
 `ColorKitCLITests` (59 tests, 10 suites), and both are in the scheme:
 
 ```bash

@@ -403,13 +403,22 @@ struct ImportTextSheet: View {
 
   /// Takes the already-parsed outcome rather than reading ``outcome`` itself — see the
   /// note at the top of `body` for why re-reading it is not free.
+  /// M33: no longer requires a non-empty ``newProjectName`` when creating. It used to,
+  /// on the reasoning that ``newProjectName``'s seed (below) would always have filled it
+  /// in by the time there was anything to import — true for a single-group document,
+  /// where the seed reads ``ImportedPalette/detectedName``, but false for a multi-group
+  /// one, where `detectedName` is `nil` by construction (set only when `groups.count ==
+  /// 1`). A whole-project export — plausibly the single most likely thing to reach the
+  /// global entry point for — is multi-group, so the old rule would have opened Import
+  /// disabled behind an empty required field with nothing on screen saying why: the
+  /// exact defect this milestone exists to fix, just moved one field over.
+  /// `ProjectLibrary.createProject(named:)` already falls back to "Untitled Project" for
+  /// an empty name — the same fallback the plain New Project button already relies on
+  /// unconditionally — so there was never a real requirement here to enforce.
   private func canImport(_ outcome: Result<ImportedPalette, PaletteImportError>?) -> Bool {
     guard case let .success(palette) = outcome, !palette.groups.isEmpty else { return false }
     guard !palette.groups.flatMap(\.entries).isEmpty else { return false }
-    if creatingNewProject {
-      return !newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-    return destinationProjectID != nil
+    return creatingNewProject || destinationProjectID != nil
   }
 
   // MARK: - Importing

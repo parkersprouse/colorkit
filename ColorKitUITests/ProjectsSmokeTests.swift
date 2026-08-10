@@ -479,6 +479,62 @@ final class ProjectsSmokeTests: XCTestCase {
     )
   }
 
+  /// A discriminating case ``testImportingFromTextWithNoProjectYetCreatesOneFromTheImport``
+  /// cannot reach: a **multi-group** paste, where ``ImportedPalette/detectedName`` is
+  /// `nil` by construction (`PaletteImport.finished` only ever sets it when
+  /// `groups.count == 1`). `--brand-500`/`--accent-700` share no hyphen segment, so
+  /// `commonFamily` returns `nil` and each becomes its own single-color group — two
+  /// groups, so `importSheetNewProjectName` never gets seeded with anything. `canImport`
+  /// must not require that field to be non-empty regardless: `ProjectLibrary
+  /// .createProject(named:)` already falls back to "Untitled Project" for an empty name,
+  /// so there was never a real requirement here, and the global entry point is
+  /// specifically where a multi-group document — a whole-project export is the obvious
+  /// one — is most likely to land first.
+  func testImportingAMultiGroupDocumentFromTheGlobalEntryPointIsNotBlockedByAnEmptyProjectName() {
+    click(radioButton: "Projects", "the tool switcher")
+
+    select(menuItem: "From Text…", fromMenu: "projectsImport", "the global import menu")
+
+    let sheet = app.sheets.firstMatch
+    XCTAssertTrue(
+      sheet.waitForExistence(timeout: 15),
+      "No import sheet appeared. Tree was:\n\(app.debugDescription)",
+    )
+
+    let textBox = sheet.textViews["importSheetText"]
+    textBox.click()
+    textBox.typeText(":root {\n  --brand-500: #3b82f6;\n  --accent-700: #10b981;\n}")
+
+    let newProjectField = sheet.textFields["importSheetNewProjectName"]
+    XCTAssertTrue(
+      newProjectField.waitForExistence(timeout: 15),
+      "No new-project name field. Tree was:\n\(app.debugDescription)",
+    )
+    XCTAssertEqual(
+      newProjectField.value as? String ?? "", "",
+      "A multi-group document has no single detected name to seed this field with",
+    )
+
+    let confirm = sheet.buttons["importSheetConfirm"]
+    XCTAssertTrue(
+      waitUntilHittable(confirm),
+      "Import must stay enabled even with the new-project name left blank — "
+        + "createProject(named:) already falls back to \"Untitled Project\". Tree was:\n"
+        + "\(app.debugDescription)",
+    )
+    confirm.click()
+
+    XCTAssertTrue(
+      app.buttons["savedColor-1"].waitForExistence(timeout: 15),
+      "Both loose colors should have imported into the new project. Tree was:\n"
+        + "\(app.debugDescription)",
+    )
+    XCTAssertEqual(
+      app.textFields["projectName"].value as? String, "Untitled Project",
+      "With nothing to seed it, the new project should carry the fallback name",
+    )
+  }
+
   /// The behavioral half of M33, and the reason ``ImportRequest/preferringNewProject``
   /// exists at all: the project-scoped `Menu("Import")` inside `saveControls(_:)` already
   /// worked once a project existed, defaulting to whatever was selected — so the global
