@@ -3582,7 +3582,8 @@ sanitized-key collision (mutation-confirmed — deleting the suffix loop fails e
 that one test and nothing else), a rendered round trip proving a rekeyed entry exports
 under its new name, and a guard against renaming or rekeying an object already deleted
 from the context (see below — not itself mutation-forced, and said so rather than
-overclaimed). All 505 `ColorKitTests` + 59 `ColorKitCLITests` pass.
+overclaimed). All 544 `ColorKitTests` (539 before M32, +5) + 59 `ColorKitCLITests`
+pass, and a later run added all 45 `ColorKitUITests` — see below.
 
 **One deliberate deviation from the sketch below, recorded rather than silently
 resolved.** The plan's UI paragraph says a palette entry's rekey field comes "from the
@@ -3658,14 +3659,23 @@ one worth a mutation: remove the suffix loop and confirm a color disappears from
 rendered document — done: `dedupedKey` reduced to `candidate` fails exactly
 `rekeyDedupesAgainstSanitizedSiblings` and nothing else in the 34-test suite.
 
-**What was verified versus reasoned.** All 505 `ColorKitTests` and 59 `ColorKitCLITests`
-pass, and the app target builds clean. The UI could not be exercised here —
-`xcodebuild`'s UI-test phase failed with *"Timed out while enabling automation mode,"*
-the same host-capability failure (not a test result) M30 hit, so `paletteEdit-\(index)`,
-`paletteEntryKey`, `paletteEntryKeyPreview` and the retitled "Edit…" menu item have no
-XCUITest coverage and were not clicked by hand. The library-level rules they call are
-fully covered; the wiring from button to popover to `perform { try library.… }` is
-reasoned from the code, the same honesty extended elsewhere in this file to
+**What was verified versus reasoned.** All 544 `ColorKitTests` and 59 `ColorKitCLITests`
+pass, and the app target builds clean. The first attempt at the full suite failed the
+UI-test phase with *"Timed out while enabling automation mode"* — the same
+host-capability failure (not a test result) M30 hit, caused by the Mac being in active
+use rather than by anything in this change (`HIDIdleTime` read single-digit seconds at
+the time). **A second attempt, once the machine was idle, ran clean: all 45 XCUITests
+passed, 648 tests total, including all nine `ProjectsSmokeTests`.** That confirms the
+*existing* projects UI — the import paths, the save controls, the swatch grid — did not
+regress under `paletteRow`'s rewrite (walking `orderedEntries` instead of
+`paletteEntries`, the new Edit button, `SwatchButton`'s new menu closure on each entry
+swatch). It does **not** cover M32's own new controls: no XCUITest clicks
+`paletteEdit-\(index)`, opens the rekey popover from a swatch's "Rename Key…" item, or
+reads `paletteEntryKey`/`paletteEntryKeyPreview` — none of the nine `ProjectsSmokeTests`
+were written against them, so a green run here says "nothing else broke," not "this
+works." The library-level rules they call are fully covered by `ProjectStoreTests`; the
+wiring from button to popover to `perform { try library.… }` is reasoned from the code
+and was not clicked by hand, the same honesty extended elsewhere in this file to
 `NSOpenPanel`/`NSSavePanel` and the Settings recorder.
 
 **A first draft left `rename(_ color:to:)` unwired — exactly the defect this milestone
