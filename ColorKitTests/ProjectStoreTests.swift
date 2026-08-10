@@ -684,9 +684,9 @@ struct ProjectStoreTests {
   func rekeyFallsBackToPosition() throws {
     let library = try Self.makeLibrary()
     let project = try library.createProject(named: "Site")
-    let entries = [
-      PaletteEntry(key: "500", color: try CSSColorParser.parse("#ff0000").color),
-      PaletteEntry(key: "600", color: try CSSColorParser.parse("#00ff00").color),
+    let entries = try [
+      PaletteEntry(key: "500", color: CSSColorParser.parse("#ff0000").color),
+      PaletteEntry(key: "600", color: CSSColorParser.parse("#00ff00").color),
     ]
     try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
     let palette = try #require(project.orderedPalettes.first)
@@ -706,9 +706,9 @@ struct ProjectStoreTests {
   func rekeyDedupesAgainstSanitizedSiblings() throws {
     let library = try Self.makeLibrary()
     let project = try library.createProject(named: "Site")
-    let entries = [
-      PaletteEntry(key: "brand.500", color: try CSSColorParser.parse("#ff0000").color),
-      PaletteEntry(key: "600", color: try CSSColorParser.parse("#00ff00").color),
+    let entries = try [
+      PaletteEntry(key: "brand.500", color: CSSColorParser.parse("#ff0000").color),
+      PaletteEntry(key: "600", color: CSSColorParser.parse("#00ff00").color),
     ]
     try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
     let palette = try #require(project.orderedPalettes.first)
@@ -727,7 +727,7 @@ struct ProjectStoreTests {
   func rekeyedEntryExportsUnderNewKey() throws {
     let library = try Self.makeLibrary()
     let project = try library.createProject(named: "Site")
-    let entries = [PaletteEntry(key: "500", color: try CSSColorParser.parse("#ff0000").color)]
+    let entries = try [PaletteEntry(key: "500", color: CSSColorParser.parse("#ff0000").color)]
     try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
     let palette = try #require(project.orderedPalettes.first)
     let entry = try #require(palette.orderedEntries.first)
