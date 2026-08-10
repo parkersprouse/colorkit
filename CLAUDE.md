@@ -112,6 +112,18 @@ references `DesignTokenImport` directly and the two summary vocabularies (entrie
 of group) collapse to the sheet's. The filename wins over a document's own detected name in
 the single-group name field. See the M31 entry in PLAN.md for the two honest losses and
 what was verified by hand versus reasoned.
+**M32 is done too**: everything saved can now be renamed. `ProjectLibrary` gained
+`rename(_ color:to:)` (a label — empty is legal, no fallback) and `rekey(_ entry:to:)`
+(a palette entry's export key — empty falls back to its position, deduplicated against
+siblings' *sanitized* keys), and finally wired `rename(_ palette:to:)`, unwired since M9,
+behind a new Edit button on `paletteRow`. The three must not share a door because each
+answers "what does an empty name mean" differently — nothing at all, the entry's
+position, or a project/palette title. `ProjectsPanel`'s saved-color notes popover grew a
+Name field and its opening menu item is now "Edit…"; a palette entry's rekey field is
+its own popover reached from `SwatchButton`'s
+menu on the entry swatch, not the notes popover, because the two live on different
+`SavedColor` relationships (a project's loose colors vs. a palette's entries) — see the
+M32 entry in PLAN.md for why that reading of the original sketch did not survive contact.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
@@ -873,14 +885,27 @@ Layered so the numeric core stays independently testable and UI-free:
   cost; it does not remove it** — one parse per keystroke remains, and getting rid of
   that needs debouncing or moving the parse off the main actor, which is a change to how
   the sheet works rather than to where a value is read.
-- **`ProjectLibrary.rename(_ palette:to:)` is still the library's only unwired mutation,
-  and M26 did not change that.** The plan floated wiring it from `ImportTextSheet`'s name
-  field; the field instead supplies the name at *creation* time (`savePalette(importing:
-  named:to:)` already takes one), so there is no post-hoc rename to perform. Recorded
-  deliberately rather than left to look like an oversight. **Name the overload when
-  citing this** — `rename` is overloaded, and the *project* one is wired, from
-  `ProjectsPanel`'s name field on submit (`ProjectsPanel.swift:219`). Written as a bare
-  `rename(_:to:)`, this bullet reads as a claim about both and is then simply false.
+- **`ProjectLibrary.rename(_ palette:to:)` was the library's only unwired mutation from
+  M9 through M31, and M32 finally wired it** — from a new Edit button on `paletteRow`
+  (`paletteEdit-\(index)`), which opens `paletteNameEditor`. The M26 plan had floated
+  wiring it from `ImportTextSheet`'s name field instead; that field supplies a palette's
+  name at *creation* time, so there was never a post-hoc rename to perform there, and
+  M26 recorded the gap deliberately rather than leaving it to look like an oversight.
+  **Name the overload when citing history here** — `rename` is overloaded three ways
+  now (project, palette, and M32's `SavedColor` — see the next bullet), and a bare
+  `rename(_:to:)` reads as a claim about all of them.
+- **M32's three renames answer "what does an empty name mean" three different ways, and
+  that is the substance of the milestone rather than an inconsistency to tidy.** A
+  project falls back to "Untitled Project"; a palette to its `kind.title`; a loose
+  color's name (`ProjectLibrary.rename(_ color:to:)`) falls back to *nothing at all* —
+  `saved.name.isEmpty ? saved.text : saved.name` is the display rule everywhere a saved
+  color is shown, so a blank name is how you tell a tile to show the CSS again, not an
+  error to correct. It must **not** route through `cleaned(_:fallback:)`, which exists
+  for the first two. A palette *entry's* name (`ProjectLibrary.rekey(_ entry:to:)`) is a
+  fourth, different thing again — the entry's export key, not a label — so an empty one
+  falls back to the entry's **position** (`1`, `2`, …, matching `paletteKeys(for:)`),
+  never to nothing. All four write `SavedColor.name`; that is exactly why none of them
+  may share a door with another.
 - **`ExportOptions.shape` and `.format` are persisted preferences (M19), which predates
   web-friendly mode (M22) — so the mode can be turned on with `p3WithFallback` or a
   `color()` format already chosen from an earlier session.** Hiding those choices from
@@ -981,8 +1006,8 @@ Layered so the numeric core stays independently testable and UI-free:
   object keys, and Tailwind writes shade keys bare — legal for `50:`, fatal for
   `triad-2:`, which parses as a subtraction and stops the config loading. They must also
   be unique: two entries sharing a key silently collapse into one property and a color
-  vanishes. `ExportOptions.javaScriptKey` and `cssIdentifier` are the only places that
-  decide this; do not format a key inline.
+  vanishes. `ExportOptions.javaScriptKey`, `cssIdentifier` and (M32) `ProjectLibrary
+  .rekey(_ entry:to:)` are the only places that decide this; do not format a key inline.
 - **An imported token's keys are uniqued against the *sanitized* key, never the raw path.**
   Token paths are unique by construction, which makes "so the keys are too" the obvious and
   wrong conclusion: `-` is a legal name character in the token format and `.` is not, so

@@ -3278,7 +3278,7 @@ its assertions, not zero and not one.
 
 ## M30–M34 – close the import/export round trip
 
-**M30 and M31 are built (see their ✅ entries below); M32–M34 remain planned.** M0–M29 were done when
+**M30, M31 and M32 are built (see their ✅ entries below); M33–M34 remain planned.** M0–M29 were done when
 this series was scoped, so it is a sixth series rather than more of the old list. Four of the
 five come from Parker using the built app on 2026-08-09; the fifth is the asymmetry that
 report uncovered while the first four were being scoped. They are all one theme – **what
@@ -3564,7 +3564,47 @@ stop at asserting the control exists and is hittable; the decode is
 **CLAUDE.md when this lands:** the M26 sentence describing the Import menu ("beside the
 pre-existing token-file picker") no longer describes it.
 
-### ⬜ M32 – Rename what you saved
+### ✅ M32 – Rename what you saved
+
+**Built.** `ProjectLibrary` gained the two new doors and finally wired the one that
+already existed: `rename(_ color: SavedColor, to:)` (a label, no fallback),
+`rekey(_ entry: SavedColor, to:)` (syntax — falls back to position, deduplicated against
+siblings' *sanitized* keys through a new private `dedupedKey(_:against:)`), and
+`rename(_ palette:to:)`, unwired since M9, now called from a new Edit button on
+`paletteRow`. `ProjectsPanel` gained `paletteEditTarget`/`entryEditTarget` state and two
+new popover views, `paletteNameEditor` and `entryKeyEditor`; the existing notes popover
+grew a Name field and its opening menu item was retitled "Edit…". Four new
+`ProjectStoreTests`: the empty-name asymmetry, the position fallback, the sanitized-key
+collision (mutation-confirmed — deleting the suffix loop fails exactly that one test and
+nothing else), and a rendered round trip proving a rekeyed entry exports under its new
+name. All 505 `ColorKitTests` + 59 `ColorKitCLITests` pass.
+
+**One deliberate deviation from the sketch below, recorded rather than silently
+resolved.** The plan's UI paragraph says a palette entry's rekey field comes "from the
+same popover" as the loose-color notes editor. Building it, that reading does not
+survive contact: `noteTarget: SavedColor?` is scoped to `project.colors`, and a palette
+entry lives in `palette.entries` — a different relationship on the same model type, not
+the same set of objects. Threading one popover over both would mean a Notes field
+appearing on a palette-entry click (entries have no notes UI anywhere else) or a Name
+field appearing that means "key" for one kind of `SavedColor` and "label" for the other,
+silently, with nothing on screen saying which. So `entryEditTarget` is its **own** piece
+of state and `entryKeyEditor` its own view — the same *pattern* the notes editor uses
+(bound straight to the model, committed on submit and on close) rather than the same
+popover instance. This is the identical shape the milestone's own doctrine already
+argues for one paragraph earlier: `rename` and `rekey` "must not share a door" because
+what an empty name means differs; two popovers for the identical reason a shared one
+would blur it.
+
+**The live preview shows the sanitized key, not the fully deduplicated one.** Typing a
+value that would collide with a sibling shows its `cssIdentifier`-sanitized form
+immediately (`Text("Exports as “\(sanitized)”")`), not the `-2`-suffixed value the
+commit will actually store — deduplication only runs at `rekey(_:to:)`'s call, on submit
+or on the popover's `onDisappear`, because it needs the *other* entries' current names to
+compare against, not just the field's own text. Live-recomputing that on every keystroke
+would mean re-reading every sibling's name once per character typed, for a preview whose
+whole point is the lossy sanitization step (`cssIdentifier`), not the collision that only
+sometimes follows it. Accepted, and worth stating rather than discovering later that the
+preview and the stored key can differ for a colliding name in the instant before commit.
 
 **Two differently-named library methods, because a loose color's name and a palette
 entry's name are not the same kind of thing.** They both write `SavedColor.name`; that is
@@ -3610,7 +3650,18 @@ than an `.overlay` – the trap `savedColorTile`'s selection tick already docume
 renamed onto one key must not collapse), the asymmetric empty-name fallbacks, and a
 round-trip claim that a rekeyed entry exports under its new key. The rekey dedupe is the
 one worth a mutation: remove the suffix loop and confirm a color disappears from the
-rendered document.
+rendered document — done: `dedupedKey` reduced to `candidate` fails exactly
+`rekeyDedupesAgainstSanitizedSiblings` and nothing else in the 34-test suite.
+
+**What was verified versus reasoned.** All 505 `ColorKitTests` and 59 `ColorKitCLITests`
+pass, and the app target builds clean. The UI could not be exercised here —
+`xcodebuild`'s UI-test phase failed with *"Timed out while enabling automation mode,"*
+the same host-capability failure (not a test result) M30 hit, so `paletteEdit-\(index)`,
+`paletteEntryKey`, `paletteEntryKeyPreview` and the retitled "Edit…" menu item have no
+XCUITest coverage and were not clicked by hand. The library-level rules they call are
+fully covered; the wiring from button to popover to `perform { try library.… }` is
+reasoned from the code, the same honesty extended elsewhere in this file to
+`NSOpenPanel`/`NSSavePanel` and the Settings recorder.
 
 **CLAUDE.md when this lands:** the "`ProjectLibrary.rename(_ palette:to:)` is still the
 library's only unwired mutation" bullet is retired, and `rekey` is added to the list of

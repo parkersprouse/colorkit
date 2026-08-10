@@ -143,9 +143,18 @@ struct ProjectsPanel: View {
   /// "From File…" fills it after reading the chosen file's bytes.
   @State private var importRequest: ImportRequest?
 
-  /// Which saved color's notes are open. A `@Model` is `Identifiable`, so this drives
-  /// `.popover(item:)` directly.
+  /// Which saved color's name and notes are open for editing. A `@Model` is
+  /// `Identifiable`, so this drives `.popover(item:)` directly.
   @State private var noteTarget: SavedColor?
+
+  /// Which palette's name is open for editing (M32). A **label**, so it shares
+  /// ``rename(_ palette:to:)``'s existing fallback rather than a door of its own.
+  @State private var paletteEditTarget: Palette?
+
+  /// Which palette entry's export key is open for editing (M32) — **syntax**, not a
+  /// label, hence its own popover rather than reusing ``noteTarget``'s. See
+  /// ``ProjectLibrary/rekey(_:to:)``.
+  @State private var entryEditTarget: SavedColor?
 
   /// Which colors are ticked for "Save Selection".
   ///
@@ -392,16 +401,30 @@ struct ProjectsPanel: View {
     }
   }
 
-  /// Why a color was kept, which the swatch cannot say and the name should not have to.
+  /// What a color is called and why it was kept — the swatch can say neither.
   ///
-  /// A popover rather than a field in the grid: notes are the least-used thing here and
-  /// giving every tile a permanent text box would bury the colors under them.
+  /// A popover rather than fields in the grid: a label and a note are the
+  /// least-used things here, and giving every tile a permanent text box would bury the
+  /// colors under them. **M32 folded the name in** — previously notes-only, retitled
+  /// Edit… on the menu that opens it — rather than a separate door, because both
+  /// fields are edited the identical way: bound straight to the model, live, and
+  /// committed once on the way out.
+  ///
+  /// The name field has no fallback, unlike everything else this panel lets you rename.
+  /// `saved.name.isEmpty ? saved.text : saved.name` is the display rule everywhere a
+  /// saved color is shown, so clearing this is how you tell the tile to show the CSS
+  /// again rather than a label nobody typed — ``ProjectLibrary/rename(_:to:)`` states
+  /// the same rule for a caller that is not a live binding.
   private func notesEditor(_ saved: SavedColor) -> some View {
     @Bindable var saved = saved
 
     return VStack(alignment: .leading, spacing: 8) {
       Text(saved.name.isEmpty ? saved.text : saved.name)
         .font(.headline)
+      TextField("Name", text: $saved.name, prompt: Text("Optional label"))
+        .textFieldStyle(.roundedBorder)
+        .frame(width: 260)
+        .accessibilityIdentifier("savedColorName")
       TextField("Notes", text: $saved.notes, prompt: Text("What this is for"), axis: .vertical)
         .lineLimit(3 ... 6)
         .textFieldStyle(.roundedBorder)
@@ -515,7 +538,7 @@ struct ProjectsPanel: View {
     Button("Move Right") { moveTile(saved, from: index, by: 1) }
       .disabled(index == (saved.project?.colors.count ?? 0) - 1)
 
-    Button("Notes…") { noteTarget = saved }
+    Button("Edit…") { noteTarget = saved }
     Button("Delete", role: .destructive) {
       // Cleared first: the popover holds this object, and leaving it pointed at a
       // deleted model is a reference to a row that no longer exists.
@@ -562,47 +585,84 @@ struct ProjectsPanel: View {
           .font(.callout)
           .foregroundStyle(.secondary)
       } else {
-        ForEach(Array(project.orderedPalettes.enumerated()), id: \.element.persistentModelID) {
-          index, palette in
-          paletteRow(palette, index: index)
+        VStack(alignment: .leading, spacing: 10) {
+          ForEach(Array(project.orderedPalettes.enumerated()), id: \.element.persistentModelID) {
+            index, palette in
+            paletteRow(palette, index: index)
+          }
+        }
+        // Two popovers for the whole section rather than one per row or per swatch,
+        // matching `colorsSection`'s own reasoning: `item:` already carries which
+        // palette or which entry is being edited, so a dozen rows each holding their
+        // own would be a dozen pieces of state for something only ever open once.
+        .popover(item: $paletteEditTarget) { palette in
+          paletteNameEditor(palette)
+        }
+        .popover(item: $entryEditTarget) { entry in
+          entryKeyEditor(entry)
         }
       }
     }
   }
 
   private func paletteRow(_ palette: Palette, index: Int) -> some View {
-    let entries = palette.paletteEntries
+    let orderedEntries = palette.orderedEntries
 
     return VStack(alignment: .leading, spacing: 6) {
       HStack(spacing: 8) {
         Text(palette.name).font(.callout.weight(.medium))
         ColorBadge(text: palette.kind.title, tint: .secondary)
         Spacer()
-        Button("Export") { store.stage(entries, named: palette.name) }
-          .disabled(entries.isEmpty)
+        Button("Export") { store.stage(palette.paletteEntries, named: palette.name) }
+          .disabled(palette.paletteEntries.isEmpty)
           .accessibilityIdentifier("paletteExport-\(index)")
-        Button("Delete", role: .destructive) { perform { try library.delete(palette) } }
-          .accessibilityIdentifier("paletteDelete-\(index)")
+        // M32: opens `paletteNameEditor`, wiring `ProjectLibrary.rename(_ palette:to:)`
+        // — the library's only unwired mutation since M9.
+        Button("Edit") { paletteEditTarget = palette }
+          .accessibilityIdentifier("paletteEdit-\(index)")
+        Button("Delete", role: .destructive) {
+          // Cleared first, the same reason `savedColorMenu`'s own Delete does: a
+          // popover left pointed at a deleted model is a reference to a row that no
+          // longer exists.
+          if paletteEditTarget?.persistentModelID == palette.persistentModelID {
+            paletteEditTarget = nil
+          }
+          if entryEditTarget?.palette?.persistentModelID == palette.persistentModelID {
+            entryEditTarget = nil
+          }
+          perform { try library.delete(palette) }
+        }
+        .accessibilityIdentifier("paletteDelete-\(index)")
       }
 
       HStack(alignment: .top, spacing: 4) {
-        ForEach(Array(entries.enumerated()), id: \.offset) { entryIndex, entry in
-          // The key moves to a caption underneath, matching `ExportPanel.swatches` —
-          // `SwatchButton`'s accessibility label is always the color's own CSS, never
-          // a caller-chosen name, which is what makes a row of these testable at all:
-          // a ramp that silently repeated a stop would fail a distinctness check on
-          // the label, and a label that instead read the key could not catch that.
-          VStack(spacing: 2) {
-            SwatchButton(
-              color: entry.color,
-              cornerRadius: 4,
-              accessibilityIdentifier: "palette-\(index)-swatch-\(entryIndex)",
-            )
-            .frame(width: 24, height: 24)
-            if !entry.key.isEmpty {
-              Text(entry.key)
-                .font(.system(size: 8))
-                .foregroundStyle(.secondary)
+        // Walked as `SavedColor` models, not `palette.paletteEntries`, so each swatch's
+        // menu has something to hand `entryEditTarget` — a `PaletteEntry` is a plain
+        // value with no model behind it to rekey. A row with no readable `colorValue`
+        // renders nothing, the same silent skip `paletteEntries` already performs via
+        // `compactMap`.
+        ForEach(Array(orderedEntries.enumerated()), id: \.element.persistentModelID) {
+          entryIndex, entry in
+          if let color = entry.colorValue {
+            // The key moves to a caption underneath, matching `ExportPanel.swatches` —
+            // `SwatchButton`'s accessibility label is always the color's own CSS, never
+            // a caller-chosen name, which is what makes a row of these testable at all:
+            // a ramp that silently repeated a stop would fail a distinctness check on
+            // the label, and a label that instead read the key could not catch that.
+            VStack(spacing: 2) {
+              SwatchButton(
+                color: color,
+                cornerRadius: 4,
+                accessibilityIdentifier: "palette-\(index)-swatch-\(entryIndex)",
+              ) {
+                Button("Rename Key…") { entryEditTarget = entry }
+              }
+              .frame(width: 24, height: 24)
+              if !entry.name.isEmpty {
+                Text(entry.name)
+                  .font(.system(size: 8))
+                  .foregroundStyle(.secondary)
+              }
             }
           }
         }
@@ -610,6 +670,58 @@ struct ProjectsPanel: View {
     }
     .padding(10)
     .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+  }
+
+  /// A palette's name — a **label**, sharing ``rename(_ palette:to:)``'s existing
+  /// fallback (its `kind.title`) rather than a new rule. Bound straight to the model
+  /// and committed on submit and on close, the same pattern the project name field
+  /// (`header`) already uses for a plain, non-popover text field.
+  private func paletteNameEditor(_ palette: Palette) -> some View {
+    @Bindable var palette = palette
+
+    return VStack(alignment: .leading, spacing: 8) {
+      Text("Rename Palette").font(.headline)
+      TextField("Name", text: $palette.name, prompt: Text(palette.kind.title))
+        .textFieldStyle(.roundedBorder)
+        .frame(width: 220)
+        .accessibilityIdentifier("paletteName")
+        .onSubmit { perform { try library.rename(palette, to: palette.name) } }
+    }
+    .padding(12)
+    .onDisappear { perform { try library.rename(palette, to: palette.name) } }
+  }
+
+  /// A palette entry's export key — **syntax**, not a label. Shows the sanitized
+  /// identifier live underneath the field, because ``ExportOptions/cssIdentifier(_:fallback:)``
+  /// is lossy and has no inverse: typing "Triad 2" writes `--brand-triad-2`, and that
+  /// belongs in front of the user before they commit rather than in an export they
+  /// read later — the same honesty M17 recorded when a name leaving through export
+  /// turned out not to return through import unchanged.
+  private func entryKeyEditor(_ entry: SavedColor) -> some View {
+    @Bindable var entry = entry
+    let position = (entry.palette?.orderedEntries.firstIndex {
+      $0.persistentModelID == entry.persistentModelID
+    } ?? 0) + 1
+    let sanitized = ExportOptions.cssIdentifier(entry.name, fallback: "")
+
+    return VStack(alignment: .leading, spacing: 8) {
+      Text("Rename Key").font(.headline)
+      TextField("Key", text: $entry.name, prompt: Text("Position \(position)"))
+        .textFieldStyle(.roundedBorder)
+        .frame(width: 180)
+        .accessibilityIdentifier("paletteEntryKey")
+        .onSubmit { perform { try library.rekey(entry, to: entry.name) } }
+      Text(
+        sanitized.isEmpty
+          ? "Blank falls back to its position, “\(position)”."
+          : "Exports as “\(sanitized)”.",
+      )
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .accessibilityIdentifier("paletteEntryKeyPreview")
+    }
+    .padding(12)
+    .onDisappear { perform { try library.rekey(entry, to: entry.name) } }
   }
 
   /// What the imported palette is called: the file's name, minus the extensions that only

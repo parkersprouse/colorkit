@@ -659,6 +659,90 @@ struct ProjectStoreTests {
     #expect(project.orderedPalettes.first?.entries.count == 2)
   }
 
+  // MARK: - Renaming what you saved (M32)
+
+  /// The asymmetry the milestone exists to state: a loose color's name is a label, not
+  /// syntax, so clearing it is legal — unlike a project or a palette, which both fall
+  /// back to a title rather than store nothing.
+  @Test("A saved color's name can be cleared, unlike a project's or a palette's")
+  func colorRenameHasNoFallback() throws {
+    let library = try Self.makeLibrary()
+    let project = try library.createProject(named: "Site")
+    let color = try CSSColorParser.parse("#ff0000").color
+    let saved = try library.saveColor(ColorRecord(color, text: "#ff0000"), named: "Brand Red", to: project)
+
+    try library.rename(saved, to: "   ")
+
+    #expect(saved.name.isEmpty)
+  }
+
+  /// `rekey`'s empty answer is different from `rename`'s: a blank key is not "no
+  /// label", it is "no property", so it falls back to the entry's position rather than
+  /// to nothing — the same fallback `paletteKeys(for:)` already writes for an entry
+  /// that arrives with no name of its own.
+  @Test("An emptied palette-entry key falls back to its position, not to nothing")
+  func rekeyFallsBackToPosition() throws {
+    let library = try Self.makeLibrary()
+    let project = try library.createProject(named: "Site")
+    let entries = [
+      PaletteEntry(key: "500", color: try CSSColorParser.parse("#ff0000").color),
+      PaletteEntry(key: "600", color: try CSSColorParser.parse("#00ff00").color),
+    ]
+    try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
+    let palette = try #require(project.orderedPalettes.first)
+    let second = palette.orderedEntries[1]
+
+    try library.rekey(second, to: "   ")
+
+    #expect(second.name == "2")
+  }
+
+  /// The collision worth a mutation, per the milestone: two entries renamed onto keys
+  /// that only *look* distinct do not collapse into one property. `brand.500` and
+  /// `brand-500` are two legal, different-looking names that
+  /// `ExportOptions.cssIdentifier(_:fallback:)` maps onto the identical identifier —
+  /// the same hazard `DesignTokenImport.keyed(_:)` guards against on the way in.
+  @Test("Two palette-entry keys that sanitize alike do not collapse into one")
+  func rekeyDedupesAgainstSanitizedSiblings() throws {
+    let library = try Self.makeLibrary()
+    let project = try library.createProject(named: "Site")
+    let entries = [
+      PaletteEntry(key: "brand.500", color: try CSSColorParser.parse("#ff0000").color),
+      PaletteEntry(key: "600", color: try CSSColorParser.parse("#00ff00").color),
+    ]
+    try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
+    let palette = try #require(project.orderedPalettes.first)
+    let second = palette.orderedEntries[1]
+
+    try library.rekey(second, to: "brand-500")
+
+    let keys = palette.paletteEntries.map(\.key)
+    #expect(second.name == "brand-500-2")
+    #expect(Set(keys).count == keys.count, "A color must not silently vanish behind a colliding key:\n\(keys)")
+  }
+
+  /// The round trip the field's live preview promises: a rekeyed entry is not merely
+  /// renamed in the store, it exports under the new name.
+  @Test("A rekeyed entry exports under its new key")
+  func rekeyedEntryExportsUnderNewKey() throws {
+    let library = try Self.makeLibrary()
+    let project = try library.createProject(named: "Site")
+    let entries = [PaletteEntry(key: "500", color: try CSSColorParser.parse("#ff0000").color)]
+    try library.savePalette(entries, named: "Brand", kind: .ramp, to: project)
+    let palette = try #require(project.orderedPalettes.first)
+    let entry = try #require(palette.orderedEntries.first)
+
+    try library.rekey(entry, to: "primary")
+
+    var options = ExportOptions.default
+    options.shape = .customProperties
+    options.name = palette.name
+    let rendered = options.render(palette.paletteEntries)
+
+    #expect(rendered.contains("--Brand-primary"))
+    #expect(!rendered.contains("--Brand-500"))
+  }
+
   // MARK: Private
 
   /// A store on disk, for the one test that has to leave memory.

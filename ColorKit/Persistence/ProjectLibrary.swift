@@ -352,6 +352,59 @@ struct ProjectLibrary {
     try context.save()
   }
 
+  // MARK: - Renaming what you saved (M32)
+
+  /// Renames a loose color — a **label**, never syntax.
+  ///
+  /// Both this and ``rekey(_:to:)`` write ``SavedColor/name``, and that is exactly why
+  /// they must not share a door. This one has no fallback and must **not** route
+  /// through ``cleaned(_:fallback:)``: `saved.name.isEmpty ? saved.text : saved.name`
+  /// is the display rule everywhere a saved color is shown, so an empty name is not an
+  /// error here, it is how a color that was never given a label falls back to the CSS
+  /// it was saved with instead of a manufactured one. ``rekey(_:to:)`` exists because a
+  /// palette entry's empty name means something different — it is the entry's *export
+  /// key*, and leaving that blank is not "no label", it is "no property".
+  func rename(_ color: SavedColor, to name: String) throws {
+    color.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    color.project?.touch()
+    color.palette?.project?.touch()
+    try context.save()
+  }
+
+  /// Renames a palette entry's export key — **syntax**, not a label.
+  ///
+  /// ``SavedColor/name`` doubles as a palette entry's key (see that type's own doc
+  /// comment): it becomes a CSS custom property and a bare JavaScript object key, so
+  /// changing it is a different act from ``rename(_:to:)``, which only changes what a
+  /// tile is called. An empty result therefore falls back to the entry's **position** —
+  /// `1`, `2`, … — the same fallback ``paletteKeys(for:)`` already writes for an entry
+  /// that arrives with no name of its own, rather than to nothing at all.
+  ///
+  /// The candidate is deduplicated against its siblings' **sanitized** keys, never
+  /// their raw names — the same distinction ``DesignTokenImport/keyed(_:)`` draws for a
+  /// token's path, and for the identical reason: `-` is a legal identifier character
+  /// and `.` is not, so two visually distinct names can still collide once
+  /// ``ExportOptions/cssIdentifier(_:fallback:)`` gets hold of them. Two entries
+  /// sharing a key do not produce a duplicate property — they collapse into one, and a
+  /// color silently disappears from the export with nothing in the document to say so.
+  func rekey(_ entry: SavedColor, to name: String) throws {
+    guard let palette = entry.palette else { return }
+    let ordered = palette.orderedEntries
+    guard let position = ordered.firstIndex(where: {
+      $0.persistentModelID == entry.persistentModelID
+    }) else { return }
+
+    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    let candidate = trimmed.isEmpty ? String(position + 1) : trimmed
+    let siblingNames = ordered
+      .filter { $0.persistentModelID != entry.persistentModelID }
+      .map(\.name)
+
+    entry.name = Self.dedupedKey(candidate, against: siblingNames)
+    palette.project?.touch()
+    try context.save()
+  }
+
   // MARK: Private
 
   private static let untitledProject = "Untitled Project"
@@ -395,6 +448,25 @@ struct ProjectLibrary {
       used.insert(key)
       return key
     }
+  }
+
+  /// `candidate`, suffixed until its **sanitized** form no longer collides with any of
+  /// `siblingNames`'s own sanitized forms. See ``rekey(_:to:)``.
+  ///
+  /// Comparing sanitized rather than raw is the whole point — two entries named
+  /// `brand.500` and `brand-500` look distinct and are not once
+  /// ``ExportOptions/cssIdentifier(_:fallback:)`` gets hold of them, so a raw-text
+  /// comparison (what ``paletteKeys(for:)`` above does, for a set with no such hazard)
+  /// would let the collision through.
+  private static func dedupedKey(_ candidate: String, against siblingNames: [String]) -> String {
+    let used = Set(siblingNames.map { ExportOptions.cssIdentifier($0, fallback: "") })
+    guard used.contains(ExportOptions.cssIdentifier(candidate, fallback: "")) else { return candidate }
+
+    var suffix = 2
+    while used.contains(ExportOptions.cssIdentifier("\(candidate)-\(suffix)", fallback: "")) {
+      suffix += 1
+    }
+    return "\(candidate)-\(suffix)"
   }
 
   /// The part of saving a palette that is genuinely the same for all three overloads:
