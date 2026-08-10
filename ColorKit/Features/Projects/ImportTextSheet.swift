@@ -179,7 +179,7 @@ struct ImportTextSheet: View {
   /// XCUITest) could ever type into.
   private var pasteBox: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text("Paste a stylesheet, a Tailwind config, JSON, a design token file, or a bare list of colors.")
+      Text("Paste a stylesheet, a Tailwind config, JSON, a Design tokens (DTCG) file, or a bare list of colors.")
         .font(.caption)
         .foregroundStyle(.secondary)
       TextEditor(text: $pastedText)
@@ -496,7 +496,7 @@ nonisolated extension ImportShape {
     case .tailwindTheme: "Tailwind v4"
     case .tailwindConfig: "Tailwind v3"
     case .p3WithFallback: "P3 with fallback"
-    case .designTokens: "Design tokens"
+    case .designTokens: "Design tokens (DTCG)"
     case .looseColors: "Loose colors"
     }
   }

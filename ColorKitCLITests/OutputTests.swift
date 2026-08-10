@@ -20,6 +20,23 @@ struct OutputOptionTests {
       for command in [["ramp", "#3b82f6"], ["harmony", "#3b82f6", "complementary"]] {
         let outcome = ColorKitCLI.run(command + ["--shape", name])
         #expect(outcome.status == .success, "\(name) via \(command[0])")
+
+        // `designTokens` (M34) writes no CSS at all — a `$value` is a JSON object of
+        // raw numbers, so `printedColors`/`CSSColorParser` would find nothing and
+        // this loop would need to special-case an empty result rather than prove
+        // anything. The oracle for this one shape is this app's own decoder instead,
+        // the same substitution `ExportRoundTripTests` makes in the app-side suite.
+        if shape == .designTokens {
+          guard let data = outcome.output.data(using: .utf8),
+                let document = try? DesignTokenImport.decode(data)
+          else {
+            Issue.record("\(name) via \(command[0]) did not decode as tokens: \(outcome.output)")
+            continue
+          }
+          #expect(!document.colors.isEmpty, "\(name) via \(command[0]) wrote no tokens")
+          continue
+        }
+
         let values = printedColors(outcome.output)
         #expect(!values.isEmpty, "\(name) via \(command[0]) wrote no values")
         for value in values {
@@ -154,6 +171,35 @@ struct ExportCommandTests {
     // command defaults to a shape where every other defaults to a listing.
     #expect(ColorKitCLI.run(["export", "red"]).output.hasPrefix(":root {"))
   }
+
+  /// The CLI's honesty rule (`OutputOptions.init`'s own doc comment) applied to the
+  /// *second* shape that hides `--format`, for a different reason than the first.
+  /// `p3WithFallback`'s message ("writes its own two formats") would be false here —
+  /// `design-tokens` writes no format at all — and a copy-pasted message is exactly
+  /// the kind of thing that looks like it works until somebody reads it.
+  @Test("--shape design-tokens rejects --format with its own reason, not p3WithFallback's")
+  func designTokensRejectsFormatForItsOwnReason() {
+    let outcome = ColorKitCLI.run(["export", "red", "--shape", "design-tokens", "--format", "hex"])
+    #expect(outcome.status == .usage)
+    #expect(outcome.diagnostic.contains("its own space"))
+    #expect(!outcome.diagnostic.contains("its own two formats"))
+  }
+
+  /// `colorkit export --shape design-tokens` is a genuine round trip through the
+  /// tool (M34), not merely a shape that happens to produce valid JSON — every color
+  /// typed on the command line comes back out of this app's own decoder.
+  @Test("export --shape design-tokens writes a document the tool can read back")
+  func designTokensRoundTripsThroughTheTool() throws {
+    let outcome = ColorKitCLI.run([
+      "export", "primary=red", "secondary=color(display-p3 0.1 0.2 0.5)",
+      "--shape", "design-tokens",
+    ])
+    #expect(outcome.status == .success)
+    let data = try #require(outcome.output.data(using: .utf8))
+    let document = try DesignTokenImport.decode(data)
+    #expect(document.colors.count == 2)
+    #expect(document.colors.contains { $0.color.space == .displayP3 })
+  }
 }
 
 @Suite("tokens")
@@ -196,6 +242,23 @@ struct TokensCommandTests {
                                     Names.name(for: .customProperties)])
       #expect(!shaped.output.contains("color(srgb "))
       #expect(shaped.status == .success)
+    }
+  }
+
+  /// `--shape design-tokens` is the one document shape that does not throw the
+  /// authored spaces away — asserted against the same fixture and the same count
+  /// ``aTokenFileImports`` already pins, so the two cannot disagree about how many
+  /// colors the file holds.
+  @Test("--shape design-tokens keeps every token in its own space, unlike every other shape")
+  func designTokensShapeKeepsAuthoredSpaces() throws {
+    try Self.withFile(Self.document) { path in
+      let shaped = ColorKitCLI.run(["tokens", path, "--shape", Names.name(for: .designTokens)])
+      #expect(shaped.status == .success)
+
+      let data = try #require(shaped.output.data(using: .utf8))
+      let redecoded = try DesignTokenImport.decode(data)
+      #expect(redecoded.colors.count == 4)
+      #expect(redecoded.colors.contains { $0.color.space == .displayP3 })
     }
   }
 

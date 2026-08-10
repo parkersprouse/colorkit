@@ -50,6 +50,7 @@ enum Names {
     ("tailwind-theme", .tailwindTheme),
     ("tailwind-config", .tailwindConfig),
     ("p3-with-fallback", .p3WithFallback),
+    ("design-tokens", .designTokens),
   ]
 
   static var formatList: String {

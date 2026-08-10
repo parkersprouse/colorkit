@@ -6,12 +6,12 @@ A native macOS color toolkit for web development. Built: CSS Color 4 parsing and
 conversion across 14 spaces, a menu bar panel, a screen eyedropper with a global
 shortcut, WCAG 2.2 / APCA contrast checking, a gamut-aware HSV/OKLCH picker, OKLCH
 transforms — adjustment, harmonies, shade ramps and a contrast solver — export to CSS
-declarations, custom properties, JSON, both Tailwind generations and a
-`@media (color-gamut: p3)` block with a hex fallback, and saved projects
-on SwiftData with reordering and hand-picked palettes, CSS Color 4 §13.2's
-missing-component carry-forward, a scoped `calc()`, CSS Color 5 relative color syntax
-(`rgb(from …)`), `color-mix()` with premultiplied alpha and the four hue arcs, and W3C
-design token import.
+declarations, custom properties, JSON, both Tailwind generations, a
+`@media (color-gamut: p3)` block with a hex fallback, and W3C Design tokens (DTCG), and
+saved projects on SwiftData with reordering and hand-picked palettes, CSS Color 4
+§13.2's missing-component carry-forward, a scoped `calc()`, CSS Color 5 relative color
+syntax (`rgb(from …)`), `color-mix()` with premultiplied alpha and the four hue arcs,
+and W3C design tokens, imported and (M34) exported.
 M0–M18 are built, so the numbered plan is complete — M18 is `colorkit`, a nine-command
 CLI over `ColorCore` in its own tool target — and **M8b is done too**, so an export can be
 saved to a file as well as copied. Swift 6, SwiftUI, no third-party runtime dependencies.
@@ -147,6 +147,22 @@ longer requires `newProjectName` non-empty at all when creating —
 empty name, the same fallback the plain New Project button already relies on
 unconditionally. See the M33 entry in PLAN.md, including the open question it leaves
 about two menus both titled "Import" being visible at once.
+**M34 is done too**: the direction M17 left out — `ExportShape.designTokens` writes the
+W3C Design Tokens (DTCG) format this app already reads, each token in its own color's
+stored space rather than one format across the document, the same authored-space
+promise the token *importer* already keeps. `usesFormat` is `false` for a second,
+different reason than `p3WithFallback`'s (a `$value` has no CSS spelling to pick, not
+merely one that would be harmful to leave live), `isWebFriendly` is `false` for the
+identical structural reason `p3WithFallback` is, and `mappedCountFormat` became
+`CSSOutputFormat?` — `nil` for this shape, since a token file never gamut-maps, rather
+than a fallback format standing in for "nothing to count." Every surface that names the
+format now says "Design tokens (DTCG)," the transparency half of the milestone: the
+export and import shape titles, the paste-box hint, and `DesignTokenError.noTokens`'s
+message all named "design tokens" or nothing before this. See the M34 entry in PLAN.md
+for a real bug an advisor review caught before it shipped — `nativeGrammars(for:)`'s
+first draft would have rounded every `srgb` token's components on `rgb()`'s 0–255 scale
+instead of the format's own 0–1 — and for the mutation that was actually run (not just
+reasoned through) to confirm the fix and its test both hold.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
@@ -165,13 +181,13 @@ To build or run just the CLI — much faster, and the right way to check a proje
 change without a mistake masquerading as an app regression:
 
 ```bash
-xcodebuild -project "ColorKit.xcodeproj" -target colorkit -destination 'platform=macOS' build && ./build/Release/colorkit --help
+xcodebuild -project "ColorKit.xcodeproj" -target ColorKitCLI -destination 'platform=macOS' build && ./build/Release/colorkit --help
 ```
 
-Full test suite (~9 minutes, nearly all of it UI tests — the 544 + 59 Swift Testing
+Full test suite (~9 minutes, nearly all of it UI tests — the 555 + 62 Swift Testing
 tests finish in about a second, the 48 XCUITests take seven minutes and up). **There are
-two Swift Testing bundles now**: `ColorKitTests` (544 tests, 54 suites) and
-`ColorKitCLITests` (59 tests, 10 suites), and both are in the scheme:
+two Swift Testing bundles now**: `ColorKitTests` (555 tests, 55 suites) and
+`ColorKitCLITests` (62 tests, 10 suites), and both are in the scheme:
 
 ```bash
 xcodebuild -project "ColorKit.xcodeproj" -scheme "ColorKit" -destination 'platform=macOS' test
@@ -456,7 +472,7 @@ Layered so the numeric core stays independently testable and UI-free:
   `color-mix()`'s percentage rules, and premultiplied interpolation),
   `Transform/` (relative adjustment, the S-curve,
   harmonies, shade ramps, the contrast solver — all in OKLCH), and `Export/`
-  (declaration templates and six document shapes), and `Import/` (W3C design tokens).
+  (declaration templates and seven document shapes), and `Import/` (W3C design tokens).
 - **`ColorKitCLI/` and `ColorKitCLIMain/`** — the `colorkit` tool (M18), also at
   the **repo root**. Two root groups for one executable: the first holds the logic and is
   compiled by the tool *and* by `ColorKitCLITests`, the second holds `main.swift`
@@ -519,16 +535,19 @@ Layered so the numeric core stays independently testable and UI-free:
   makes `$(colorkit convert red --format hex)` safe. Four tests pin it and two mutations
   cover it.
 - **`ExportShape`'s raw values are not CLI identifiers, so `Names.shapes` is a table.**
-  They exist for `Identifiable` and are not uniform — three carry an explicit hyphenated
-  string, three fall back to their case names, and one of those, `customProperties`, is
-  camelCase. `Harmony`, `ExportTemplate`,
+  They exist for `Identifiable` and are not uniform — four carry an explicit hyphenated
+  string (M34's `designTokens` among them), three fall back to their case names, and one
+  of those, `customProperties`, is camelCase. `Harmony`, `ExportTemplate`,
   `ColorVisionDeficiency` and `ColorSpace` stay *derived* from their raw values, which
   genuinely are the CSS identifiers — the same call `ColorGrammar.interpolationSpace(named:)`
   makes. A test requires every shape name to round-trip and to be lowercase.
 - **The CLI refuses an option the chosen shape would ignore rather than dropping it.**
   `--format` with `--shape p3-with-fallback`, `--name` without a shape that `usesName`,
   `--spread` on a harmony that is not analogous. The panel hides those controls; a CLI
-  has nothing to hide, and a flag that changed nothing looks like it worked.
+  has nothing to hide, and a flag that changed nothing looks like it worked. **Two shapes
+  hide `--format` now, for different reasons** (M34) — `p3WithFallback` "writes its own
+  two formats," `designTokens` "writes each color in its own space" — and the rejection
+  message says which, rather than reusing one sentence for both.
 - **`solve` reads its own printed answer back, and that is not belt-and-braces.**
   `ContrastSolver` keeps its bracket's passing end, so the answer sits a hair above the
   target — exactly the margin four decimals can round away. Measured: the printed value
@@ -990,9 +1009,11 @@ Layered so the numeric core stays independently testable and UI-free:
   document (`:root {}`, JSON, a Tailwind config). Exactly one shape consumes a template,
   which is why `usesTemplate` and `usesName` are complements — a bare declaration has
   nowhere to put a family name. Merging them produces `background-color:` eleven times
-  and calls it a stylesheet. `usesFormat` is the third such flag and the only one that
-  hides a control which would be *harmful* rather than merely inert — see the P3 shape
-  below.
+  and calls it a stylesheet. `usesFormat` is the third such flag, and it is `false` for
+  two shapes for two different reasons — `p3WithFallback` hides a control that would be
+  *harmful* to leave live (see below), `designTokens` (M34) hides one that has *nothing
+  to set even in principle*, since a token's `$value` has no CSS spelling to choose
+  between. Do not read the second `false` as a repeat of the first.
 - **`p3WithFallback` fixes both its formats, and the fallback must stay hex.** It writes
   two blocks where `ExportOptions.format` is one value, so the panel hides the Format
   picker (`usesFormat == false`). Making it live again — or pointing the fallback at
@@ -1013,6 +1034,13 @@ Layered so the numeric core stays independently testable and UI-free:
   `ExportShape.mappedNote` is per shape because the generic "the values below were
   brought into gamut" is false of the media block, which is written in a wider gamut.
   The count and the copy are one decision; do not change either alone.
+  **`mappedCountFormat` is `CSSOutputFormat?`, not always a value (M34).** `designTokens`
+  answers `nil` — a token file never gamut-maps at all, every color sits in its own
+  authored space unclamped, so there is no format to count against. `nil` means "this
+  shape has no such badge," not "count zero for some other reason";
+  `ColorStore.exportGamutMappedCount` and the CLI's `PaletteOutput.mappedNote` both read
+  it that way, and `ExportPanel` gates the badge on `if mapped > 0, let mappedFormat = …`
+  rather than force-unwrapping a value the type no longer promises.
 - **The P3 override promises nothing about exactness, and the note must not either.**
   `color(display-p3 …)` is not `cannotRepresentOutOfGamut`, so unlike the hex fallback it
   has no fixed answer: it follows the **app-wide gamut policy**, which is `.map` in the
@@ -1046,6 +1074,11 @@ Layered so the numeric core stays independently testable and UI-free:
   single-group document must stay byte-identical to before M20 — proved by leaving the
   pre-M20 `ExportShapeTests` unchanged rather than re-asserting the claim as a new test,
   since a wrapper that calls the general case is trivially equal to itself.
+  **`resolvedGroups` takes a `naming` parameter (M34)** rather than checking the shape
+  inside itself — `cssIdentifier` for every CSS- or JavaScript-shaped document,
+  `tokenName` for `designTokens`, whose format permits spaces and case a CSS identifier
+  cannot. The uniquing loop stays single either way; only which sanitizer feeds it
+  differs per shape, decided at the one call site in `render(_ groups:)`.
 - **A `PaletteGroup`'s name is uniqued the same way a palette key is — sanitized, `-2`/`-3`
   suffixed — and that uniquing is group-versus-group only.** A palette named `brand` with
   a `500` entry and a loose color literally named `brand 500` both resolve to

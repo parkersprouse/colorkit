@@ -3811,11 +3811,127 @@ guessed at.
 **CLAUDE.md when this lands:** the "Import is unreachable until a project exists" gap
 listed at the top of this M30–M34 series is retired.
 
-### ⬜ M34 – Design token export, and saying which one
+### ✅ M34 – Design token export, and saying which one
 
-The direction M17 left out, plus the transparency that would have made its absence
-legible. Two halves of one milestone: without the naming work the shape ships and the
-confusion that prompted it stays possible.
+**Built.** The direction M17 left out, plus the transparency that would have made its
+absence legible. Two halves of one milestone: without the naming work the shape ships
+and the confusion that prompted it stays possible.
+
+`ExportShape.designTokens` writes the W3C Design Tokens (DTCG) format
+`DesignTokenImport` already reads, each token in its own color's stored space —
+`tokenValue(_:formatting:)` and `nativeGrammars(for:)` in `ColorExport.swift`. Every
+surface that names the format now says **"Design tokens (DTCG)"**: the export and
+import shape titles, the paste-box hint, and `DesignTokenError.noTokens`'s message.
+"Six document shapes" throughout this file becomes seven.
+
+**One planning assumption turned out to be wrong, caught before it shipped rather than
+after.** The plan's own reasoning proposed keying `nativeGrammars(for:)` off
+`ColorFunction.allCases.first(where: { $0.space == space })` — searched by hand rather
+than through an existing table. That silently matches `.srgb` to `ColorFunction.rgb`
+(both answer `.srgb` from `.space`, and `rgb` sorts first), and `rgb()`'s grammar scales
+its number form 0–255 while DTCG's `srgb` runs 0–1 — precisely the trap
+`DesignTokenImport`'s own doc comment warns its decoder about, in reverse: an srgb
+component would round to hundredths at default precision and to bare integers at
+`precision: 2`. `nativeGrammars(for:)` instead keys off `CSSOutputFormat.native(for:)`,
+which already answers "what function spells this space, natively" and is itself tested
+(`nativeFormatRoundTripsThroughItsSpace`) — every space that table answers with
+`.color(_)`, srgb included, falls to `.color()`'s own plain 0–1 grammar. Caught by an
+advisor review before any test was written, and then actually pinned: the
+`formattingReachesEveryShape` test's `designTokens` branch asserts a coarse render of an
+srgb color contains `"0.23"`, not a collapsed integer. Mutation run for real, in an
+isolated `-derivedDataPath` so it would not collide with the full-suite run underway at
+the same time: `nativeGrammars(for:)` swapped back to the rejected
+`ColorFunction.allCases.first(where: { $0.space == space })` search, and
+`formattingReachesEveryShape` failed — the only test in the suite that did — then the fix
+was restored and the single test re-confirmed green before moving on.
+
+**Three further consequences the advisor review surfaced, none of which the original
+plan mentioned, all fixed before landing:**
+
+- `ExportOptions.effective(webFriendly:)` hardcoded `shape == .p3WithFallback`. Giving
+  `isWebFriendly` a second `false` without touching this would have reproduced the exact
+  M22 bug this function exists to prevent — a picker hiding `designTokens` while the
+  stored preference kept rendering one. Changed to `!options.shape.isWebFriendly`,
+  derived from the flag itself rather than a second list of shapes.
+- `OutputOptions.init`'s `--format` rejection said "writes its own two formats," which is
+  false for a shape that writes no CSS format at all. The CLI's own honesty rule (stated
+  in that initializer's doc comment) means the message has to say which is true; it now
+  branches per shape.
+- `tokenName(_:fallback:)` permits spaces and case that `cssIdentifier` would have
+  stripped — DTCG allows both — which breaks the assumption that lets `json(_:formatting:)`
+  hand-build JSON with no escaping (that shape's freedom from escaping depends entirely
+  on `cssIdentifier` stripping everything outside `[A-Za-z0-9_-]`). `tokenName` now also
+  replaces `"`, `\` and bare newlines, or a palette named with a quote would write invalid
+  JSON. Pinned by `namesWithJSONBreakingCharactersStayValid`, which decodes a document
+  built from exactly such a name and key.
+
+**A second advisor pass, after the code and the first round of tests were written, found
+two more gaps — one a real correctness question, one a coverage gap in exactly the claim
+this whole series opens with:**
+
+- **Writing `"none"` for a missing component or alpha is this app's own extension, not a
+  guarantee about the format**, and the first draft's doc comments did not say so.
+  `DesignTokenImport`'s own comment calls reading `"none"` *leniency* — the format
+  describes a component as a number — so a token file this shape writes containing one
+  is self-consistent with this app's decoder and not necessarily readable by Figma or
+  Style Dictionary, the two consumers `designTokens.summary` names. Dropping the flag
+  instead (writing `0`) was rejected: that silently turns a genuinely absent value into a
+  wrong present one, which round-trips as if it were right — the worse of the two lies.
+  `tokenValue`'s doc comment now says this explicitly, and
+  `missingComponentsSurviveAsNone` pins the self-consistency claim that *is* being made
+  (render a color with a missing component and a missing alpha, decode it back, and both
+  come back missing) without overclaiming the one that is not.
+- **`PaletteImportTests.looseColorAndOneEntryPaletteRoundTrip` did not cover
+  `.designTokens`.** `DesignTokensExportTests`'s oracle is `DesignTokenImport.decode`
+  directly, which is right for pinning the writer but is not the claim this M30–M34
+  series opens with — "what this app writes, it should read back" is `PaletteImport
+  .parse`, the path **Import ▸ From File…** actually takes on a document this app just
+  exported. `.designTokens` was only in the `importShape(for:)` switch to satisfy
+  exhaustiveness, not in the test's own `arguments:` list. Added, and it passed on the
+  first run: a lone color's single-segment path (`family = token.key`, `key = ""`) fires
+  `soleColor`, a keyed entry's two-segment path (`family` = the raw group name,
+  `key = cssIdentifier(last)`) does not — the identical trace M30's `soleColor` rule
+  already establishes, now checked against this shape too rather than assumed to hold
+  for it.
+
+**`mappedCountFormat` becomes `CSSOutputFormat?`, not merely an added case.** A token
+file never gamut-maps — every color sits in its own authored space, unclamped — so
+`nil` means "this shape has no such badge" rather than "count zero for some other
+reason." `ColorStore.exportGamutMappedCount` and the CLI's `PaletteOutput.mappedNote`
+both read the `nil` as "produce nothing," and `ExportPanel`'s badge is gated on
+`if mapped > 0, let mappedFormat = …` rather than force-unwrapping a value the type no
+longer promises.
+
+**`resolvedGroups` gained a `naming` parameter rather than a shape check inside it** —
+`cssIdentifier` for every CSS- or JavaScript-shaped document, `tokenName` for this one —
+so the uniquing loop stays single and each shape's naming rule lives with its own
+writer. Passing the two static functions as bare values inside a ternary produced *"failed
+to produce diagnostic for expression"* from the type checker (both carry a default
+`fallback:` argument, which the compiler could not resolve through the ternary); wrapping
+each in an explicit closure fixed it, recorded here because the error gave no hint the
+fix would be that.
+
+**Tests, at both cardinalities, oracle throughout is `DesignTokenImport.decode` — never
+`PaletteImport.parse`,** the identical split `Export/`'s own tests keep between the
+renderer and a hand-parser one layer up: a lone color and a palette round-trip through
+the decoder in three different spaces (not one repeated — a same-space fixture cannot
+tell the writer apart from one that silently canonicalized), two exact-string tests pin
+the plan's own worked example digit for digit, alpha is asserted present only when the
+color is translucent, and one test forces the milestone's stated riskiest assumption:
+surgically removing the root-level `$type` a genuine per-token writer would never have
+needed, and requiring the token come back typeless rather than merely trusting that it
+would. 539 → 555 `ColorKitTests`, 59 → 62 `ColorKitCLITests`, all green; the CLI gained
+its own round trip (`export --shape design-tokens` → `DesignTokenImport.decode`) and its
+own `tokens file --shape design-tokens` check that authored spaces survive where every
+other shape's `--shape` collapses them. **Full suite run before commit, `ColorKitUITests`
+included, twice** — once after the first draft, again after a second advisor pass added
+`missingComponentsSurviveAsNone` and the `.designTokens` case on
+`looseColorAndOneEntryPaletteRoundTrip`: both runs answered a single
+`** TEST SUCCEEDED **` with 0 failures (664, then 665, top-level `totalTestCount` from
+`xcrun xcresulttool get test-results summary`) — the 48 XCUITests are untouched by this
+milestone (no UI surface pins the strings changed) and both runs confirm that rather
+than assuming it from the diff. 555 `ColorKitTests` in 55 suites, 62 `ColorKitCLITests`
+in 10 suites, confirmed directly rather than inferred from the combined total.
 
 #### The seventh shape
 
@@ -3950,16 +4066,25 @@ parameter; and the intro paragraph's "six document shapes" becomes seven.
 - **ColorKit/Features/Projects** – `ProjectsPanel.swift` (the global Import button, the
   file importer, the Edit button, the retitled popover), `ImportTextSheet.swift`
   (`preferringNewProject`, the name prefill, the colors/palettes preview split).
-- **ColorKit/Features/Export** – `ExportPresentation.swift` (title, summary, `mappedNote`),
-  `ExportPanel.swift` (badge hidden on a `nil` count format).
-- **ColorKitCLI** – `Names.swift` (one row), `PaletteCommands.swift` (usage text).
-- **Tests** – `ColorKitTests/Fixtures/project-export-p3-with-fallback.css` (already in the
-  tree; a real export, the first fixture here that is not machine-generated),
-  `PaletteImportTests` (the sole-color rule, the fixture reading, the project round trip),
-  `ProjectStoreTests` (three renames, the rekey collision, the imported loose color),
-  `ExportTests` (the token shape at both cardinalities, the DTCG naming rule),
-  `ExportStoreTests` (the optional mapped-count format), `ProjectsSmokeTests` (the global
-  Import button, the Edit button), `ColorKitCLITests` (the new shape name).
+- **ColorKit/Features/Export** – `ExportPresentation.swift` (title, summary, `mappedNote`,
+  `isWebFriendly`/`usesFormat`'s M34 doc), `ExportPanel.swift` (badge hidden on a `nil`
+  count format).
+- **ColorKit/Features/Shell** – `ColorStore.swift` (`exportGamutMappedCount` reads the
+  optional `mappedCountFormat`).
+- **ColorKit/Features/Projects** – `ImportTextSheet.swift` ("Design tokens (DTCG)"
+  titling, the paste-box hint).
+- **ColorKitCLI** – `Names.swift` (the `design-tokens` row), `Output.swift`
+  (`countedFormat`/`mappedNote` becoming optional, the per-shape `--format` rejection
+  message), `PaletteCommands.swift` (the `tokens` doc comment).
+- **Tests** – `ColorKitTests/ExportTests.swift` (the `DesignTokensExportTests` suite —
+  round trips at both cardinalities in three spaces, the two exact-string tests, the
+  root-`$type` mutation, the JSON-escaping regression — plus the `formattingReachesEveryShape`,
+  `onlyStructurallyWideShapesAreExcluded`, `effective(webFriendly:)` and file-naming
+  edits every other M34 flag change forced), `ColorKitTests/PaletteImportTests.swift`
+  (one switch case), `ColorKitCLITests/OutputTests.swift` (the design-tokens branch in
+  `everyShapeSurvivesTheParser`, the `--format` rejection message, two round-trip tests),
+  `ColorKitCLITests/CommandTests.swift` (unchanged, but its shape-name round trip now
+  covers the new row for free). `README.md`'s Export table and Import bullets.
 
 ## Verification
 

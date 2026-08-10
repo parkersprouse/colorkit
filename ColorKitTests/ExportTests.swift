@@ -75,7 +75,7 @@ struct ExportRoundTripTests {
   ///
   /// This is the mutation check made permanent. Swap `.lossless` for `.default` anywhere
   /// a shape renders and the exact string stops appearing, so a shape that quietly
-  /// ignored its `formatting` argument — the easiest mistake to make when there are six
+  /// ignored its `formatting` argument — the easiest mistake to make when there are seven
   /// of them and they were written one after another — cannot pass.
   ///
   /// **Both a lone color and a palette**, because `json` and `tailwindConfig` fork on
@@ -89,14 +89,34 @@ struct ExportRoundTripTests {
   /// precision-invariant**. Reading the fallback block would leave this test unable to
   /// fail, and the `lossless != coarse` guard below could not catch that, since the guard
   /// is computed from whatever is chosen here.
+  ///
+  /// **`designTokens` (M34) is a third branch, not a shoehorned fourth case of the
+  /// above.** It writes no CSS string at all — see `usesFormat`'s second reason — so
+  /// there is no `cssStringOrHex` spelling to look for in the document, only the raw
+  /// JSON number `tokenValue(_:formatting:)` writes. The evidence is the document
+  /// itself, and it specifically checks that an *srgb* component still rounds on its
+  /// own 0–1 scale rather than the 0–255 scale `rgb()` writes in — the regression
+  /// `nativeGrammars(for:)` exists to prevent, and the one this branch is built to
+  /// catch, not merely to exercise.
   @Test("Every shape honors the formatting it is handed", arguments: ExportShape.allCases)
   func formattingReachesEveryShape(shape: ExportShape) {
     var options = ExportOptions.default
     options.shape = shape
     options.format = .oklch
+    let coarseOptions = CSSFormatOptions(precision: 2)
+
+    if shape == .designTokens {
+      let lossless = options.render([PaletteEntry(color: Self.base)], formatting: .lossless)
+      let coarse = options.render([PaletteEntry(color: Self.base)], formatting: coarseOptions)
+      #expect(lossless != coarse, "The two precisions produced the same document; test is blind")
+      #expect(
+        coarse.contains("0.23"),
+        "an srgb component did not round on its own 0–1 scale: \(coarse)",
+      )
+      return
+    }
 
     let written = shape.usesFormat ? options.format : ExportOptions.wideFormat
-    let coarseOptions = CSSFormatOptions(precision: 2)
     let lossless = Self.base.cssStringOrHex(as: written, options: .lossless)
     let coarse = Self.base.cssStringOrHex(as: written, options: coarseOptions)
     #expect(lossless != coarse, "The two precisions produce the same string; test is blind")
@@ -977,9 +997,10 @@ struct GroupedExportTests {
 /// coverage that does not exist.
 @Suite("Export file naming")
 struct ExportFileNamingTests {
-  /// Transcribed, so asserted case by case rather than against a rule. Four of the six
-  /// answer `css`, which is the part a derivation would get wrong: `p3WithFallback`
-  /// writes a `@media` block and is still a stylesheet.
+  /// Transcribed, so asserted case by case rather than against a rule. Four of the
+  /// seven answer `css`, which is the part a derivation would get wrong:
+  /// `p3WithFallback` writes a `@media` block and is still a stylesheet, and
+  /// `designTokens` (M34) shares `json`'s extension rather than inventing its own.
   @Test(
     "Each shape names its own file type",
     arguments: [
@@ -989,6 +1010,7 @@ struct ExportFileNamingTests {
       (.p3WithFallback, "css"),
       (.json, "json"),
       (.tailwindConfig, "js"),
+      (.designTokens, "json"),
     ],
   )
   func fileExtensionPerShape(shape: ExportShape, expected: String) {
@@ -1051,6 +1073,17 @@ struct ExportFileNamingTests {
     #expect(options.suggestedFilename == "brand.js")
     options.shape = .json
     #expect(options.suggestedFilename == "brand.json")
+  }
+
+  /// `brand.tokens.json` is DTCG's own convention, not this app's invention — and the
+  /// stem suffix is the only shape-specific piece of ``ExportOptions/suggestedFilename``,
+  /// everything else already covered by ``extensionFollowsTheShape``.
+  @Test("designTokens proposes the .tokens stem")
+  func designTokensProposesTheConventionalStem() {
+    var options = ExportOptions.default
+    options.name = "brand"
+    options.shape = .designTokens
+    #expect(options.suggestedFilename == "brand.tokens.json")
   }
 
   /// The three extensions resolve to three *different* content types.
@@ -1188,10 +1221,12 @@ struct WebFriendlyExportTests {
     PaletteEntry(key: "600", color: ColorValue.srgb8(0xEF, 0x44, 0x44)),
   ]
 
-  @Test("Only p3WithFallback is excluded from the shape list")
-  func onlyP3WithFallbackIsExcluded() {
+  /// Two shapes are excluded now (M34 added `designTokens`), each structurally rather
+  /// than by a gamut check — see ``ExportShape/isWebFriendly``.
+  @Test("Only p3WithFallback and designTokens are excluded from the shape list")
+  func onlyStructurallyWideShapesAreExcluded() {
     for shape in ExportShape.allCases {
-      #expect(shape.isWebFriendly == (shape != .p3WithFallback))
+      #expect(shape.isWebFriendly == (shape != .p3WithFallback && shape != .designTokens))
     }
   }
 
@@ -1235,6 +1270,22 @@ struct WebFriendlyExportTests {
     #expect(options.shape == .p3WithFallback)
   }
 
+  /// The regression this test exists for: `effective` used to check
+  /// `shape == .p3WithFallback` directly, which would have hidden `designTokens`
+  /// from the web-friendly picker (M34) while leaving the stored preference free to
+  /// keep rendering a token document — the exact M22 bug this function exists to
+  /// prevent, just against a shape that did not exist when the fix was first written.
+  @Test("effective(webFriendly: true) replaces designTokens too")
+  func effectiveReplacesDesignTokens() {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    let effective = options.effective(webFriendly: true)
+
+    #expect(effective.shape != .designTokens)
+    #expect(effective.shape.isWebFriendly)
+    #expect(options.shape == .designTokens)
+  }
+
   @Test("effective(webFriendly: true) replaces a color() format")
   func effectiveReplacesColorFormat() {
     var options = ExportOptions.default
@@ -1264,5 +1315,217 @@ struct WebFriendlyExportTests {
     let rendered = options.effective(webFriendly: true).render(Self.palette)
     #expect(!rendered.contains("@media"))
     #expect(!rendered.contains("color("))
+  }
+}
+
+/// M34's seventh shape — the W3C Design Tokens (DTCG) format ``DesignTokenImport``
+/// already reads (M17), now writable too.
+///
+/// **The oracle is this app's own decoder**, exactly the way `Export/`'s oracle is
+/// always its own parser (see this file's header) — render, feed the document
+/// straight back through ``DesignTokenImport/decode(_:)``, and require the colors to
+/// survive **in their own spaces**, not merely to parse. `PaletteImportTests` covers
+/// the higher layer above this (`PaletteImport.parse(_:as:)`'s grouping and key
+/// inference); this suite is the layer underneath it, matching every other shape's
+/// exact-string tests against the lowest oracle that can discriminate.
+@Suite("Design tokens export (M34)")
+struct DesignTokensExportTests {
+  static let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
+
+  private static func decode(_ document: String) throws -> DesignTokenDocument {
+    try DesignTokenImport.decode(Data(document.utf8))
+  }
+
+  /// Three different spaces, not one repeated — the mutation this pins is "canonicalize
+  /// to one format," which a same-space fixture cannot catch since the writer's actual
+  /// output and a canonicalized one would coincide by accident.
+  @Test("A color round-trips through the decoder, in its own space", arguments: [
+    ("srgb", ColorValue.srgb8(0x3B, 0x82, 0xF6)),
+    ("oklch", ColorValue(space: .oklch, 0.5236, 0.1839, 309.99)),
+    ("hsl", ColorValue(space: .hsl, 217, 91, 60)),
+  ])
+  func loneColorRoundTrips(label: String, color: ColorValue) throws {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    options.name = "Primary-Base"
+
+    let rendered = options.render([PaletteEntry(color: color)], formatting: .lossless)
+    let document = try Self.decode(rendered)
+
+    #expect(document.colors.count == 1, "\(label): \(rendered)")
+    let token = try #require(document.colors.first)
+    #expect(token.color.space == color.space, "\(label) did not keep its own space")
+    for index in 0 ..< 3 {
+      #expect(
+        abs(token.color.components[index] - color.components[index]) < 1e-7,
+        "\(label) component \(index) drifted: \(token.color.components) vs \(color.components)",
+      )
+    }
+  }
+
+  /// The other cardinality ``json`` and ``tailwindConfig`` fork on — a single-entry-only
+  /// test happily passed a broken multi-entry branch once already (M8), which is why
+  /// this app's export tests never stop at one.
+  @Test("A palette round-trips as a scale, each entry keeping its own space")
+  func paletteRoundTrips() throws {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    options.name = "Greyscale"
+
+    let entries = [
+      PaletteEntry(key: "50", color: ColorValue(space: .oklch, 0.97, 0, 0)),
+      PaletteEntry(key: "100", color: ColorValue(space: .oklch, 0.9068, 0, 0)),
+    ]
+    let rendered = options.render(entries, formatting: .lossless)
+    let document = try Self.decode(rendered)
+
+    #expect(document.colors.count == 2, "\(rendered)")
+    for (entry, token) in zip(entries, document.colors) {
+      #expect(token.color.space == .oklch)
+      for index in 0 ..< 3 {
+        #expect(abs(token.color.components[index] - entry.color.components[index]) < 1e-7)
+      }
+    }
+  }
+
+  /// Pinned exactly against the plan's own worked example, not a string this test
+  /// invented to match whatever the writer happens to do — the values are chosen so
+  /// default precision (4) reproduces them digit for digit.
+  @Test("A lone color writes as a single top-level token")
+  func loneColorExactString() {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    options.name = "Primary-Base"
+
+    let color = ColorValue(space: .oklch, 0.5236, 0.1839, 309.99)
+    let rendered = options.render([PaletteEntry(color: color)])
+
+    #expect(rendered == """
+    {
+      "$type": "color",
+      "Primary-Base": { "$value": { "colorSpace": "oklch", "components": [0.5236, 0.1839, 309.99] } }
+    }
+    """)
+  }
+
+  /// The scale half of the same worked example — a group nests its entries as tokens
+  /// under it, and `$type` is declared once, at the root, not per token.
+  @Test("A scale nests entries as tokens under their group")
+  func scaleExactString() {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    options.name = "Greyscale"
+
+    let entries = [
+      PaletteEntry(key: "50", color: ColorValue(space: .oklch, 0.97, 0, 0)),
+      PaletteEntry(key: "100", color: ColorValue(space: .oklch, 0.9068, 0, 0)),
+    ]
+
+    #expect(options.render(entries) == """
+    {
+      "$type": "color",
+      "Greyscale": {
+        "50": { "$value": { "colorSpace": "oklch", "components": [0.97, 0, 0] } },
+        "100": { "$value": { "colorSpace": "oklch", "components": [0.9068, 0, 0] } }
+      }
+    }
+    """)
+  }
+
+  /// `alpha` is DTCG's own default, so writing it on an opaque color would be pure
+  /// repetition — and the flip side matters just as much, or a translucent color
+  /// would silently import back fully opaque.
+  @Test("Alpha is written only when the color is not opaque")
+  func alphaWrittenOnlyWhenTranslucent() {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+
+    let opaque = options.render([PaletteEntry(color: Self.blue)])
+    #expect(!opaque.contains("alpha"))
+
+    var translucent = Self.blue
+    translucent.alpha = 0.5
+    let withAlpha = options.render([PaletteEntry(color: translucent)])
+    #expect(withAlpha.contains("\"alpha\": 0.5"))
+  }
+
+  /// A missing component or alpha writes as the literal `"none"` string and reads back
+  /// as missing — self-consistent with this app's own decoder, which is the claim this
+  /// pins. It is **not** a claim that `"none"` is legal DTCG for a third party: the
+  /// decoder's own comment calls reading it *leniency*, and `tokenValue`'s doc comment
+  /// says so — this test is the other half of that admission, not a contradiction of it.
+  @Test("A missing component or alpha survives as none, self-consistently")
+  func missingComponentsSurviveAsNone() throws {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+
+    let color = ColorValue(space: .oklch, 0, 0.19, 260, alpha: 1, missing: [.component(0), .alpha])
+
+    let rendered = options.render([PaletteEntry(color: color)], formatting: .lossless)
+    #expect(rendered.contains("\"components\": [\"none\", "), "\(rendered)")
+    #expect(rendered.contains("\"alpha\": \"none\""), "\(rendered)")
+
+    let document = try Self.decode(rendered)
+    let token = try #require(document.colors.first)
+    #expect(token.color.missing.contains(.component(0)))
+    #expect(token.color.missing.contains(.alpha))
+  }
+
+  /// **The riskiest assumption this shape makes, pinned rather than asserted from
+  /// reasoning.** Every round-trip test above would pass just as well if each token
+  /// carried its own `$type: "color"` — they cannot tell "the root's type applies to
+  /// every token beneath it" apart from "each token happens to be typed already,"
+  /// because the writer never does the latter. This test forces the distinction: it
+  /// removes exactly the root-level `$type` a genuine per-token writer would never
+  /// have needed, leaving the token with no explicit type of its own and nothing
+  /// above it to inherit from. If the root were not load-bearing, the token would
+  /// still decode as a color; it does not.
+  @Test("Colors depend on the root-level $type — removing it makes every token typeless")
+  func rootLevelTypeIsLoadBearing() throws {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    options.name = "Primary-Base"
+    let rendered = options.render([PaletteEntry(color: Self.blue)])
+
+    let withoutRootType = rendered.replacingOccurrences(
+      of: "\"$type\": \"color\",\n  ",
+      with: "",
+    )
+    #expect(!withoutRootType.contains("$type"), "the surgery missed: \(withoutRootType)")
+
+    let document = try Self.decode(withoutRootType)
+    #expect(document.colors.isEmpty)
+    #expect(document.otherTypeCount == 1)
+  }
+
+  /// This shape hand-builds JSON the way ``json(_:formatting:)`` does, and that shape's
+  /// freedom from escaping depends on its keys going through `cssIdentifier`, which
+  /// strips everything outside `[A-Za-z0-9_-]`. `tokenName(_:fallback:)` is
+  /// deliberately more permissive — DTCG allows spaces and case — so it has to do its
+  /// own escaping instead of inheriting `json`'s for free. A palette or an entry key
+  /// typed with a quote and a backslash is the regression this pins: broken JSON
+  /// fails to decode at all, not merely looks wrong.
+  @Test("A name or key containing JSON-breaking characters still produces valid JSON")
+  func namesWithJSONBreakingCharactersStayValid() throws {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    options.name = "say \"hi\"\\"
+
+    let entries = [
+      PaletteEntry(key: "a\"b\\c", color: Self.blue),
+      PaletteEntry(key: "d", color: ExportShapeTests.red),
+    ]
+    let rendered = options.render(entries)
+    let document = try Self.decode(rendered)
+    #expect(document.colors.count == 2, "\(rendered)")
+  }
+
+  /// A token file never gamut-maps, so there is no format to count against at all —
+  /// `nil`, not the fallback format some other hidden-format shape would answer.
+  @Test("designTokens has no mapped-count format")
+  func noMappedCountFormat() {
+    var options = ExportOptions.default
+    options.shape = .designTokens
+    #expect(options.mappedCountFormat == nil)
   }
 }

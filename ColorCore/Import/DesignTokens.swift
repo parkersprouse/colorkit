@@ -115,7 +115,9 @@ nonisolated enum DesignTokenError: Error, Equatable, Sendable {
     case .notAnObject:
       "A design token file is a JSON object of groups and tokens; this is not one."
     case .noTokens:
-      "That JSON file contains no design tokens — nothing in it has a “$value”."
+      "That JSON file contains no Design tokens (DTCG) — nothing in it has a "
+        + "“$value”. CSS, a Tailwind config, or plain color JSON is a different "
+        + "reader's job, not this one's."
     }
   }
 }

@@ -160,9 +160,10 @@ The only tool that remembers anything. Create a project, then:
 - Drag saved colors to reorder them, or use **Move Left** / **Move Right** from the
   right-click menu. Attach a note to any color.
 - **Import ▸ From Text…** – paste a stylesheet, a Tailwind config, a JSON file, a
-  design token file, or just a list of colors, and get its colors and palettes back. Individual colors are imported as a `Color` in the app, whereas color groups / palettes (denoted by the suffix format `-100`, `-200`, etc.) are imported as a `Palette` in the app.
+  Design tokens (DTCG) file, or just a list of colors, and get its colors and palettes back. Individual colors are imported as a `Color` in the app, whereas color groups / palettes (denoted by the suffix format `-100`, `-200`, etc.) are imported as a `Palette` in the app.
    - A project export splits into exactly the colors and palettes it left as – the preview says which before you confirm the import.
-- **Import ▸ From Token File…** – read a [DTCG W3C design token](https://www.designtokens.org/) file from disk.
+- **Import ▸ From File…** – read any of the shapes below, or a
+  [DTCG](https://www.designtokens.org/) Design tokens file, straight off disk.
 - **Export Project** – hand every palette *and* individual color to the Export tool as
   one document.
 
@@ -182,6 +183,7 @@ harmony, the ramp, your recents, a saved palette, or a whole project – and a *
 | Tailwind v4       | a `@theme` block                                                                |
 | Tailwind v3       | a `tailwind.config.js`                                                          |
 | P3 with fallback  | a hex block plus a `@media (color-gamut: p3)` override in `color(display-p3 …)` |
+| Design tokens (DTCG) | a [DTCG](https://www.designtokens.org/) document, each color in its own space |
 
 Below the controls is a live preview of exactly what you'll get. **Copy** puts it on
 the clipboard; **Save…** writes it to a file, named after your palette and tagged with

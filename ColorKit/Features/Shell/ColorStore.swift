@@ -496,9 +496,12 @@ final class ColorStore {
   /// the fallback is the honest half to count.
   var exportGamutMappedCount: Int {
     let options = exportOptions.effective(webFriendly: webFriendly)
+    // `nil` (M34, `ExportShape.designTokens`) means this shape has no such badge at
+    // all — a token file never gamut-maps — not "count zero for some other reason."
+    guard let mappedFormat = options.mappedCountFormat else { return 0 }
     return exportEntries.count {
       $0.color.isGamutMapped(
-        as: options.mappedCountFormat,
+        as: mappedFormat,
         options: formatOptions,
         epsilon: ColorValue.gamutNoiseTolerance,
       )

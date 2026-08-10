@@ -223,7 +223,11 @@ struct ExportPanel: View {
           .font(.callout)
           .foregroundStyle(.secondary)
       } else {
-        if mapped > 0 {
+        // `mappedCountFormat` is `nil` for `ExportShape.designTokens` (M34), which
+        // never gamut-maps — `exportGamutMappedCount` already answers `0` for that
+        // case, so this `if let` is never false when `mapped > 0`, but it is the
+        // honest way to hand `mappedNote` a `CSSOutputFormat` rather than force-unwrap.
+        if mapped > 0, let mappedFormat = store.exportOptions.mappedCountFormat {
           HStack(spacing: 8) {
             ColorBadge(text: mapped == 1 ? "1 mapped" : "\(mapped) mapped")
             // The format named is `mappedCountFormat`, which is what the count was
@@ -233,7 +237,7 @@ struct ExportPanel: View {
             Text(
               store.exportOptions.shape.mappedNote(
                 count: mapped,
-                format: store.exportOptions.mappedCountFormat,
+                format: mappedFormat,
               ),
             )
             .font(.caption)

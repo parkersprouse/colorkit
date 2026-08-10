@@ -106,13 +106,18 @@ enum TokensCommand {
     let options = try OutputOptions(arguments)
     let entries = document.colors.map { PaletteEntry(key: $0.key, color: $0.color) }
 
-    // **The listing spells each color in the space its token named; a document cannot.**
+    // **The listing spells each color in the space its token named; a document cannot —
+    // except the one document shape whose whole point is that it can (M34).**
     // `savePalette(importing:)` is a third overload rather than a call into either other
     // one for exactly this reason — a token's `colorSpace` is authored information, like
-    // a typed `rebeccapurple`, and canonicalizing it throws that away. But
-    // `ExportOptions.render` writes one format across the whole document by
-    // construction, so asking for `--shape` *is* asking for one spelling. The default
-    // stays the listing so the authored spelling is what you get without asking.
+    // a typed `rebeccapurple`, and canonicalizing it throws that away. `ExportOptions
+    // .render` writes one CSS format across the whole document by construction, so
+    // asking for `--shape` normally *is* asking for one spelling — but
+    // `--shape design-tokens` keeps every color in its own space the same way the
+    // listing does, which is what makes `colorkit tokens file.json
+    // --shape design-tokens` a genuine round trip through the tool rather than a
+    // canonicalization. The default stays the listing so the authored spelling is
+    // what you get without asking for a document at all.
     var outcome: CommandOutcome
     if options.shape != nil || arguments.value("format") != nil {
       outcome = PaletteOutput.render(entries, options)

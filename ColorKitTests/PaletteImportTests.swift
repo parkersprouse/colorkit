@@ -389,9 +389,15 @@ struct PaletteImportTests {
   /// first derives keys through the trailing `/* key */` comment and the second strips a
   /// `color-` namespace, and neither is obviously safe for a mixed empty-key/keyed
   /// multi-group document — a claim for its own milestone, not to be forced here.
+  ///
+  /// **`.designTokens` (M34) belongs here and not only in `DesignTokensExportTests`.**
+  /// That suite's oracle is `DesignTokenImport.decode` directly — right for pinning the
+  /// writer, but not the claim this series opens with ("what this app writes, it should
+  /// read back"), which is `PaletteImport.parse`, the path **Import ▸ From File…**
+  /// actually takes on a document this app just exported.
   @Test(
     "A loose color and a one-entry palette come back as one of each",
-    arguments: [ExportShape.customProperties, .json, .tailwindConfig],
+    arguments: [ExportShape.customProperties, .json, .tailwindConfig, .designTokens],
   )
   func looseColorAndOneEntryPaletteRoundTrip(shape: ExportShape) throws {
     var options = ExportOptions.default
@@ -424,6 +430,7 @@ struct PaletteImportTests {
     case .tailwindTheme: .tailwindTheme
     case .tailwindConfig: .tailwindConfig
     case .p3WithFallback: .p3WithFallback
+    case .designTokens: .designTokens
     }
   }
 }

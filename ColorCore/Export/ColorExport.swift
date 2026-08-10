@@ -26,6 +26,9 @@ nonisolated enum ExportShape: String, CaseIterable, Sendable, Hashable, Identifi
   /// A hex `:root` block, then the same properties re-declared in `color(display-p3 …)`
   /// inside `@media (color-gamut: p3)`.
   case p3WithFallback = "p3-with-fallback"
+  /// The W3C Design Tokens (DTCG) format ``DesignTokenImport`` already reads (M17).
+  /// See ``designTokens(_:formatting:)``.
+  case designTokens = "design-tokens"
 
   // MARK: Internal
 
@@ -47,8 +50,8 @@ nonisolated enum ExportShape: String, CaseIterable, Sendable, Hashable, Identifi
     self != .declaration
   }
 
-  /// Whether the shape uses ``ExportOptions/format``. The third capability flag, and the
-  /// first one that exists to stop a control being *harmful* rather than merely inert.
+  /// Whether the shape uses ``ExportOptions/format``. Two different reasons collapse
+  /// onto one flag, and they are not the same reason repeated.
   ///
   /// ``p3WithFallback`` needs two spellings where `format` is one value, and both are
   /// fixed by what the shape is for. Leaving the picker live would let somebody choose
@@ -56,17 +59,27 @@ nonisolated enum ExportShape: String, CaseIterable, Sendable, Hashable, Identifi
   /// out-of-sRGB values, which is precisely the situation the shape exists to avoid. So
   /// the format is not a preference here, and the panel hides the control rather than
   /// offering a choice that is quietly ignored.
+  ///
+  /// ``designTokens`` (M34) hides the identical control for a structural reason
+  /// instead: a `CSSOutputFormat` names a CSS spelling, and a token's `$value` has
+  /// none — every token is written in its own authored space (see
+  /// ``designTokens(_:formatting:)``), so there is nothing for the picker to set even
+  /// in principle, not merely something dangerous to leave live.
   var usesFormat: Bool {
-    self != .p3WithFallback
+    self != .p3WithFallback && self != .designTokens
   }
 
   /// Whether this shape belongs in the picker under ``ColorStore/webFriendly`` (M22).
   ///
-  /// Only ``p3WithFallback`` is excluded, and structurally so rather than by a
-  /// gamut check: its whole reason to exist is a wide-gamut `@media` block, so it is
-  /// wide by definition regardless of what any particular export happens to contain.
+  /// ``p3WithFallback`` is excluded structurally rather than by a gamut check: its
+  /// whole reason to exist is a wide-gamut `@media` block, so it is wide by definition
+  /// regardless of what any particular export happens to contain. ``designTokens``
+  /// (M34) is excluded for a different structural reason: it exists to carry a
+  /// color's *authored* space between tools, and web-friendly mode is about what can
+  /// be hand-typed into a stylesheet — a judgment call, not a gamut check, recorded as
+  /// one.
   var isWebFriendly: Bool {
-    self != .p3WithFallback
+    self != .p3WithFallback && self != .designTokens
   }
 
   /// The file extension a saved document of this shape should carry.
@@ -76,15 +89,26 @@ nonisolated enum ExportShape: String, CaseIterable, Sendable, Hashable, Identifi
   /// what `json` writes *is* JSON, regardless of what any panel calls them. The `UTType`
   /// mapping stays in the UI layer, where AppKit's vocabulary belongs.
   ///
-  /// Four of the six answer `css`, including ``p3WithFallback`` — a `@media` block is
-  /// still a stylesheet — so this is not derivable from anything already here and is
-  /// transcribed the way ``usesTemplate`` and its siblings are.
+  /// Four of the seven answer `css`, including ``p3WithFallback`` — a `@media` block
+  /// is still a stylesheet — and ``designTokens`` (M34) shares `json`'s: a DTCG
+  /// document is JSON, it just has an opinion about what the JSON contains. Not
+  /// derivable from anything already here, so it is transcribed the way
+  /// ``usesTemplate`` and its siblings are.
   var fileExtension: String {
     switch self {
     case .declaration, .customProperties, .tailwindTheme, .p3WithFallback: "css"
-    case .json: "json"
+    case .json, .designTokens: "json"
     case .tailwindConfig: "js"
     }
+  }
+
+  /// A stem suffix ahead of ``fileExtension``, empty for every shape but
+  /// ``designTokens`` (M34): `brand.tokens.json` is the format's own convention.
+  /// ``ProjectsPanel/paletteName(for:)`` already strips a `.tokens` stem on the way
+  /// back in (M31, built for the file-picker import this shape did not exist to feed
+  /// yet), so the filename round trip closes without an import-side change.
+  var fileNameSuffix: String {
+    self == .designTokens ? ".tokens" : ""
   }
 }
 
@@ -173,8 +197,18 @@ nonisolated struct ExportOptions: Sendable, Equatable {
   /// The consequence for *wording* is the sharper half and was a real defect: the note
   /// cannot promise that the `@media` block carries these colors exactly, because it does
   /// not for the ones outside P3. See `ExportShape.mappedNote(count:format:)`.
-  var mappedCountFormat: CSSOutputFormat {
-    shape.usesFormat ? format : Self.fallbackFormat
+  ///
+  /// `nil` for ``ExportShape/designTokens`` (M34), which never gamut-maps at all — a
+  /// token file carries each color in its own authored space, unclamped, so there is
+  /// no format to count against and no honest number to show. `nil` means "this shape
+  /// has no such badge," not "count zero for a different reason";
+  /// `ColorStore/exportGamutMappedCount` and `ExportPanel` both read it that way.
+  var mappedCountFormat: CSSOutputFormat? {
+    switch shape {
+    case .p3WithFallback: Self.fallbackFormat
+    case .designTokens: nil
+    default: format
+    }
   }
 
   /// What a save panel should propose calling this document.
@@ -185,7 +219,7 @@ nonisolated struct ExportOptions: Sendable, Equatable {
   /// back to ``defaultName`` here exactly as it does in the document, rather than
   /// proposing an empty filename.
   var suggestedFilename: String {
-    "\(identifier).\(shape.fileExtension)"
+    "\(identifier)\(shape.fileNameSuffix).\(shape.fileExtension)"
   }
 
   /// `text` reduced to something usable as a CSS identifier and a JavaScript key.
@@ -209,6 +243,42 @@ nonisolated struct ExportOptions: Sendable, Equatable {
         pendingHyphen = true
       }
     }
+    return out.isEmpty ? fallback : out
+  }
+
+  /// `text` reduced to a name the W3C Design Tokens format can carry, and safe to
+  /// place literally inside the hand-built JSON ``designTokens(_:formatting:)`` writes.
+  ///
+  /// Unlike ``cssIdentifier``, the format permits spaces and case — DTCG names are
+  /// not CSS identifiers — so only what the format itself forbids is touched: `.`,
+  /// `{` and `}` (its own path and alias syntax) and a leading `$` (its reserved
+  /// prefix, replaced everywhere rather than only in that position, which costs
+  /// nothing since `$` is not a character anyone names a palette with on purpose).
+  /// Replaced, not deleted — deleting would let two names differing only in a
+  /// forbidden character collide silently, where the uniquing loop in
+  /// ``resolvedGroups(_:naming:)`` is the backstop for a replaced one, not the first
+  /// line of defense.
+  ///
+  /// `"` and `\` are additionally replaced, and that is not the same rule extended
+  /// for good measure. ``json(_:formatting:)`` gets away with zero escaping only
+  /// because ``cssIdentifier`` — the sanitizer every other shape's keys go through —
+  /// already strips everything outside `[A-Za-z0-9_-]`. This sanitizer is
+  /// deliberately more permissive, so it has to do its own escaping instead of
+  /// inheriting `json`'s for free; a palette literally named `say "hi"` would
+  /// otherwise write invalid JSON. A bare newline is replaced for the same reason —
+  /// JSON strings cannot contain one unescaped.
+  static func tokenName(_ text: String, fallback: String = "color") -> String {
+    let out = String(text.map { character -> Character in
+      switch character {
+      case ".", "{", "}", "$", "\"", "\\":
+        "-"
+      case _ where character.isNewline:
+        "-"
+      default:
+        character
+      }
+    })
+    .trimmingCharacters(in: .whitespacesAndNewlines)
     return out.isEmpty ? fallback : out
   }
 
@@ -243,7 +313,11 @@ nonisolated struct ExportOptions: Sendable, Equatable {
   func effective(webFriendly: Bool) -> ExportOptions {
     guard webFriendly else { return self }
     var options = self
-    if options.shape == .p3WithFallback {
+    // Derived from the flag itself, not a second list of shapes — `isWebFriendly`
+    // gained a second `false` in M34 (``ExportShape/designTokens``), and a hardcoded
+    // `== .p3WithFallback` here would hide the shape from the picker while this
+    // property kept rendering it, the exact M22 bug this function exists to prevent.
+    if !options.shape.isWebFriendly {
       options.shape = .customProperties
     }
     if !CSSOutputFormat.webFriendly.contains(options.format) {
@@ -276,7 +350,18 @@ nonisolated struct ExportOptions: Sendable, Equatable {
   /// - Parameter formatting: how each color is spelled — precision, hex casing, gamut
   ///   policy. The app-wide setting, passed through rather than duplicated here.
   func render(_ groups: [PaletteGroup], formatting: CSSFormatOptions = .default) -> String {
-    let resolved = resolvedGroups(groups.filter { !$0.entries.isEmpty })
+    // Every shape but ``ExportShape/designTokens`` names groups as CSS identifiers —
+    // uses them as custom-property names or JavaScript keys — so `cssIdentifier` is
+    // the naming rule by default. Design tokens permits spaces and case, so it needs
+    // its own sanitizer; see ``tokenName(_:fallback:)``. Wrapped in closures rather
+    // than passed as bare function references — both statics carry a default
+    // `fallback:` argument, and the compiler cannot always resolve which overload a
+    // bare reference to one means once it is being assigned into a `(String, String)
+    // -> String` variable inside a ternary.
+    let naming: (String, String) -> String = shape == .designTokens
+      ? { Self.tokenName($0, fallback: $1) }
+      : { Self.cssIdentifier($0, fallback: $1) }
+    let resolved = resolvedGroups(groups.filter { !$0.entries.isEmpty }, naming: naming)
     guard !resolved.isEmpty else { return "" }
     switch shape {
     case .declaration: return declarations(resolved, formatting: formatting)
@@ -285,6 +370,7 @@ nonisolated struct ExportOptions: Sendable, Equatable {
     case .tailwindTheme: return tailwindTheme(resolved, formatting: formatting)
     case .tailwindConfig: return tailwindConfig(resolved, formatting: formatting)
     case .p3WithFallback: return p3WithFallback(resolved, formatting: formatting)
+    case .designTokens: return designTokens(resolved, formatting: formatting)
     }
   }
 
@@ -341,10 +427,19 @@ nonisolated struct ExportOptions: Sendable, Equatable {
     Self.cssIdentifier(name, fallback: Self.defaultName)
   }
 
-  private func resolvedGroups(_ groups: [PaletteGroup]) -> [ResolvedGroup] {
+  /// - Parameter naming: how a group's own name becomes the identifier it is written
+  ///   under — ``cssIdentifier(_:fallback:)`` for every CSS- or JavaScript-shaped
+  ///   document, ``tokenName(_:fallback:)`` for ``ExportShape/designTokens`` (M34),
+  ///   whose format permits spaces and case that a CSS identifier cannot. A parameter
+  ///   rather than a shape check inside this function, so the uniquing loop stays
+  ///   single and the naming rule lives with each shape's own writer instead.
+  private func resolvedGroups(
+    _ groups: [PaletteGroup],
+    naming: (String, String) -> String,
+  ) -> [ResolvedGroup] {
     var used: Set<String> = []
     return groups.map { group in
-      var groupIdentifier = Self.cssIdentifier(group.name, fallback: Self.defaultName)
+      var groupIdentifier = naming(group.name, Self.defaultName)
       if used.contains(groupIdentifier) {
         var suffix = 2
         while used.contains("\(groupIdentifier)-\(suffix)") {
@@ -537,6 +632,142 @@ nonisolated struct ExportOptions: Sendable, Equatable {
     }
     .joined(separator: ",\n")
     return "{\n\(body)\n}"
+  }
+
+  /// The W3C Design Tokens (DTCG) format ``DesignTokenImport`` already reads (M17) —
+  /// a document this shape writes is one this app can read straight back in. See the
+  /// M34 entry in PLAN.md for why the root-level `$type` below is safe to rely on
+  /// rather than assumed: `DesignTokenImport.collect(_:path:inheritedType:into:)` was
+  /// checked against it before this writer was built, not after.
+  ///
+  /// **Each token is written in its own color's space, never one format across the
+  /// document** — the identical promise `ProjectLibrary`'s token-import overload and
+  /// `colorkit tokens`'s default listing already keep, because a token's `colorSpace`
+  /// is authored information, the same as a typed `rebeccapurple`. So this is the one
+  /// shape ``value(for:formatting:)`` never reaches: there is no CSS spelling to
+  /// choose between, only the components already stored.
+  ///
+  /// The shape mirrors ``json(_:formatting:)``'s: a lone color is a top-level token,
+  /// a scale is a nested object of them — the same ``soleEntry(_:)`` rule, so the two
+  /// cannot come to disagree about which groups are which.
+  private func designTokens(
+    _ groups: [ResolvedGroup],
+    formatting: CSSFormatOptions,
+  ) -> String {
+    let body = groups.map { group -> String in
+      let family = group.identifier
+      if let single = soleEntry(group.entries) {
+        return "  \"\(family)\": \(tokenValue(single.color, formatting: formatting))"
+      }
+      let entryLines = group.entries.map { entry in
+        let key = Self.tokenName(entry.key, fallback: "_")
+        return "    \"\(key)\": \(tokenValue(entry.color, formatting: formatting))"
+      }
+      .joined(separator: ",\n")
+      return "  \"\(family)\": {\n\(entryLines)\n  }"
+    }
+    .joined(separator: ",\n")
+    return "{\n  \"$type\": \"color\",\n\(body)\n}"
+  }
+
+  /// One token's `$value`: the color's own space, its three stored components
+  /// unchanged, and `alpha` only when it is not fully opaque — the format's own
+  /// default is 1, so writing it on every opaque color would be pure repetition.
+  ///
+  /// A component or the alpha authored as CSS `none` is written back as the literal
+  /// `"none"` string ``DesignTokenImport`` already reads (M17's leniency, in
+  /// reverse) rather than silently substituted with `0`, which would turn a
+  /// genuinely absent value into a wrong one that round-trips as if it were right.
+  /// **This is this app's own extension, not a guarantee about the format.**
+  /// `DesignTokenImport`'s own comment calls reading `"none"` *leniency* — the format
+  /// describes a component as a number, and a third-party consumer (Style Dictionary,
+  /// Figma) is not obliged to accept the same word this app's decoder does. Between
+  /// dropping the flag (turning a real "absent" into a wrong "zero" for a token this
+  /// app reads back) and writing a value that is only self-consistent, self-consistent
+  /// is the smaller lie — but it is still a lie to a reader that is not this app, and a
+  /// document containing a `"none"` is not a claim this shape's own `summary` should be
+  /// read as backing.
+  ///
+  /// No `hex` fallback is ever written. The field is optional in the format and
+  /// this app's own decoder reads it only for a `colorSpace` it does not recognize —
+  /// and every space this shape writes is one the spec defines — so it would never
+  /// be read on the way back in, and it would sit beside exact components as a
+  /// rounded sRGB approximation of precisely the wide-gamut colors that motivate an
+  /// OKLCH pipeline. The `p3WithFallback` hex-fallback trap, in a format that never
+  /// needed a fallback to begin with.
+  private func tokenValue(_ color: ColorValue, formatting: CSSFormatOptions) -> String {
+    let grammars = Self.nativeGrammars(for: color.space)
+    let components = (0 ..< 3).map { index in
+      color.missing.contains(.component(index))
+        ? "\"none\""
+        : Self.tokenNumber(
+          color.components[index],
+          fullScale: grammars[index].fullScale,
+          options: formatting,
+        )
+    }
+    var fields = [
+      "\"colorSpace\": \"\(color.space.rawValue)\"",
+      "\"components\": [\(components.joined(separator: ", "))]",
+    ]
+    if !color.isOpaque || color.missing.contains(.alpha) {
+      let alphaText = color.missing.contains(.alpha)
+        ? "\"none\""
+        : Self.tokenNumber(color.alpha, fullScale: 1, options: formatting)
+      fields.append("\"alpha\": \(alphaText)")
+    }
+    return "{ \"$value\": { \(fields.joined(separator: ", ")) } }"
+  }
+
+  /// The component grammar CSS would use to write this space natively, reused
+  /// solely for each component's ``ComponentGrammar/fullScale`` — so a token's
+  /// precision is relative to its own component the same way every CSS spelling's
+  /// is, and raising precision in the toolbar moves a token file's numbers exactly
+  /// as it moves every other shape's.
+  ///
+  /// Keyed off ``CSSOutputFormat/native(for:)`` rather than searched by hand against
+  /// ``ColorFunction/allCases``. That table already answers "what function spells
+  /// this space, natively" — tested by `nativeFormatRoundTripsThroughItsSpace` — and
+  /// re-deriving it here risks exactly the trap ``DesignTokenImport`` warns its own
+  /// decoder about: `rgb()`'s grammar scales its number form 0–255, and `.srgb`
+  /// would silently match `ColorFunction.rgb` if the search went by shared `space`
+  /// rather than through this table, rounding every stored 0–1 component down to
+  /// hundredths for no reason the format asks for. Every space `native(for:)`
+  /// answers with `.color(_)` — srgb included — falls to the `default` branch here,
+  /// which is `color()`'s own plain 0–1 grammar.
+  private static func nativeGrammars(for space: ColorSpace) -> [ComponentGrammar] {
+    switch CSSOutputFormat.native(for: space) {
+    case .hsl: ColorGrammar.components(for: .hsl)
+    case .hwb: ColorGrammar.components(for: .hwb)
+    case .lab: ColorGrammar.components(for: .lab)
+    case .lch: ColorGrammar.components(for: .lch)
+    case .oklab: ColorGrammar.components(for: .oklab)
+    case .oklch: ColorGrammar.components(for: .oklch)
+    default: ColorGrammar.components(for: .color)
+    }
+  }
+
+  /// A bare JSON number, rounded the same relative-to-scale way a CSS component
+  /// string is (``CSSFormatOptions/decimals(forFullScale:)``) — not a call into
+  /// `CSSFormatter.swift`'s own number formatter, which is private to a type
+  /// answering a different question (a CSS component, which can also be a
+  /// percentage or the bare word `none`) where this only ever needs a JSON literal.
+  private static func tokenNumber(
+    _ value: Double,
+    fullScale: Double,
+    options: CSSFormatOptions,
+  ) -> String {
+    guard value.isFinite else { return "0" }
+    let decimals = options.decimals(forFullScale: fullScale)
+    let factor = pow(10.0, Double(decimals))
+    let rounded = (value * factor).rounded() / factor
+    if rounded == 0 { return "0" }
+    var text = String(format: "%.\(decimals)f", rounded)
+    if text.contains(".") {
+      while text.hasSuffix("0") { text.removeLast() }
+      if text.hasSuffix(".") { text.removeLast() }
+    }
+    return text
   }
 
   /// The one entry, when this palette is a single unkeyed color.

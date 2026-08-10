@@ -26,9 +26,15 @@ struct OutputOptions {
         throw .usage("“\(text)” is not a color format. Try one of: \(Names.formatList).")
       }
       guard shape?.usesFormat != false else {
-        throw .usage(
-          "--shape \(Names.name(for: shape!)) writes its own two formats, so --format has nothing to set.",
-        )
+        // Two shapes hide this control and for different reasons — `p3WithFallback`
+        // fixes both of its own two spellings, `designTokens` (M34) has no CSS
+        // spelling at all, only a color's own stored space — and the CLI's honesty
+        // rule (see this initializer's doc comment) means the message has to say
+        // which is true rather than repeat the wrong one.
+        let reason = shape == .designTokens
+          ? "writes each color in its own space, so --format has nothing to set."
+          : "writes its own two formats, so --format has nothing to set."
+        throw .usage("--shape \(Names.name(for: shape!)) \(reason)")
       }
       self.format = format
     }
@@ -94,7 +100,11 @@ struct OutputOptions {
   /// writing two spellings has to say which one the count is about — for
   /// `p3WithFallback` that is the **hex fallback**, and counting against the P3 block
   /// instead reports nothing mapped while the hex line underneath has been rounded.
-  var countedFormat: CSSOutputFormat {
+  ///
+  /// `nil` for `--shape design-tokens` (M34): a token file never gamut-maps, so there
+  /// is no format to count against and ``PaletteOutput/mappedNote(_:_:)`` prints
+  /// nothing rather than a warning about a document that was never clamped.
+  var countedFormat: CSSOutputFormat? {
     guard let shape else { return format }
     return exportOptions(shape).mappedCountFormat
   }
@@ -155,7 +165,7 @@ enum PaletteOutput {
     _ entries: [PaletteEntry],
     _ options: OutputOptions,
   ) -> String? {
-    let format = options.countedFormat
+    guard let format = options.countedFormat else { return nil }
     let mapped = entries.count {
       $0.color.isGamutMapped(
         as: format,

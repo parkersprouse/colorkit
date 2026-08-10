@@ -81,6 +81,7 @@ nonisolated extension ExportShape {
     case .tailwindTheme: "Tailwind v4"
     case .tailwindConfig: "Tailwind v3"
     case .p3WithFallback: "P3 with fallback"
+    case .designTokens: "Design tokens (DTCG)"
     }
   }
 
@@ -102,6 +103,9 @@ nonisolated extension ExportShape {
     case .p3WithFallback:
       "Hex for everyone, then the same properties in Display P3 behind "
         + "@media (color-gamut: p3). Fixed formats — the fallback has to be hex."
+    case .designTokens:
+      "$value objects, one per color, each in the space it was authored in — what "
+        + "Figma and Style Dictionary consume."
     }
   }
 
@@ -135,6 +139,16 @@ nonisolated extension ExportShape {
     case .declaration, .customProperties, .json, .tailwindTheme, .tailwindConfig:
       return "\(format.title) cannot express \(colors), so the values below were "
         + "brought into gamut."
+    case .designTokens:
+      // Unreachable in practice — `ExportPanel` only calls this once `mapped > 0`,
+      // and `ExportOptions.mappedCountFormat` is `nil` for this shape, so
+      // `exportGamutMappedCount` is always `0` here. Written as a real sentence
+      // that still varies with `count` (`colors` already does) rather than a
+      // placeholder, on the chance something upstream ever calls this without that
+      // guard — and so it reads like every other shape's note beside it rather than
+      // standing out as the one that does not bother.
+      return "Design tokens keep \(colors) in the space each was authored in, "
+        + "never brought into gamut."
     }
   }
 }
