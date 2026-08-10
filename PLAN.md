@@ -3966,6 +3966,179 @@ nothing in the getter ever overwrote it. No new test: the getter is exactly
 wiring is a one-line mechanical connection to it — the same boundary that keeps the note
 above unit- rather than UI-tested.
 
+**A third report — Parker rejected the second report's fix on principle, and this section
+is the planned replacement, not yet built.** The display-only `Binding` above was
+functioning exactly as designed (the getter reads through `effective(webFriendly:)`, the
+stored value is left alone) — but Parker's objection was to the design itself: *"It's
+ALWAYS poor user experience to present a display that doesn't match its associated
+value."* He wants the actual stored value reassigned too, not merely the picker's
+displayed substitute — while still not permanently losing the original restricted choice
+if it turns out to have been reassigned by mistake. His own spec, verbatim:
+
+> The app should keep track of the user's current choice for all tools, just as it's
+> doing now; but once they enable web-friendly mode, if any of their choices are now
+> restricted, the fallback choice that they're reassigned to for that tool should become
+> their new *actual* stored choice — however, the app should also keep track of which
+> restricted choice they were on prior to enabling web-friendly mode separately, alongside
+> their new reassigned stored choice. If they disable web-friendly mode without using that
+> choice / tool at all, then set their stored tool back to the restricted one and clear it
+> as the tracked restricted choice. If they do use the newly reassigned choice / tool at
+> all, then simply clear the restricted one without replacing the newly reassigned one
+> since their using it has "confirmed" it as their new choice.
+
+**Three questions were asked and answered before scoping this, rather than assumed:**
+
+1. *What counts as "using" the reassigned choice — the event that confirms it and
+   discards the ability to revert?* → **Either** an explicit pick in the picker (even
+   re-picking the value already shown) **or** performing the corresponding action
+   (Copy/Save an export; Save/Import a paste) — whichever happens first.
+2. *Should the stash survive quitting the app while still unconfirmed?* → **No,
+   session-only.** No new `Preferences` field; quitting before the mode is toggled off or
+   the choice is used simply loses the stash. Flagged consequence, not silently assumed:
+   the `preferences` setter fix below means *launching* with `webFriendly: true` and a
+   restricted saved shape now stashes-and-reassigns in that fresh session too — turning
+   the mode off later without touching the export panel brings the restricted choice
+   back, where the old (broken) display-only design just left the stored value sitting
+   there inert forever. Treating launch as an ordinary transition into `true` is more
+   consistent with the rest of the mechanism than special-casing it, and was chosen
+   deliberately rather than by default.
+3. *Is this only about the Export panel?* → **No.** Parker: *"applies to ALL tools that
+   can fall into this same scenario."* An exhaustive grep of `webFriendly` across
+   `ColorKit/Features/**/*.swift` found exactly **three** controls that narrow a bound
+   *persisted or session selection* such that the current value can fall outside the
+   narrowed list (as opposed to hiding a whole section/readout, or populating a stateless
+   action `Menu` with no current-selection concept):
+   - `ExportPanel.swift`'s **Shape** picker — `store.exportOptions.shape`, persisted via
+     `Preferences.exportShape`. The one the second report's rejected fix already touched.
+   - `ExportPanel.swift`'s **Format** picker — `store.exportOptions.format`, persisted via
+     `Preferences.exportFormat`. A **direct** `$store.exportOptions.format` binding today
+     — the identical blank-picker bug, never reported, never fixed.
+   - `ImportTextSheet.swift`'s **"Storage format"** picker — `@State private var
+     storageFormat: CSSOutputFormat?`, ephemeral, not persisted, starts `nil` fresh every
+     time the sheet opens. Also a direct, unfixed binding. Asked specifically whether this
+     one — not backed by `Preferences` — should get the full treatment or only a display
+     fix; Parker: *"If the display changes, the value changes with it"* — full treatment,
+     the "display must always equal the real value" principle is universal here, not
+     conditional on persistence.
+
+   Explicitly **out of scope**, confirmed the same way: `TransformPanel.swift`'s Mix
+   pickers (`mixSpace`/`mixHueMethod`) are never narrowed at all — the *entire* Mix section
+   is hidden outright under web-friendly mode, so there is no "value falls outside a
+   narrowed list" scenario there to begin with. This is the pair `effective(webFriendly:)`'s
+   own doc comment currently cites as *"the same promise mixSpace/mixHueMethod make"* — a
+   promise that no longer describes Shape/Format once this lands, and that comment (plus
+   the identical sentence in `CLAUDE.md` and in `effectiveReplacesP3WithFallback`'s trailing
+   comment in `ExportTests.swift`) needs correcting when this is implemented, not merely
+   left to read as if it still applies.
+
+**The mechanism.** For Shape and Format (both `ColorStore`-backed), `ColorStore` gains two
+new session-only, `private(set)` properties —
+
+```swift
+private(set) var restrictedExportShape: ExportShape?
+private(set) var restrictedExportFormat: CSSOutputFormat?
+```
+
+— and `webFriendly` moves from a plain stored `var` to one with a `didSet` (matching
+`recentLimit`'s shape, not `globalShortcut`'s computed-property-with-rollback one, since
+nothing here can fail and need reverting):
+
+```swift
+var webFriendly = false {
+  didSet {
+    guard webFriendly != oldValue else { return }
+    reconcileExportOptions()
+  }
+}
+```
+
+`reconcileExportOptions()` computes `exportOptions.effective(webFriendly: true)` once and
+diffs each field against it — reusing the existing, already-tested fallback computation
+rather than duplicating the `.customProperties`/`.oklch` literals a second time — stashing
+and reassigning only a field that is actually restricted (so calling this twice in a row is
+always safe), and on the reverse transition restores whatever is stashed and clears it, or
+does nothing where nothing is pending. Two new methods are the "use" hook:
+`selectExportShape(_:)`/`selectExportFormat(_:)` (called from each picker's `Binding`
+setter, clearing only that field's own stash — an explicit pick says nothing about whether
+the *other* control was consciously chosen) and `confirmExportChoices()` (called from
+`copyExport()` and `ExportPanel.save(_:)`'s success branch, clearing both together, since
+producing a real export is evidence about the whole configuration on screen at once, not
+about one control in isolation). Verified before relying on it: `ExportShape.usesFormat`
+and `.isWebFriendly` are — today — the identical predicate, so whenever Shape's narrowed
+list is in play under web-friendly mode, Format is always relevant too; stated as the
+reason confirming both together is *correct* today, not the reason it was *designed* that
+way, since the two predicates could diverge later.
+
+**A real bug in `ColorStore.preferences`'s setter, found before it shipped, not after.**
+That setter (`ColorStore.swift:370–408`) assigns `webFriendly = newValue.webFriendly`
+*before* `exportOptions.shape`/`.format` receive their final values a few lines later — so
+the new `didSet` would fire while `exportOptions` still held its `init` defaults, reconcile
+against those (finding nothing restricted), and then the *actual* saved, possibly-restricted
+shape/format would be written in afterward, completely unreconciled. Net effect: the exact
+blank-picker bug this whole change exists to fix, silently reintroduced on every launch
+where web-friendly mode was saved on with a restricted shape, and on every Settings "Reset
+to Defaults" in the other direction (a stashed value written back by the `false`-transition
+branch, then immediately overwritten by the defaults, leaving a stale stash nobody clears).
+Fix: after every field assignment in that setter, unconditionally clear both stashes and
+call `reconcileExportOptions()` again — safe because it is diff-driven, not unconditional.
+
+**`ExportPanel.swift`'s Shape picker loses the display-only `Binding` from the second
+report** — the underlying invariant it worked around ("the stored value might not be in the
+narrowed list") stops being true once `ColorStore` itself keeps it valid, so the picker can
+bind straight to the real value again. What replaces it is not a plain `$` binding, though:
+the setter still needs to route through `selectExportShape(_:)` to fire the confirm hook.
+The Format picker gets the identical `Binding(get:set:)` treatment for the first time,
+fixing its own never-reported version of the same bug.
+
+**`ImportTextSheet.swift`'s `storageFormat`** needs the same shape at sheet-local scope: a
+`@State private var restrictedStorageFormat: CSSOutputFormat?` (a single optional, not a
+pair — the stash is always a specific restricted format, never `nil`/"Keep as pasted",
+which is never itself restricted) and a `.onChange(of: store.webFriendly)` on the sheet's
+*root* view (not on `storageFormatControl`, which only renders once a parse has succeeded —
+scoping the observer there would miss a toggle that happens before anything is pasted and
+then show a stale value the moment a parse *does* succeed). Settings is its own `Scene`
+sharing the same `ColorStore` with the sheet's window, so this reacts correctly to a live
+toggle happening in a different window. The fallback value reuses
+`ExportOptions.effective(webFriendly:)` through a throwaway probe rather than hardcoding
+`.oklch` again; falling back to `nil`/"Keep as pasted" instead was considered and rejected,
+because that setting preserves the *pasted text* verbatim, which can itself already be
+spelled in a non-web-friendly notation — silently the worse outcome under a mode whose whole
+point is staying web-friendly. Confirm hooks: the picker's own `Binding` setter, and
+`performImport()`'s success path (not unconditionally — a failed or aborted import used
+nothing).
+
+**An accepted gap, to be recorded rather than discovered later:** the `ImportTextSheet`
+mechanism lives entirely in `@State` private to a `View`, so none of it is unit-testable,
+and XCUITest cannot drive the Settings toggle to exercise the live cross-scene path either —
+the identical, already-recorded limitation `ShortcutRecorderField` and the web-friendly
+toggle itself carry elsewhere in this file. The only piece that *is* covered is the fallback
+value, which is exactly `ExportOptions.effective(webFriendly:)` — already fully pinned. This
+is a deliberate acceptance, not an oversight to fix by inventing a hollow test.
+
+**Test plan, once built:** new cases appended to `WebFriendlyExportStoreTests`
+(`ExportStoreTests.swift`) — reassign-and-stash on a true transition (Shape and Format,
+independently, so restricting only one leaves the other's stash `nil`); no spurious stash
+when already safe; restore-and-clear on a false transition with a pending stash; a no-op
+false transition with nothing pending; `selectExportShape`/`selectExportFormat` each
+clearing only their own stash; `confirmExportChoices()` clearing both (asserted directly,
+not through `copyExport()` — this file already documents why nothing here touches the real
+pasteboard); the `preferences`-setter fix exercised by assigning `store.preferences` with
+`webFriendly: true` plus a restricted shape and checking both that the live shape is
+web-friendly and that the original is stashed. One existing test needs rewriting rather
+than staying accidentally green: `exportDocumentNeverEscapesUnderWebFriendly`'s final
+assertion, `store.exportOptions.shape == .p3WithFallback`, becomes **false** under the new
+design (it's reassigned to `.customProperties`) — replace with
+`store.exportOptions.shape.isWebFriendly` and `store.restrictedExportShape ==
+.p3WithFallback`, and correct its trailing comment, which currently claims "even though
+nothing here touches it to work around it." Every test in `WebFriendlyExportTests`
+(`ExportTests.swift`) that exercises `ExportOptions.effective` directly on a bare value
+needs no logic changes — that function's behavior is unchanged, only *who else calls it and
+why* — just a comment correction on `effectiveReplacesP3WithFallback`. Also worth
+re-running rather than assuming: `PreferencesTests.preferencesObservesEveryPersistedField`
+already mutates `webFriendly` and would catch `@Observable` silently losing track of it once
+it gains a `didSet` — the exact "sharper edge than it looks" this file's own `recentLimit`
+bullet already warns about.
+
 #### The seventh shape
 
 `ExportShape.designTokens = "design-tokens"`, writing the W3C Design Tokens (DTCG) format
