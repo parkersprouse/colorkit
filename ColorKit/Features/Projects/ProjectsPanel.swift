@@ -707,14 +707,21 @@ struct ProjectsPanel: View {
   /// panel — but the grant has to be *claimed*, and the failure without it is a permission
   /// error on a file the user just picked.
   private func importFile(_ result: Result<URL, Error>) {
-    importSummary = nil
-
     guard case let .success(url) = result else {
       if case let .failure(error) = result {
         errorMessage = "Could not open that file: \(error.localizedDescription)"
       }
       return
     }
+
+    // A file was actually chosen, so this attempt supersedes whatever the last import
+    // left on screen — clear *both* the previous error and summary here, once, rather
+    // than at the top. Clearing at the top would wipe a prior success summary even when
+    // the panel was dismissed without a file, and would leave a stale summary sitting
+    // beside a fresh read error below; this point is past the `.success` guard, so it is
+    // reached only when there is a new outcome to report.
+    errorMessage = nil
+    importSummary = nil
 
     let scoped = url.startAccessingSecurityScopedResource()
     defer {
@@ -736,7 +743,6 @@ struct ProjectsPanel: View {
       return
     }
 
-    errorMessage = nil
     importRequest = ImportRequest(text: text, name: Self.paletteName(for: url))
   }
 
