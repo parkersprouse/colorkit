@@ -248,20 +248,6 @@ final class ColorStore {
   var exportSource: ExportSource = .color
   var exportOptions = ExportOptions.default
 
-  /// Hides exotic formats and keeps every value inside sRGB. See M22 in PLAN.md.
-  ///
-  /// A `didSet` (matching ``recentLimit``'s shape, not ``globalShortcut``'s
-  /// computed-property-with-rollback one, since nothing here can fail and need reverting)
-  /// so that toggling the mode reassigns any now-restricted export choice to a safe one
-  /// *and stashes the original*, rather than leaving the stored value inert behind a
-  /// picker that no longer offers it. See ``reconcileExportOptions()``.
-  var webFriendly = false {
-    didSet {
-      guard webFriendly != oldValue else { return }
-      reconcileExportOptions()
-    }
-  }
-
   /// The export ``ExportShape`` the user was on before ``webFriendly`` restricted it,
   /// stashed so turning the mode back off (without meanwhile *using* the reassigned
   /// choice) restores it. `nil` when nothing is stashed — either the mode is off, or the
@@ -324,6 +310,20 @@ final class ColorStore {
   /// Whether the system accepted the sampling hot key. Shown in the menu bar panel,
   /// because a shortcut advertised but not registered is worse than none offered.
   private(set) var globalShortcutIsActive = false
+
+  /// Hides exotic formats and keeps every value inside sRGB. See M22 in PLAN.md.
+  ///
+  /// A `didSet` (matching ``recentLimit``'s shape, not ``globalShortcut``'s
+  /// computed-property-with-rollback one, since nothing here can fail and need reverting)
+  /// so that toggling the mode reassigns any now-restricted export choice to a safe one
+  /// *and stashes the original*, rather than leaving the stored value inert behind a
+  /// picker that no longer offers it. See ``reconcileExportOptions()``.
+  var webFriendly = false {
+    didSet {
+      guard webFriendly != oldValue else { return }
+      reconcileExportOptions()
+    }
+  }
 
   /// The system-wide sampling chord (M27), read directly the same way ``recentLimit``
   /// and ``pickerMode`` are — ``preferences``'s own field mirrors this rather than

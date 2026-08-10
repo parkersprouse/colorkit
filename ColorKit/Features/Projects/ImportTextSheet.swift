@@ -235,32 +235,6 @@ struct ImportTextSheet: View {
     }
   }
 
-  /// Reassigns a now-restricted `storageFormat` to a safe one and stashes the original on
-  /// a true transition; restores the stash on a false transition. The `storageFormat`
-  /// analogue of ``ColorStore/reconcileExportOptions()`` — see the `.onChange` in `body`.
-  private func reconcileStorageFormat(webFriendly: Bool) {
-    if webFriendly {
-      // `newValue`-derived rather than reading `store.webFriendly`/`availableFormats`,
-      // which would depend on observation having settled before this runs. `nil` ("Keep
-      // as pasted") is never restricted, so only a concrete out-of-list format reassigns.
-      guard let current = storageFormat,
-            !CSSOutputFormat.webFriendlyExportable.contains(current)
-      else { return }
-      restrictedStorageFormat = current
-      // The fallback reuses `ExportOptions.effective(webFriendly:)` (→ `.oklch`) rather
-      // than hardcoding it a second time. Falling back to `nil`/"Keep as pasted" was
-      // rejected: that preserves the *pasted text* verbatim, which can itself be spelled
-      // in a non-web-friendly notation — the worse outcome under a mode whose whole point
-      // is staying web-friendly.
-      var probe = ExportOptions.default
-      probe.format = current
-      storageFormat = probe.effective(webFriendly: true).format
-    } else if let stashed = restrictedStorageFormat {
-      storageFormat = stashed
-      restrictedStorageFormat = nil
-    }
-  }
-
   /// Takes the parsed palette (unlike its M31-and-earlier self) so it can seed
   /// ``newProjectName`` — needed since M33, when the global entry points can open here
   /// with ``creatingNewProject`` already `true` even though projects exist, leaving Import
@@ -454,6 +428,32 @@ struct ImportTextSheet: View {
     case (_, 0): return plural(colors, "color")
     case (0, _): return plural(palettes, "palette")
     default: return "\(plural(colors, "color")) and \(plural(palettes, "palette"))"
+    }
+  }
+
+  /// Reassigns a now-restricted `storageFormat` to a safe one and stashes the original on
+  /// a true transition; restores the stash on a false transition. The `storageFormat`
+  /// analogue of ``ColorStore/reconcileExportOptions()`` — see the `.onChange` in `body`.
+  private func reconcileStorageFormat(webFriendly: Bool) {
+    if webFriendly {
+      // `newValue`-derived rather than reading `store.webFriendly`/`availableFormats`,
+      // which would depend on observation having settled before this runs. `nil` ("Keep
+      // as pasted") is never restricted, so only a concrete out-of-list format reassigns.
+      guard let current = storageFormat,
+            !CSSOutputFormat.webFriendlyExportable.contains(current)
+      else { return }
+      restrictedStorageFormat = current
+      // The fallback reuses `ExportOptions.effective(webFriendly:)` (→ `.oklch`) rather
+      // than hardcoding it a second time. Falling back to `nil`/"Keep as pasted" was
+      // rejected: that preserves the *pasted text* verbatim, which can itself be spelled
+      // in a non-web-friendly notation — the worse outcome under a mode whose whole point
+      // is staying web-friendly.
+      var probe = ExportOptions.default
+      probe.format = current
+      storageFormat = probe.effective(webFriendly: true).format
+    } else if let stashed = restrictedStorageFormat {
+      storageFormat = stashed
+      restrictedStorageFormat = nil
     }
   }
 
