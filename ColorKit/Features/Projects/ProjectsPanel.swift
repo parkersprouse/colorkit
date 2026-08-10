@@ -106,6 +106,16 @@ struct ProjectsPanel: View {
   /// the project it came from is a loop with nothing at the end of it.
   private static let savableSets: [ExportSource] = [.harmony, .ramp, .recents]
 
+  /// The shapes the open panel admits (M31), one per vocabulary "From Text…" can read.
+  ///
+  /// `css` and `tokens` are built from their extensions rather than named as statics: a
+  /// bare `.tokens` file has no registered type, and admitting `css` the same way sidesteps
+  /// whether the running system happens to declare one. `compactMap` drops either if the
+  /// system cannot form it, leaving the file selectable by the other four types regardless.
+  private static let importableFileTypes: [UTType] =
+    [.json, .plainText, .javaScript]
+      + ["css", "tokens"].compactMap { UTType(filenameExtension: $0) }
+
   @Environment(ColorStore.self) private var store
   @Environment(\.modelContext) private var context
   @Environment(\.projectStoreStatus) private var storeStatus
@@ -611,16 +621,6 @@ struct ProjectsPanel: View {
     let stem = url.deletingPathExtension().lastPathComponent
     return stem.hasSuffix(".tokens") ? String(stem.dropLast(".tokens".count)) : stem
   }
-
-  /// The shapes the open panel admits (M31), one per vocabulary "From Text…" can read.
-  ///
-  /// `css` and `tokens` are built from their extensions rather than named as statics: a
-  /// bare `.tokens` file has no registered type, and admitting `css` the same way sidesteps
-  /// whether the running system happens to declare one. `compactMap` drops either if the
-  /// system cannot form it, leaving the file selectable by the other four types regardless.
-  private static let importableFileTypes: [UTType] =
-    [.json, .plainText, .javaScript]
-      + ["css", "tokens"].compactMap { UTType(filenameExtension: $0) }
 
   /// Palettes first, then one single-entry group per loose color — a ramp is the thing
   /// you came for and a loose color is a note beside it.
