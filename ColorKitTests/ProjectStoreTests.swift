@@ -765,7 +765,7 @@ struct ProjectStoreTests {
     let library = try Self.makeLibrary()
     let project = try library.createProject(named: "Site")
     let color = try library.saveColor(
-      ColorRecord(try CSSColorParser.parse("#ff0000").color, text: "#ff0000"),
+      ColorRecord(CSSColorParser.parse("#ff0000").color, text: "#ff0000"),
       named: "Brand Red",
       to: project,
     )
