@@ -1506,6 +1506,11 @@ the accessibility-tree conventions before writing UI tests.
 
 ### Commits
 
+**Work directly on `main` — do not branch off before starting a milestone or a fix.**
+This repo has one contributor and no PR review step, so a feature branch buys nothing
+here and costs a manual merge back later for no reason. Commit straight to `main`
+unless the user explicitly asks for a branch.
+
 Each commit must build and test **standalone** — a green run at HEAD says nothing
 about whether intermediate commits are bisectable. Verify in a throwaway worktree
 before stacking the next one:
