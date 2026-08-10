@@ -162,7 +162,13 @@ message all named "design tokens" or nothing before this. See the M34 entry in P
 for a real bug an advisor review caught before it shipped — `nativeGrammars(for:)`'s
 first draft would have rounded every `srgb` token's components on `rgb()`'s 0–255 scale
 instead of the format's own 0–1 — and for the mutation that was actually run (not just
-reasoned through) to confirm the fix and its test both hold.
+reasoned through) to confirm the fix and its test both hold. **A same-day follow-up**:
+`ExportPanel`'s Shape picker silently drops to five options under web-friendly mode with
+nothing said about why, so `ExportShape.webFriendlyHiddenShapesNote(hidden:)` in
+`ExportPresentation.swift` now supplies the sentence — built off `isWebFriendly` rather
+than naming `p3WithFallback`/`designTokens` directly, unit-tested rather than covered by
+a new XCUITest, since nothing here drives the Settings window (see `ShortcutRecorderField`
+below).
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
@@ -184,9 +190,9 @@ change without a mistake masquerading as an app regression:
 xcodebuild -project "ColorKit.xcodeproj" -target ColorKitCLI -destination 'platform=macOS' build && ./build/Release/colorkit --help
 ```
 
-Full test suite (~9 minutes, nearly all of it UI tests — the 555 + 62 Swift Testing
+Full test suite (~9 minutes, nearly all of it UI tests — the 556 + 62 Swift Testing
 tests finish in about a second, the 48 XCUITests take seven minutes and up). **There are
-two Swift Testing bundles now**: `ColorKitTests` (555 tests, 55 suites) and
+two Swift Testing bundles now**: `ColorKitTests` (556 tests, 55 suites) and
 `ColorKitCLITests` (62 tests, 10 suites), and both are in the scheme:
 
 ```bash

@@ -378,6 +378,30 @@ struct ExportPresentationTests {
     #expect(!note.contains("exactly"), "The override cannot promise this for every color")
   }
 
+  /// The note `ExportPanel` shows under the Shape picker while web-friendly mode hides
+  /// some of it — added after a real report that the picker just looked shorter with
+  /// nothing said about why. Driven off ``ExportShape/isWebFriendly`` here too, so a
+  /// third shape excluded for its own reason later changes this test's evidence without
+  /// changing what it asserts.
+  @Test("The web-friendly note names what is hidden, or says nothing at all")
+  func webFriendlyHiddenShapesNoteIsUsable() throws {
+    #expect(ExportShape.webFriendlyHiddenShapesNote(hidden: []) == nil)
+
+    let actuallyHidden = ExportShape.allCases.filter { !$0.isWebFriendly }
+    let note = try #require(ExportShape.webFriendlyHiddenShapesNote(hidden: actuallyHidden))
+    for shape in actuallyHidden {
+      #expect(note.contains(shape.title), "\(shape) missing from: \(note)")
+    }
+    #expect(note.contains("them"), "more than one shape is hidden today")
+
+    // Singular and plural must actually differ, the same rule `mappedNote` is held to —
+    // a note that says "it" regardless of count would be wrong the moment exactly one
+    // shape is excluded.
+    let oneHidden = ExportShape.webFriendlyHiddenShapesNote(hidden: [.p3WithFallback])
+    #expect(oneHidden?.contains("it") == true)
+    #expect(oneHidden?.contains("them") == false)
+  }
+
   /// Source titles share a segmented control, and its empty-state copy has to be true of
   /// the source it is shown for. Recents and Saved are both legitimately empty and empty
   /// for unrelated reasons — one fills up as you work, the other waits on a palette being

@@ -3930,8 +3930,22 @@ included, twice** — once after the first draft, again after a second advisor p
 `** TEST SUCCEEDED **` with 0 failures (664, then 665, top-level `totalTestCount` from
 `xcrun xcresulttool get test-results summary`) — the 48 XCUITests are untouched by this
 milestone (no UI surface pins the strings changed) and both runs confirm that rather
-than assuming it from the diff. 555 `ColorKitTests` in 55 suites, 62 `ColorKitCLITests`
+than assuming it from the diff. 556 `ColorKitTests` in 55 suites, 62 `ColorKitCLITests`
 in 10 suites, confirmed directly rather than inferred from the combined total.
+
+**One post-ship report, fixed same day.** Parker turned on web-friendly mode after this
+landed and saw the Shape picker with five options and no explanation — `p3WithFallback`
+and `designTokens` both disappear under that mode, but nothing said the picker had
+gotten shorter on purpose rather than by a bug. `ExportShape
+.webFriendlyHiddenShapesNote(hidden:)` (`ExportPresentation.swift`) turns whatever
+``isWebFriendly`` excludes into a sentence — built off that predicate rather than a
+hardcoded pair of names, so a third exclusion later is announced for free — and
+`ExportPanel` shows it under the picker exactly when `store.webFriendly` is on and the
+list is non-empty. Deliberately **not** a new XCUITest: nothing in this app's UI test
+suite drives the Settings window (`ShortcutRecorderField`'s own entry above records the
+identical gap), so the sentence-building logic lives in `ExportPresentation.swift`
+specifically so it is unit-testable — `webFriendlyHiddenShapesNoteIsUsable`, the 556th
+`ColorKitTests` test counted above — without needing to.
 
 #### The seventh shape
 

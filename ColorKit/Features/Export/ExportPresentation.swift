@@ -151,6 +151,30 @@ nonisolated extension ExportShape {
         + "never brought into gamut."
     }
   }
+
+  /// What `ExportPanel` shows under the Shape picker while
+  /// ``ColorStore/webFriendly`` is on and some shapes are hidden from it — `nil` when
+  /// nothing is, so the panel does not have to duplicate that check.
+  ///
+  /// Built here, off ``isWebFriendly`` itself, rather than a hardcoded pair of shape
+  /// names in the view: a shape excluded for its own reason later is announced by this
+  /// sentence for free. It is a `static func` rather than a stored fact because there
+  /// is nothing to look up — the caller already knows which shapes it filtered out and
+  /// this only turns that list into English, the reason it is unit-testable without
+  /// needing to drive Settings' web-friendly toggle, which nothing in this app's UI
+  /// test suite can do (see the invariant in CLAUDE.md).
+  static func webFriendlyHiddenShapesNote(hidden: [ExportShape]) -> String? {
+    guard !hidden.isEmpty else { return nil }
+    let names = hidden.map(\.title)
+    let list: String
+    switch names.count {
+    case 1: list = names[0]
+    case 2: list = "\(names[0]) and \(names[1])"
+    default: list = names.dropLast().joined(separator: ", ") + ", and " + names[names.count - 1]
+    }
+    return "Web-friendly mode hides \(list). Turn it off in Settings to use "
+      + "\(hidden.count == 1 ? "it" : "them")."
+  }
 }
 
 nonisolated extension ExportTemplate {

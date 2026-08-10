@@ -107,6 +107,24 @@ struct ExportPanel: View {
         .accessibilityIdentifier("exportShape")
       }
 
+      // Said plainly rather than left for someone to notice the picker got shorter —
+      // a shape that used to be there and quietly isn't reads as a bug, not a mode.
+      // The sentence itself is built in `ExportPresentation.swift`, off `isWebFriendly`
+      // rather than a hardcoded pair of names, so a future shape excluded for its own
+      // reason is announced here for free rather than requiring someone to remember to
+      // update this copy too.
+      if store.webFriendly,
+         let note = ExportShape.webFriendlyHiddenShapesNote(
+           hidden: ExportShape.allCases.filter { !$0.isWebFriendly },
+         )
+      {
+        Text(note)
+          .font(.caption)
+          .foregroundStyle(.tertiary)
+          .fixedSize(horizontal: false, vertical: true)
+          .accessibilityIdentifier("exportWebFriendlyHiddenShapesNote")
+      }
+
       Text(store.exportOptions.shape.summary)
         .font(.caption)
         .foregroundStyle(.tertiary)
