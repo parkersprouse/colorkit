@@ -427,6 +427,63 @@ nonisolated struct ExportOptions: Sendable, Equatable {
     Self.cssIdentifier(name, fallback: Self.defaultName)
   }
 
+  /// The component grammar CSS would use to write this space natively, reused
+  /// solely for each component's ``ComponentGrammar/fullScale`` — so a token's
+  /// precision is relative to its own component the same way every CSS spelling's
+  /// is, and raising precision in the toolbar moves a token file's numbers exactly
+  /// as it moves every other shape's.
+  ///
+  /// Keyed off ``CSSOutputFormat/native(for:)`` rather than searched by hand against
+  /// ``ColorFunction/allCases``. That table already answers "what function spells
+  /// this space, natively" — tested by `nativeFormatRoundTripsThroughItsSpace` — and
+  /// re-deriving it here risks exactly the trap ``DesignTokenImport`` warns its own
+  /// decoder about: `rgb()`'s grammar scales its number form 0–255, and `.srgb`
+  /// would silently match `ColorFunction.rgb` if the search went by shared `space`
+  /// rather than through this table, rounding every stored 0–1 component down to
+  /// hundredths for no reason the format asks for. Every space `native(for:)`
+  /// answers with `.color(_)` — srgb included — falls to the `default` branch here,
+  /// which is `color()`'s own plain 0–1 grammar.
+  private static func nativeGrammars(for space: ColorSpace) -> [ComponentGrammar] {
+    switch CSSOutputFormat.native(for: space) {
+    case .hsl: ColorGrammar.components(for: .hsl)
+    case .hwb: ColorGrammar.components(for: .hwb)
+    case .lab: ColorGrammar.components(for: .lab)
+    case .lch: ColorGrammar.components(for: .lch)
+    case .oklab: ColorGrammar.components(for: .oklab)
+    case .oklch: ColorGrammar.components(for: .oklch)
+    default: ColorGrammar.components(for: .color)
+    }
+  }
+
+  /// A bare JSON number, rounded the same relative-to-scale way a CSS component
+  /// string is (``CSSFormatOptions/decimals(forFullScale:)``) — not a call into
+  /// `CSSFormatter.swift`'s own number formatter, which is private to a type
+  /// answering a different question (a CSS component, which can also be a
+  /// percentage or the bare word `none`) where this only ever needs a JSON literal.
+  private static func tokenNumber(
+    _ value: Double,
+    fullScale: Double,
+    options: CSSFormatOptions,
+  ) -> String {
+    guard value.isFinite else { return "0" }
+    let decimals = options.decimals(forFullScale: fullScale)
+    let factor = pow(10.0, Double(decimals))
+    let rounded = (value * factor).rounded() / factor
+    if rounded == 0 {
+      return "0"
+    }
+    var text = String(format: "%.\(decimals)f", rounded)
+    if text.contains(".") {
+      while text.hasSuffix("0") {
+        text.removeLast()
+      }
+      if text.hasSuffix(".") {
+        text.removeLast()
+      }
+    }
+    return text
+  }
+
   /// - Parameter naming: how a group's own name becomes the identifier it is written
   ///   under — ``cssIdentifier(_:fallback:)`` for every CSS- or JavaScript-shaped
   ///   document, ``tokenName(_:fallback:)`` for ``ExportShape/designTokens`` (M34),
@@ -717,57 +774,6 @@ nonisolated struct ExportOptions: Sendable, Equatable {
       fields.append("\"alpha\": \(alphaText)")
     }
     return "{ \"$value\": { \(fields.joined(separator: ", ")) } }"
-  }
-
-  /// The component grammar CSS would use to write this space natively, reused
-  /// solely for each component's ``ComponentGrammar/fullScale`` — so a token's
-  /// precision is relative to its own component the same way every CSS spelling's
-  /// is, and raising precision in the toolbar moves a token file's numbers exactly
-  /// as it moves every other shape's.
-  ///
-  /// Keyed off ``CSSOutputFormat/native(for:)`` rather than searched by hand against
-  /// ``ColorFunction/allCases``. That table already answers "what function spells
-  /// this space, natively" — tested by `nativeFormatRoundTripsThroughItsSpace` — and
-  /// re-deriving it here risks exactly the trap ``DesignTokenImport`` warns its own
-  /// decoder about: `rgb()`'s grammar scales its number form 0–255, and `.srgb`
-  /// would silently match `ColorFunction.rgb` if the search went by shared `space`
-  /// rather than through this table, rounding every stored 0–1 component down to
-  /// hundredths for no reason the format asks for. Every space `native(for:)`
-  /// answers with `.color(_)` — srgb included — falls to the `default` branch here,
-  /// which is `color()`'s own plain 0–1 grammar.
-  private static func nativeGrammars(for space: ColorSpace) -> [ComponentGrammar] {
-    switch CSSOutputFormat.native(for: space) {
-    case .hsl: ColorGrammar.components(for: .hsl)
-    case .hwb: ColorGrammar.components(for: .hwb)
-    case .lab: ColorGrammar.components(for: .lab)
-    case .lch: ColorGrammar.components(for: .lch)
-    case .oklab: ColorGrammar.components(for: .oklab)
-    case .oklch: ColorGrammar.components(for: .oklch)
-    default: ColorGrammar.components(for: .color)
-    }
-  }
-
-  /// A bare JSON number, rounded the same relative-to-scale way a CSS component
-  /// string is (``CSSFormatOptions/decimals(forFullScale:)``) — not a call into
-  /// `CSSFormatter.swift`'s own number formatter, which is private to a type
-  /// answering a different question (a CSS component, which can also be a
-  /// percentage or the bare word `none`) where this only ever needs a JSON literal.
-  private static func tokenNumber(
-    _ value: Double,
-    fullScale: Double,
-    options: CSSFormatOptions,
-  ) -> String {
-    guard value.isFinite else { return "0" }
-    let decimals = options.decimals(forFullScale: fullScale)
-    let factor = pow(10.0, Double(decimals))
-    let rounded = (value * factor).rounded() / factor
-    if rounded == 0 { return "0" }
-    var text = String(format: "%.\(decimals)f", rounded)
-    if text.contains(".") {
-      while text.hasSuffix("0") { text.removeLast() }
-      if text.hasSuffix(".") { text.removeLast() }
-    }
-    return text
   }
 
   /// The one entry, when this palette is a single unkeyed color.

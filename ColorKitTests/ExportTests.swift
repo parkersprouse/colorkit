@@ -1330,11 +1330,9 @@ struct WebFriendlyExportTests {
 /// exact-string tests against the lowest oracle that can discriminate.
 @Suite("Design tokens export (M34)")
 struct DesignTokensExportTests {
-  static let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
+  // MARK: Internal
 
-  private static func decode(_ document: String) throws -> DesignTokenDocument {
-    try DesignTokenImport.decode(Data(document.utf8))
-  }
+  static let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
 
   /// Three different spaces, not one repeated — the mutation this pins is "canonicalize
   /// to one format," which a same-space fixture cannot catch since the writer's actual
@@ -1527,5 +1525,11 @@ struct DesignTokensExportTests {
     var options = ExportOptions.default
     options.shape = .designTokens
     #expect(options.mappedCountFormat == nil)
+  }
+
+  // MARK: Private
+
+  private static func decode(_ document: String) throws -> DesignTokenDocument {
+    try DesignTokenImport.decode(Data(document.utf8))
   }
 }
