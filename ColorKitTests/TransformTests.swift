@@ -184,7 +184,7 @@ struct AdjustSliderRangeTests {
   func lightnessRangeNarrowsBelowTheExtent() {
     let nearBlack = ColorValue(space: .oklch, 0.3, 0.1, 250)
     let range = OKLCHAdjustment.lightnessDeltaRange(for: nearBlack)
-    #expect(abs(range.lowerBound - (-0.3)) < 1e-12)
+    #expect(abs(range.lowerBound - -0.3) < 1e-12)
     #expect(range.upperBound == 0.5, "the upper edge has room to spare and should stay at the extent")
   }
 

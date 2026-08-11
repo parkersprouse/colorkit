@@ -130,19 +130,6 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     )
   }
 
-  /// Applies this nudge, in OKLCH.
-  ///
-  /// Lightness is clamped to `0...1` because it has real endpoints — nothing is
-  /// darker than black — while chroma and hue are left unbounded, since a result
-  /// outside the sRGB gamut is a legitimate answer this app is built to carry.
-  func applied(to color: ColorValue) -> ColorValue {
-    var components = color.oklchComponents
-    components.lightness = min(max(components.lightness + lightnessDelta, 0), 1)
-    components.chroma = max(components.chroma * chromaScale, 0)
-    components.hue = Conversion.constrainAngle(components.hue + hueRotation)
-    return color.derivedOKLCH(components)
-  }
-
   /// How far ``lightnessDelta`` can move `color` before ``applied(to:)``'s own
   /// `0...1` clamp swallows the rest — the same fact expressed as a range up front
   /// rather than discovered a slider-width later.
@@ -188,5 +175,18 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     let ceiling = boundary / components.chroma
     let upper = min(extent.upperBound, max(1, ceiling))
     return extent.lowerBound ... upper
+  }
+
+  /// Applies this nudge, in OKLCH.
+  ///
+  /// Lightness is clamped to `0...1` because it has real endpoints — nothing is
+  /// darker than black — while chroma and hue are left unbounded, since a result
+  /// outside the sRGB gamut is a legitimate answer this app is built to carry.
+  func applied(to color: ColorValue) -> ColorValue {
+    var components = color.oklchComponents
+    components.lightness = min(max(components.lightness + lightnessDelta, 0), 1)
+    components.chroma = max(components.chroma * chromaScale, 0)
+    components.hue = Conversion.constrainAngle(components.hue + hueRotation)
+    return color.derivedOKLCH(components)
   }
 }
