@@ -140,6 +140,126 @@ struct OKLCHAdjustmentTests {
   }
 }
 
+/// The Adjust panel's slider ranges (M35): a slider's travel should mean something,
+/// which means its edges have to land where the value actually stops changing rather
+/// than well past it — see the two doc comments on ``OKLCHAdjustment`` for why the
+/// two axes get different treatment.
+@Suite("Adjust slider ranges")
+struct AdjustSliderRangeTests {
+  /// Same base ``TransformTests`` uses, chosen for the same reason: no conversion
+  /// happens on the way in, so the numbers here are exact.
+  static let base = ColorValue(space: .oklch, 0.65, 0.18, 250)
+
+  @Test("Lightness range straddles the identity delta, whatever the base lightness")
+  func lightnessRangeAlwaysContainsZero() {
+    for lightness in [0.0, 0.02, 0.65, 0.98, 1.0] {
+      let color = ColorValue(space: .oklch, lightness, 0.1, 250)
+      let range = OKLCHAdjustment.lightnessDeltaRange(for: color)
+      #expect(range.contains(0), "lightness \(lightness) excluded the identity delta")
+    }
+  }
+
+  /// The whole point: the edges are exactly where `applied(to:)`'s own clamp would
+  /// have started discarding the rest, not the fixed `-0.5...0.5` extent.
+  @Test("Lightness range's edges are exactly where the result would clamp")
+  func lightnessRangeEdgesMatchTheClamp() {
+    let nearWhite = ColorValue(space: .oklch, 0.9, 0.1, 250)
+    let range = OKLCHAdjustment.lightnessDeltaRange(for: nearWhite)
+    // The upper edge is the gamut fact: `0.9 + delta` reaches white at `0.1`, well
+    // inside the fixed `-0.5...0.5` extent, so only that side narrows.
+    #expect(abs(range.upperBound - 0.1) < 1e-12)
+    #expect(range.lowerBound == -0.5, "the lower edge has room to spare and should stay at the extent")
+
+    // Confirm the edge really is where `applied(to:)` stops moving: one step past
+    // the reported upper bound produces the identical clamped result as the bound
+    // itself.
+    let atEdge = OKLCHAdjustment(lightnessDelta: range.upperBound).applied(to: nearWhite)
+    let pastEdge = OKLCHAdjustment(lightnessDelta: range.upperBound + 0.05).applied(to: nearWhite)
+    #expect(atEdge.oklchComponents.lightness == pastEdge.oklchComponents.lightness)
+  }
+
+  /// The lower edge narrows the identical way once the gamut fact — not the fixed
+  /// extent — is the closer bound.
+  @Test("Lightness range narrows on the low side too, symmetrically")
+  func lightnessRangeNarrowsBelowTheExtent() {
+    let nearBlack = ColorValue(space: .oklch, 0.3, 0.1, 250)
+    let range = OKLCHAdjustment.lightnessDeltaRange(for: nearBlack)
+    #expect(abs(range.lowerBound - (-0.3)) < 1e-12)
+    #expect(range.upperBound == 0.5, "the upper edge has room to spare and should stay at the extent")
+  }
+
+  /// A base already at black or white leaves nothing to give up on one side — the
+  /// range collapses to a single point there rather than going empty or inverting.
+  @Test("A base at an endpoint narrows one side to zero, not past it")
+  func endpointBaseNarrowsToZero() {
+    let white = ColorValue(space: .oklch, 1.0, 0, 250)
+    let whiteRange = OKLCHAdjustment.lightnessDeltaRange(for: white)
+    #expect(whiteRange.upperBound == 0)
+    #expect(whiteRange.lowerBound == -0.5)
+
+    let black = ColorValue(space: .oklch, 0.0, 0, 250)
+    let blackRange = OKLCHAdjustment.lightnessDeltaRange(for: black)
+    #expect(blackRange.lowerBound == 0)
+    #expect(blackRange.upperBound == 0.5)
+  }
+
+  /// Chroma's ceiling is a gamut fact, not a fixed extent — a color with plenty of
+  /// room keeps the full `0...2`.
+  @Test("An in-gamut color with headroom keeps the full chroma extent")
+  func chromaRangeStaysFullWhenThereIsRoom() {
+    // A near-black, near-gray sample: its own chroma is tiny, so even a large
+    // multiple of it sits nowhere near the sRGB boundary.
+    let color = ColorValue(space: .oklch, 0.5, 0.01, 250)
+    let range = OKLCHAdjustment.chromaScaleRange(for: color, in: .srgb)
+    #expect(range == 0 ... 2)
+  }
+
+  /// The case the bug report was actually about: a color close enough to the sRGB
+  /// edge that doubling its chroma would leave the gamut, so the slider's usable
+  /// travel is a fraction of `0...2`.
+  @Test("A color near the edge narrows the chroma ceiling below the full extent")
+  func chromaRangeNarrowsNearTheEdge() {
+    let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
+    let range = OKLCHAdjustment.chromaScaleRange(for: blue, in: .srgb)
+    #expect(range.upperBound < 2, "expected the boundary to narrow the range")
+    #expect(range.upperBound >= 1, "the identity scale must stay reachable")
+
+    // And the narrowed edge really is dead space closed off: the scale the range
+    // reports and a scale twice as large produce the identical pulled chroma.
+    let atEdge = OKLCHAdjustment(chromaScale: range.upperBound)
+      .applied(to: blue).pulledInto(.srgb)
+    let wellPast = OKLCHAdjustment(chromaScale: range.upperBound * 2)
+      .applied(to: blue).pulledInto(.srgb)
+    #expect(
+      abs(atEdge.oklchComponents.chroma - wellPast.oklchComponents.chroma) < 1e-9,
+    )
+  }
+
+  /// A typed wide-gamut color under web-friendly mode already sits outside `srgb`
+  /// before any adjustment — the mode hides tools, it does not reject input. The
+  /// identity scale (`×1.00`) has to stay on the slider even then, or turning the
+  /// mode on could strand the slider's own neutral position off its right edge.
+  @Test("A base already outside the gamut still keeps the identity scale reachable")
+  func chromaRangeFloorsAtOneForAnOutOfGamutBase() {
+    // Comfortably inside Display P3 and outside sRGB.
+    let wide = ColorValue(space: .displayP3, 0.6, 0.35, 0.1)
+    let range = OKLCHAdjustment.chromaScaleRange(for: wide, in: .srgb)
+    #expect(range.upperBound >= 1)
+    #expect(range.contains(1))
+  }
+
+  /// `chroma` on the neutral axis is (near) zero, so a boundary/chroma division has
+  /// nothing to divide by. Guarded the same way ``TransformPanel``'s harmony section
+  /// already guards it — `isAchromatic`, not a `chroma > 0` check of its own.
+  @Test("An achromatic base does not divide by its own zero chroma")
+  func achromaticBaseDoesNotDivideByZero() {
+    let gray = ColorValue(space: .oklch, 0.5, 0, 0)
+    let range = OKLCHAdjustment.chromaScaleRange(for: gray, in: .srgb)
+    #expect(range == 0 ... 2)
+    #expect(range.upperBound.isFinite)
+  }
+}
+
 @Suite("Lightness curve")
 struct LightnessCurveTests {
   /// Black, mid-gray and white are the curve's fixed points, which is what keeps it

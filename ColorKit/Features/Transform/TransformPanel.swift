@@ -93,6 +93,15 @@ struct TransformPanel: View {
     let result = adjusted(color)
     let isPending = !adjustment.isIdentity || !curve.isIdentity
 
+    // Web-friendly or not: `applied(to:)` clamps lightness to `0...1` itself, so a
+    // slider that traveled past that would have the same dead zone with the mode
+    // off. The chroma ceiling *is* a gamut fact, so it only narrows under the mode —
+    // see the two doc comments on ``OKLCHAdjustment`` for why they disagree.
+    let lightnessRange = OKLCHAdjustment.lightnessDeltaRange(for: color)
+    let chromaRange = store.webFriendly
+      ? OKLCHAdjustment.chromaScaleRange(for: color, in: .srgb)
+      : 0 ... 2
+
     return VStack(alignment: .leading, spacing: 12) {
       sectionHeading(
         "Adjust",
@@ -105,7 +114,7 @@ struct TransformPanel: View {
           get: { adjustment.lightnessDelta },
           set: { adjustment.lightnessDelta = $0 },
         ),
-        range: -0.5 ... 0.5,
+        range: lightnessRange,
         caption: signed(adjustment.lightnessDelta, decimals: 3),
       )
       slider(
@@ -114,7 +123,7 @@ struct TransformPanel: View {
           get: { adjustment.chromaScale },
           set: { adjustment.chromaScale = $0 },
         ),
-        range: 0 ... 2,
+        range: chromaRange,
         caption: String(format: "×%.2f", adjustment.chromaScale),
       )
       slider(
@@ -153,7 +162,7 @@ struct TransformPanel: View {
             .font(.system(.callout, design: .monospaced))
             .textSelection(.enabled)
             .accessibilityIdentifier("transformAdjusted")
-          if !result.inGamut(of: .srgb) {
+          if result.exceedsSRGB {
             ColorBadge(text: "outside sRGB")
           }
         }
@@ -386,7 +395,7 @@ struct TransformPanel: View {
               .foregroundStyle(.secondary)
               .textSelection(.enabled)
               .accessibilityIdentifier("transformMixExpression")
-            if !mixed.inGamut(of: .srgb) {
+            if mixed.exceedsSRGB {
               ColorBadge(text: "outside sRGB")
             }
             Button("Use it") { apply(mixed) }
@@ -560,7 +569,7 @@ struct TransformPanel: View {
             // spelling above turns into `color(display-p3 …)` — the app
             // declines to spell a wide color as hex. Said out loud here for
             // the same reason the Adjust section says it.
-            if !pushed.inGamut(of: .srgb) {
+            if pushed.exceedsSRGB {
               ColorBadge(text: "outside sRGB")
             }
             Button("Use it") { apply(pushed) }
@@ -709,7 +718,7 @@ struct TransformPanel: View {
               Text("yours")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            } else if !color.inGamut(of: .srgb) {
+            } else if color.exceedsSRGB {
               Text("wide")
                 .font(.caption2)
                 .foregroundStyle(.orange)

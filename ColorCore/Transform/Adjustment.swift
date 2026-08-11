@@ -142,4 +142,51 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     components.hue = Conversion.constrainAngle(components.hue + hueRotation)
     return color.derivedOKLCH(components)
   }
+
+  /// How far ``lightnessDelta`` can move `color` before ``applied(to:)``'s own
+  /// `0...1` clamp swallows the rest — the same fact expressed as a range up front
+  /// rather than discovered a slider-width later.
+  ///
+  /// **Not mode-dependent.** The clamp inside `applied(to:)` runs whether or not
+  /// web-friendly mode is on — nothing is darker than black or lighter than white in
+  /// either case — so a slider whose travel reached past it would have the identical
+  /// dead zone with the mode off. `lightness` sits in `0...1` by construction, which
+  /// is what guarantees `lower <= 0 <= upper`: the identity delta is always in range.
+  static func lightnessDeltaRange(
+    for color: ColorValue,
+    extent: ClosedRange<Double> = -0.5 ... 0.5,
+  ) -> ClosedRange<Double> {
+    let lightness = color.oklchComponents.lightness
+    let lower = max(extent.lowerBound, -lightness)
+    let upper = min(extent.upperBound, 1 - lightness)
+    return lower ... upper
+  }
+
+  /// The ``chromaScale`` past which every larger scale clamps to the same chroma
+  /// under web-friendly mode, because ``ColorValue/pulledInto(_:)`` pulls every one
+  /// of them back to `gamut`'s own boundary chroma regardless of how much further the
+  /// scale still climbs.
+  ///
+  /// Derived from `color`'s own lightness and hue, **not** the pending adjustment's —
+  /// reading the adjusted lightness or hue instead would make dragging the Lightness
+  /// or Hue slider silently rescale a Chroma the user already set for a reason of its
+  /// own. That leaves this ceiling exact only while Lightness and Hue sit at their
+  /// identity and a hair loose once they have moved too, which is the smaller and
+  /// more predictable kind of wrong.
+  ///
+  /// Floored at `1` so the identity scale (`×1.00`) always stays reachable, even when
+  /// `color` itself already sits outside `gamut` — web-friendly mode hides tools, it
+  /// does not reject a typed wide-gamut color, so that state is reachable in practice.
+  static func chromaScaleRange(
+    for color: ColorValue,
+    in gamut: ColorSpace,
+    extent: ClosedRange<Double> = 0 ... 2,
+  ) -> ClosedRange<Double> {
+    guard !color.isAchromatic else { return extent }
+    let components = color.oklchComponents
+    let boundary = GamutBoundary.maxChroma(lightness: components.lightness, hue: components.hue, in: gamut)
+    let ceiling = boundary / components.chroma
+    let upper = min(extent.upperBound, max(1, ceiling))
+    return extent.lowerBound ... upper
+  }
 }

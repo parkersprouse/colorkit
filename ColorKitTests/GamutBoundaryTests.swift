@@ -150,6 +150,51 @@ struct GamutBoundaryTests {
     }
   }
 
+  /// The extremes ``insideTheCurveIsNeverBadged`` deliberately skips (it samples
+  /// `0.1...0.9`) — and the exact case a real bug shipped in: at `L = 1`,
+  /// ``GamutBoundary/maxChroma(lightness:hue:in:tolerance:resolution:)`` returns `0`
+  /// through its own `guard fits(0) else { return 0 }`, never through bisection, so
+  /// this is a different code path from the rest of the curve, not just its
+  /// endpoint. `TransformPanel`'s Adjust section reached exactly this: dragging
+  /// Lightness past white leaves ``OKLCHAdjustment/applied(to:)``'s own clamp at
+  /// `lightness == 1` with the *original* chroma still attached, and
+  /// ``ColorValue/pulledInto(_:)`` pulls that chroma to the boundary here — which
+  /// must not still read as outside sRGB, or the badge lies about a swatch that is
+  /// now pure white.
+  @Test("Black and white's own boundary chroma is not badged out of gamut either")
+  func theExtremesAreNeverBadged() {
+    for hueStep in 0 ..< 24 {
+      let hue = Double(hueStep) * 15
+      for lightness in [0.0, 1.0] {
+        let chroma = GamutBoundary.maxChroma(lightness: lightness, hue: hue, in: .srgb)
+        #expect(chroma == 0, "L \(lightness) h \(hue): expected the boundary to be the neutral axis itself")
+        #expect(
+          !ColorValue(space: .oklch, lightness, chroma, hue).exceedsSRGB,
+          "L \(lightness) h \(hue): the boundary itself is badged out of gamut",
+        )
+      }
+    }
+  }
+
+  /// The panel-level reproduction, pinned end to end rather than only at the
+  /// boundary: adjust past white, pull the result back to the sRGB edge the way
+  /// `TransformPanel.adjusted(_:)` does under web-friendly mode, and require the
+  /// forgiving badge predicate — not the strict one ``ColorValue/pulledInto(_:)``
+  /// itself searches with — to agree the result fits. Measured false before this fix:
+  /// `pulled.inGamut(of: .srgb)` is `false` at the strict tolerance even though
+  /// `pulled` is exactly the boundary chroma, which is why the panel must read
+  /// ``ColorValue/exceedsSRGB`` and not call `inGamut(of:)` directly.
+  @Test("Pulling an over-lightened color into sRGB clears the badge")
+  func pullingPastWhiteClearsTheBadge() {
+    let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
+    let overLightened = OKLCHAdjustment(lightnessDelta: 0.5).applied(to: blue)
+    #expect(overLightened.oklchComponents.lightness == 1, "expected the clamp to have already capped this")
+
+    let pulled = overLightened.pulledInto(.srgb)
+    #expect(!pulled.inGamut(of: .srgb), "the strict predicate is allowed to be this fussy at the boundary")
+    #expect(!pulled.exceedsSRGB, "the badge must not be, or the swatch reads out of gamut while showing white")
+  }
+
   /// Why the boundary uses a strict gamut test where the badge uses a forgiving one.
   ///
   /// ``ColorValue/gamutNoiseTolerance`` is 7.5e-5 *of a channel*. Chroma is a
