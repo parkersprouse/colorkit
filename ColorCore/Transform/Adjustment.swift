@@ -131,28 +131,64 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   }
 
   /// How far ``lightnessDelta`` can move `color` before ``applied(to:)``'s own
-  /// `0...1` clamp swallows the rest — the same fact expressed as a range up front
-  /// rather than discovered a slider-width later.
+  /// `0...1` clamp swallows the rest — expressed as a range **mirrored about the
+  /// identity delta (`0`)**, so a linear slider's own visual center always means "no
+  /// change" and its two ends read as equally far from it.
+  ///
+  /// A first version of this took the fixed extent on whichever side had more room
+  /// and the gamut wall on whichever side had less, independently per side — which
+  /// is a coherent range but an incoherent *pair*: which kind of constraint wins
+  /// flips depending on `color`'s own lightness, so the two ends disagree about what
+  /// "as far as this goes" even means. Capping the more open side down to match the
+  /// tighter one costs some of the fixed extent, but the extent was never a fact
+  /// about anything — it is a UI choice about how much travel one drag should cover,
+  /// the same choice ``LightnessCurve`` already makes by fixing its own pivot at
+  /// `0.5` rather than leaving it configurable, for the identical reason: exact
+  /// symmetry is worth more than the last bit of reach.
   ///
   /// **Not mode-dependent.** The clamp inside `applied(to:)` runs whether or not
   /// web-friendly mode is on — nothing is darker than black or lighter than white in
   /// either case — so a slider whose travel reached past it would have the identical
-  /// dead zone with the mode off. `lightness` sits in `0...1` by construction, which
-  /// is what guarantees `lower <= 0 <= upper`: the identity delta is always in range.
+  /// dead zone with the mode off.
+  ///
+  /// A base already at black or white leaves one side with *no* room at all rather
+  /// than merely less — `0`, not "small". Mirroring against a genuine zero would
+  /// collapse the healthy side to zero too, discarding real travel to manufacture a
+  /// symmetry that has nothing left to be symmetric with. That side is left at its
+  /// own full reach instead; the identity delta simply sits at one end of the range
+  /// rather than at its center, which is the honest picture when there is nothing on
+  /// the other side to balance it against.
   static func lightnessDeltaRange(
     for color: ColorValue,
     extent: ClosedRange<Double> = -0.5 ... 0.5,
   ) -> ClosedRange<Double> {
     let lightness = color.oklchComponents.lightness
-    let lower = max(extent.lowerBound, -lightness)
-    let upper = min(extent.upperBound, 1 - lightness)
-    return lower ... upper
+    let upRoom = min(extent.upperBound, 1 - lightness)
+    let downRoom = min(-extent.lowerBound, lightness)
+    guard upRoom > 0, downRoom > 0 else {
+      return -downRoom ... upRoom
+    }
+    let room = min(upRoom, downRoom)
+    return -room ... room
   }
 
-  /// The ``chromaScale`` past which every larger scale clamps to the same chroma
-  /// under web-friendly mode, because ``ColorValue/pulledInto(_:)`` pulls every one
-  /// of them back to `gamut`'s own boundary chroma regardless of how much further the
-  /// scale still climbs.
+  /// The ``chromaScale`` range past which every larger scale clamps to the same
+  /// chroma under web-friendly mode — because ``ColorValue/pulledInto(_:)`` pulls
+  /// every one of them back to `gamut`'s own boundary chroma regardless of how much
+  /// further the scale still climbs — **mirrored about the identity scale (`1`)**,
+  /// for the identical reason ``lightnessDeltaRange(for:extent:)`` mirrors about
+  /// `0`: a linear slider's own center should mean "no change," and `extent`'s
+  /// un-narrowed `0...2` already put `×1.00` there by the same kind of accident that
+  /// put `0` at the middle of `-0.5...0.5` — an interval picked so the identity sits
+  /// in the middle, not a claim about how far the color can honestly go.
+  ///
+  /// Reducing chroma toward `0` never clamps — it only ever moves a color further
+  /// *inside* the gamut — so unlike lightness there is no wall on that side to
+  /// discover, only `extent`'s own choice of how much reduction one drag should
+  /// cover. That is treated as the fixed quantity to mirror the increase side
+  /// against, the reverse of lightness's shape: there, the fixed extent gives way to
+  /// a real wall; here, in the ordinary case, the real wall (found on the increase
+  /// side) gives way to match the fixed extent.
   ///
   /// Derived from `color`'s own lightness and hue, **not** the pending adjustment's —
   /// reading the adjusted lightness or hue instead would make dragging the Lightness
@@ -161,9 +197,13 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   /// identity and a hair loose once they have moved too, which is the smaller and
   /// more predictable kind of wrong.
   ///
-  /// Floored at `1` so the identity scale (`×1.00`) always stays reachable, even when
-  /// `color` itself already sits outside `gamut` — web-friendly mode hides tools, it
-  /// does not reject a typed wide-gamut color, so that state is reachable in practice.
+  /// A base already at or past `gamut` — a typed wide-gamut color under web-friendly
+  /// mode, say, since the mode hides tools rather than rejecting input — leaves *no*
+  /// room to increase at all, the chroma equivalent of a lightness already at black
+  /// or white. Mirroring against that zero would collapse the reduce side to a
+  /// single point at the very moment it is most worth keeping open, so it is left at
+  /// its own full `1 - extent.lowerBound`, unmirrored, with the identity scale
+  /// sitting at that range's own edge rather than its center.
   static func chromaScaleRange(
     for color: ColorValue,
     in gamut: ColorSpace,
@@ -173,8 +213,14 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     let components = color.oklchComponents
     let boundary = GamutBoundary.maxChroma(lightness: components.lightness, hue: components.hue, in: gamut)
     let ceiling = boundary / components.chroma
-    let upper = min(extent.upperBound, max(1, ceiling))
-    return extent.lowerBound ... upper
+
+    let upRoom = min(extent.upperBound - 1, max(0, ceiling - 1))
+    let downRoom = 1 - extent.lowerBound
+    guard upRoom > 0, downRoom > 0 else {
+      return (1 - downRoom) ... (1 + upRoom)
+    }
+    let room = min(upRoom, downRoom)
+    return (1 - room) ... (1 + room)
   }
 
   /// Applies this nudge, in OKLCH.

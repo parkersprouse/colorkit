@@ -142,8 +142,12 @@ struct OKLCHAdjustmentTests {
 
 /// The Adjust panel's slider ranges (M35): a slider's travel should mean something,
 /// which means its edges have to land where the value actually stops changing rather
-/// than well past it — see the two doc comments on ``OKLCHAdjustment`` for why the
-/// two axes get different treatment.
+/// than well past it — and (a same-day follow-up) it has to keep the identity value
+/// at the visual center of a linear slider, so the two ends read as equally far from
+/// "no change" instead of whichever of a gamut wall or the fixed extent happened to
+/// bind tighter on that particular side. See the two doc comments on
+/// ``OKLCHAdjustment`` for why the two axes mirror around different pivots and treat
+/// their own collapsed-to-zero edge case the same way.
 @Suite("Adjust slider ranges")
 struct AdjustSliderRangeTests {
   /// Same base ``TransformTests`` uses, chosen for the same reason: no conversion
@@ -159,16 +163,22 @@ struct AdjustSliderRangeTests {
     }
   }
 
-  /// The whole point: the edges are exactly where `applied(to:)`'s own clamp would
-  /// have started discarding the rest, not the fixed `-0.5...0.5` extent.
-  @Test("Lightness range's edges are exactly where the result would clamp")
-  func lightnessRangeEdgesMatchTheClamp() {
+  /// The bug report this follow-up fixes: at a lightness where the two sides'
+  /// *natural* limits disagree (the fixed extent is tighter below, the white wall is
+  /// tighter above), the reported range must still be exactly symmetric, not the
+  /// mismatched pair of "whichever constraint bound tighter on this side."
+  @Test("Lightness range is exactly symmetric, not whichever bound is tighter per side")
+  func lightnessRangeIsSymmetric() {
     let nearWhite = ColorValue(space: .oklch, 0.9, 0.1, 250)
     let range = OKLCHAdjustment.lightnessDeltaRange(for: nearWhite)
+
     // The upper edge is the gamut fact: `0.9 + delta` reaches white at `0.1`, well
-    // inside the fixed `-0.5...0.5` extent, so only that side narrows.
+    // inside the fixed `-0.5...0.5` extent — the tighter side.
     #expect(abs(range.upperBound - 0.1) < 1e-12)
-    #expect(range.lowerBound == -0.5, "the lower edge has room to spare and should stay at the extent")
+    // The lower edge mirrors it exactly, giving up the rest of the fixed extent
+    // rather than sitting at `-0.5`.
+    #expect(abs(range.lowerBound - -0.1) < 1e-12)
+    #expect(range.lowerBound == -range.upperBound)
 
     // Confirm the edge really is where `applied(to:)` stops moving: one step past
     // the reported upper bound produces the identical clamped result as the bound
@@ -178,33 +188,39 @@ struct AdjustSliderRangeTests {
     #expect(atEdge.oklchComponents.lightness == pastEdge.oklchComponents.lightness)
   }
 
-  /// The lower edge narrows the identical way once the gamut fact — not the fixed
-  /// extent — is the closer bound.
-  @Test("Lightness range narrows on the low side too, symmetrically")
-  func lightnessRangeNarrowsBelowTheExtent() {
+  /// The mirror image of ``lightnessRangeIsSymmetric``: this time the fixed extent
+  /// is the tighter bound above and the black wall is tighter below, and the
+  /// reported range still has to be symmetric rather than favoring whichever side
+  /// happened to have more room.
+  @Test("Lightness range narrows below the extent and mirrors the narrowing above it")
+  func lightnessRangeNarrowsSymmetrically() {
     let nearBlack = ColorValue(space: .oklch, 0.3, 0.1, 250)
     let range = OKLCHAdjustment.lightnessDeltaRange(for: nearBlack)
     #expect(abs(range.lowerBound - -0.3) < 1e-12)
-    #expect(range.upperBound == 0.5, "the upper edge has room to spare and should stay at the extent")
+    #expect(abs(range.upperBound - 0.3) < 1e-12)
+    #expect(range.lowerBound == -range.upperBound)
   }
 
-  /// A base already at black or white leaves nothing to give up on one side — the
-  /// range collapses to a single point there rather than going empty or inverting.
-  @Test("A base at an endpoint narrows one side to zero, not past it")
-  func endpointBaseNarrowsToZero() {
+  /// A base already at black or white leaves *no* room on one side, not merely less
+  /// — and mirroring against a genuine zero would zero out the healthy side too,
+  /// discarding real travel to manufacture a symmetry with nothing left to balance.
+  /// The identity delta ends up at one edge of the range instead of its center,
+  /// which is the honest picture rather than a bug to paper over.
+  @Test("A base at an endpoint leaves the open side at its own full reach")
+  func endpointBaseDoesNotMirrorAgainstZero() {
     let white = ColorValue(space: .oklch, 1.0, 0, 250)
     let whiteRange = OKLCHAdjustment.lightnessDeltaRange(for: white)
     #expect(whiteRange.upperBound == 0)
-    #expect(whiteRange.lowerBound == -0.5)
+    #expect(whiteRange.lowerBound == -0.5, "no room above should not shrink the room below")
 
     let black = ColorValue(space: .oklch, 0.0, 0, 250)
     let blackRange = OKLCHAdjustment.lightnessDeltaRange(for: black)
     #expect(blackRange.lowerBound == 0)
-    #expect(blackRange.upperBound == 0.5)
+    #expect(blackRange.upperBound == 0.5, "no room below should not shrink the room above")
   }
 
   /// Chroma's ceiling is a gamut fact, not a fixed extent — a color with plenty of
-  /// room keeps the full `0...2`.
+  /// room keeps the full, already-symmetric-about-1 `0...2`.
   @Test("An in-gamut color with headroom keeps the full chroma extent")
   func chromaRangeStaysFullWhenThereIsRoom() {
     // A near-black, near-gray sample: its own chroma is tiny, so even a large
@@ -214,15 +230,20 @@ struct AdjustSliderRangeTests {
     #expect(range == 0 ... 2)
   }
 
-  /// The case the bug report was actually about: a color close enough to the sRGB
-  /// edge that doubling its chroma would leave the gamut, so the slider's usable
-  /// travel is a fraction of `0...2`.
-  @Test("A color near the edge narrows the chroma ceiling below the full extent")
-  func chromaRangeNarrowsNearTheEdge() {
+  /// The case the bug report was actually about, now checked for symmetry rather
+  /// than only for the ceiling narrowing: a color close enough to the sRGB edge
+  /// that doubling its chroma would leave the gamut mirrors the identity scale, so
+  /// the reduce side gives up exactly as much of `0...2` as the increase side does.
+  @Test("A color near the edge narrows the chroma ceiling and mirrors the floor to match")
+  func chromaRangeNarrowsSymmetrically() {
     let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
     let range = OKLCHAdjustment.chromaScaleRange(for: blue, in: .srgb)
     #expect(range.upperBound < 2, "expected the boundary to narrow the range")
-    #expect(range.upperBound >= 1, "the identity scale must stay reachable")
+    #expect(range.upperBound > 1, "the identity scale must stay reachable")
+    #expect(
+      abs((1 - range.lowerBound) - (range.upperBound - 1)) < 1e-12,
+      "the floor should give up exactly as much as the ceiling did",
+    )
 
     // And the narrowed edge really is dead space closed off: the scale the range
     // reports and a scale twice as large produce the identical pulled chroma.
@@ -235,17 +256,19 @@ struct AdjustSliderRangeTests {
     )
   }
 
-  /// A typed wide-gamut color under web-friendly mode already sits outside `srgb`
-  /// before any adjustment — the mode hides tools, it does not reject input. The
-  /// identity scale (`×1.00`) has to stay on the slider even then, or turning the
-  /// mode on could strand the slider's own neutral position off its right edge.
-  @Test("A base already outside the gamut still keeps the identity scale reachable")
-  func chromaRangeFloorsAtOneForAnOutOfGamutBase() {
+  /// The chroma equivalent of the lightness endpoint case: a base already at or past
+  /// `gamut` (a typed wide-gamut color under web-friendly mode — the mode hides
+  /// tools, it does not reject input) has *no* room to increase at all. Mirroring
+  /// against that zero would collapse the reduce side to a single point at the
+  /// moment it is most worth keeping open, so the reduce side keeps its own full
+  /// reach and the identity scale sits at that range's edge rather than its center.
+  @Test("A base already outside the gamut leaves the reduce side at its own full reach")
+  func outOfGamutBaseDoesNotMirrorAgainstZero() {
     // Comfortably inside Display P3 and outside sRGB.
     let wide = ColorValue(space: .displayP3, 0.6, 0.35, 0.1)
     let range = OKLCHAdjustment.chromaScaleRange(for: wide, in: .srgb)
-    #expect(range.upperBound >= 1)
-    #expect(range.contains(1))
+    #expect(range.upperBound == 1, "no room to increase should pin the ceiling at identity")
+    #expect(range.lowerBound == 0, "no room above should not shrink the reduce side below it")
   }
 
   /// `chroma` on the neutral axis is (near) zero, so a boundary/chroma division has
