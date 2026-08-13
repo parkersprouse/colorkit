@@ -70,7 +70,103 @@ final class WebFriendlyModeSmokeTests: XCTestCase {
     XCTAssertFalse(app.buttons["transformMixBackground"].exists)
   }
 
+  /// The Chroma slider's left end really does reach fully gray, driven through the
+  /// running app rather than through `OKLCHAdjustment` directly.
+  ///
+  /// `AdjustSliderRangeTests` already pins the arithmetic, so this is here for the one
+  /// thing a unit test structurally cannot reach: that the slider's *track* is bound to
+  /// that arithmetic, at the range the panel actually hands it. The bug it regresses
+  /// against was exactly a binding-level one — the values were computed correctly and
+  /// the slider's `in:` range strand them, reporting `×0.917 ... ×1.083` for this very
+  /// color, so its far-left position produced a chroma of `0.172` where the base was
+  /// `0.188`. Visually that is *the same blue*; the assertion below wants a gray, so
+  /// the two answers are not near each other and this cannot pass against the old
+  /// range.
+  ///
+  /// Web-friendly mode matters and is not incidental: with it off the ceiling is
+  /// unbounded, the track is the plain `×0 ... ×2` it has always been, and the stranding
+  /// this pins never happened in the first place.
+  func testTheChromaSliderReachesFullyGrayUnderWebFriendlyMode() {
+    let field = app.textFields["colorInput"]
+    XCTAssertTrue(field.waitForExistence(timeout: 30))
+    field.click()
+    field.typeKey("a", modifierFlags: .command)
+    field.typeText("#3b82f6\n")
+
+    let transform = app.radioButtons["Transform"]
+    XCTAssertTrue(transform.waitForExistence(timeout: 15))
+    transform.click()
+
+    // Hittability rather than existence: the tool switch resizes the window, and a
+    // click already in flight lands where the control used to be.
+    let chroma = app.sliders["Chroma"]
+    XCTAssertTrue(
+      chroma.waitForExistence(timeout: 15),
+      "no Chroma slider.\n\(app.debugDescription)",
+    )
+
+    // An identifier on a `Text` publishes the string as `value`, never `label`.
+    let readout = app.staticTexts["transformAdjusted"]
+    XCTAssertTrue(readout.waitForExistence(timeout: 15))
+    XCTAssertEqual(
+      readout.value as? String, "#3b82f6",
+      "the panel should open on the untouched color",
+    )
+
+    chroma.adjust(toNormalizedSliderPosition: 0)
+    let desaturated = readout.value as? String ?? ""
+    XCTAssertTrue(
+      Self.isNeutral(desaturated),
+      "the slider's left end gave \(desaturated), which is not a gray — the old "
+        + "mirrored range stopped at ×0.917 and would answer a blue here",
+    )
+
+    // And the identity is still at the track's centre. Within one 8-bit step rather
+    // than exactly, and the tolerance is the *input method's*, not the arithmetic's:
+    // `adjust(toNormalizedSliderPosition:)` puts the thumb on a pixel, so "the centre"
+    // is only ever within half a pixel of a true `0`, which lands a channel or two off
+    // — measured, `#3c82f5` against `#3b82f6`. Asserting equality here fails for a
+    // reason that has nothing to do with the slider. Note this half does **not**
+    // discriminate against the old mirrored range, which centred the identity too; it
+    // guards a future change that moves it off centre.
+    chroma.adjust(toNormalizedSliderPosition: 0.5)
+    let centred = readout.value as? String ?? ""
+    XCTAssertTrue(
+      Self.isWithinOneStep(centred, of: "#3b82f6"),
+      "the centre gave \(centred), further than a rounding step from the identity",
+    )
+  }
+
   // MARK: Private
 
   private var app: XCUIApplication!
+
+  /// A `#rrggbb` string's three channels, or `nil` if it is not one.
+  private static func channels(_ hex: String) -> [Int]? {
+    guard hex.count == 7, hex.hasPrefix("#") else { return nil }
+    return stride(from: 1, to: 7, by: 2).compactMap { offset -> Int? in
+      let start = hex.index(hex.startIndex, offsetBy: offset)
+      return Int(hex[start ..< hex.index(start, offsetBy: 2)], radix: 16)
+    }
+  }
+
+  /// Whether a `#rrggbb` string has three equal channels, i.e. no hue survives.
+  ///
+  /// Parsed rather than compared against a specific gray on purpose: which gray a
+  /// fully-desaturated `#3b82f6` lands on is a fact about OKLCH's lightness, not about
+  /// the slider, and pinning it here would make this test fail for a reason it has
+  /// nothing to say about.
+  private static func isNeutral(_ hex: String) -> Bool {
+    guard let channels = channels(hex), channels.count == 3 else { return false }
+    return Set(channels).count == 1
+  }
+
+  /// Whether two `#rrggbb` strings agree to within one 8-bit step on every channel —
+  /// the precision an XCUITest slider drag can actually deliver.
+  private static func isWithinOneStep(_ hex: String, of other: String) -> Bool {
+    guard let a = channels(hex), let b = channels(other), a.count == 3, b.count == 3 else {
+      return false
+    }
+    return zip(a, b).allSatisfy { abs($0 - $1) <= 1 }
+  }
 }
