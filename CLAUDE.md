@@ -1256,17 +1256,25 @@ Layered so the numeric core stays independently testable and UI-free:
   one-liner compiles and emits `space`/`components`/`missing` — the program's internals,
   not the color. Export carries CSS strings, the same ones you would have pasted. M9's
   storage model rejects an opaque blob for the same reason.
-- **The tool switcher lives in the window body, not the toolbar.** It was a
+- **The tool switcher lives in the window body, not the toolbar — true from M9 through
+  M35, and still true, but *what* lives there changed at M36.** It was a
   `ToolbarItem(placement: .principal)` until a sixth tool made macOS sweep the entire
   switcher into a *"more toolbar items"* overflow menu — every tool gone, at a window
   745pt wide. Principal placement is *centered*, so its budget is
   `width − 2 × max(leading, trailing)`, and the window title alone spends that twice
-  over. Do not move it back — M9 added a seventh segment, and all seven fit in the body.
-  **Seven is the tested ceiling at `minWidth: 520`; an eighth is unmeasured risk.** This
-  is why M15's mixing folded into `Transform` — a fifth section, not an eighth tool —
-  and why M17's import folded into `Projects` — a button beside the save controls, not an
-  eighth tool. Adding an eighth means budgeting for shorter
-  titles, a raised `minWidth`, or a different control — not just one more enum case.
+  over. M9's fix moved it into the body as a `Picker(.segmented)`, and **seven was the
+  tested ceiling there at `minWidth: 520`** — which is why M15's mixing folded into
+  `Transform` instead of becoming an eighth tool, and why M17's import folded into
+  `Projects` the same way. **M36 replaced that segmented `Picker` with `ToolSidebar`**,
+  a vertical, collapsible rail, precisely because that ceiling was becoming a real
+  constraint rather than a hypothetical one. The ceiling is gone — a sidebar scales by
+  scrolling or simply growing taller, not by fighting one row's horizontal budget — and
+  `minWidth` is no longer a flat `520`; it is `sidebarWidth + 520`, tracking whichever
+  of `ToolSidebar.Metrics.collapsedWidth`/`.expandedWidth` the sidebar is currently
+  showing. `Tool.systemImage` exists because M36's collapsed rail is icon-only, and
+  every row keeps `Tool.title` as its accessibility label for the identical reason
+  M9's `Text`-not-`Label` choice states — a VoiceOver announcement must not fall back
+  to an SF Symbol name. See the M36 entry in PLAN.md for the rest.
 - **A ramp stop on the gamut boundary can round outward at display precision.** The
   printed `oklch(0.97 0.0142 259.81)` is 2.3e-5 of chroma past a boundary at `0.014177`,
   so the *string* is out of sRGB while the `ColorValue` is inside. Worst case across hues

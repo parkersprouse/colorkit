@@ -4406,8 +4406,10 @@ their `click(radioButton:_:)` call sites be tool-switcher-only, so that helper b
 fully dead and was replaced outright rather than left beside its unused former self.
 Two more files queried `app.radioButtons["Contrast"]`/`["Transform"]` directly, inline,
 with no shared helper at all (`ContrastSmokeTests.showContrastPanel()`,
-`WebFriendlyModeSmokeTests`'s two tests) — both updated the same way. All twelve affected
-UI test files build and were run; see the commit for the pass/fail tally.
+`WebFriendlyModeSmokeTests`'s two tests) — both updated the same way. Eight files needed
+a change in total; all eleven `ColorKitUITests` files build, and every one was run and
+passed, individually rather than only as one long unattended suite — see the next
+section for why individually mattered here.
 
 ### The width budget, and what tracks it
 

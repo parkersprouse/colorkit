@@ -36,7 +36,9 @@ struct InlineSettingsBar: View {
       medium(store: store)
       minimal
     }
-    .frame(height: 22)
+    // No fixed height: a `Picker(.menu)` measures 26pt, taller than the toggle beside
+    // it, and a `.frame(height:)` here once clipped the pickers against a guessed
+    // number instead of letting the row size itself to its tallest control.
     .padding(.horizontal, 16)
     .padding(.top, 12)
   }

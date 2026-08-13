@@ -49,6 +49,12 @@ struct ToolSidebar: View {
     .padding(.top, 14)
     .frame(width: store.sidebarCollapsed ? Metrics.collapsedWidth : Metrics.expandedWidth)
     .frame(maxHeight: .infinity, alignment: .top)
+    // A real macOS sidebar material, not a guessed flat color — it is theme-aware by
+    // construction, so there is no light/dark fork to get wrong, unlike a hand-picked
+    // `Color`. Without it the sidebar and the content column were the same fill with
+    // only a `Divider()` between them, which reads as one panel with a stray line in
+    // it rather than as a sidebar.
+    .background(.regularMaterial)
     .animation(.easeInOut(duration: 0.16), value: store.sidebarCollapsed)
   }
 
