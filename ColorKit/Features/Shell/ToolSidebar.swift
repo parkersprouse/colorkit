@@ -23,6 +23,10 @@ import SwiftUI
 /// against, and `Tool.title` is supplied separately as the accessibility label so
 /// VoiceOver still announces "Convert" rather than an SF Symbol name (see the
 /// `Tool.title` doc comment, and the segmented-picker bug it was written against).
+///
+/// **M37 added `RecentsRow` below the tool rows** — see its own doc comment for why
+/// recents moved here from above the tool switcher, rather than adding a new
+/// invariant to this one.
 struct ToolSidebar: View {
   // MARK: Internal
 
@@ -43,7 +47,17 @@ struct ToolSidebar: View {
         row(for: tool)
       }
 
-      Spacer(minLength: 0)
+      // M37: recents moved here from above the tool switcher — see `RecentsRow`'s
+      // doc comment for the argument. `RecentsRow` renders nothing at all when
+      // `showsRecents` is off, which is exactly when this sidebar still wants the
+      // old `Spacer`-only behavior to hold the tool rows at the top.
+      if store.showsRecents {
+        Divider()
+          .padding(.vertical, 8)
+        RecentsRow()
+      } else {
+        Spacer(minLength: 0)
+      }
     }
     .padding(.horizontal, store.sidebarCollapsed ? 8 : 10)
     .padding(.top, 14)
@@ -110,11 +124,15 @@ struct ToolSidebar: View {
 }
 
 #Preview {
-  HStack(spacing: 0) {
+  let store = ColorStore(initialInput: "#3b82f6")
+  store.remember()
+  store.inputText = "rebeccapurple"
+  store.remember()
+  return HStack(spacing: 0) {
     ToolSidebar()
     Divider()
     Color.clear
   }
   .frame(width: 500, height: 500)
-  .environment(ColorStore())
+  .environment(store)
 }

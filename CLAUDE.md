@@ -199,6 +199,19 @@ See the M36 entry in PLAN.md for the accessibility-element-kind question this ra
 (verified empirically, not assumed) and for the two decisions settled with Parker before
 building — icon rail over fully-hidden on collapse, and the gear menu moving out of
 `.toolbar` rather than gaining neighbors there.
+**M37 is done too**: `RecentsRow` moved from a fixed-height horizontal strip above the
+tool switcher into `ToolSidebar` itself, below the tool rows — a real change of
+argument, not just of pixels. M23 put it beside `ColorInputField` because "a recent
+belongs to no tool"; M37 reads a recent as a *destination*, the same category the tool
+rows above it already are. The list is now vertical, full sidebar width regardless of
+collapse state, most-recent-on-top for free (`ColorStore.remember()` already inserts at
+index 0, so no reordering was needed) — and scrolls internally rather than growing the
+window, since `recentLimit` goes up to 50. Only the `"Recent Colors"` header and the
+Clear button hide under `sidebarCollapsed`; the swatches themselves keep rendering,
+narrower, the same "icon rail, not fully hidden" call M36 made for the tool rows
+themselves. Verified with a real screenshot this time (`app.screenshot()`, a different,
+unblocked permission path from the `screencapture` CLI M36 found blocked) rather than
+only the accessibility tree — see the M37 entry in PLAN.md.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the
@@ -1370,11 +1383,19 @@ Layered so the numeric core stays independently testable and UI-free:
 - **`RecentsRow` renders unconditionally once `ColorStore/showsRecents` is on, never
   additionally gated on `recents` being non-empty.** An empty list shows
   `MenuBarPanel`'s own line, `"Colors you copy or submit collect here."`, in place of
-  swatches — fixed footprint, on purpose. A row that only appears once the first
-  color is remembered would push the tool switcher and every panel beneath it down a
-  frame *after* the click that filled it, which is the same shape of bug as the
-  `GeometryReader`-inside-`ScrollView` resize above, just triggered from the opposite
-  direction (content appearing rather than a proposal changing).
+  swatches — fixed footprint, on purpose. Before M37 this was a fixed-height row above
+  the tool switcher, and the reasoning was about a *sibling* being pushed down: a row
+  that only appeared once the first color was remembered would push the tool switcher
+  and every panel beneath it down a frame *after* the click that filled it, the same
+  shape of bug as the `GeometryReader`-inside-`ScrollView` resize above, just triggered
+  from the opposite direction. **M37 moved `RecentsRow` into `ToolSidebar`, below the
+  tool rows, where it fills whatever height they left rather than sitting above
+  anything** — so there is no sibling left to push down — but the empty-state line
+  stays for a related reason: the header itself (`"Recent Colors"`, gated on
+  `!sidebarCollapsed`) is a fixed element sitting right above where swatches would
+  appear, and letting the section collapse to nothing when empty would still make that
+  header's own presence flicker in and out as the list fills and clears rather than
+  reading as one stable section throughout.
 - **Commit-on-release (M23) can file up to three recents for one settled pick, and
   that is intended, not a missed dedupe.** `PickerPlaneView`, `PickerHueStripView` and
   `PickerAlphaSliderView`'s gestures (moved out of `PickerPanel` and shared with the
@@ -1408,9 +1429,9 @@ Layered so the numeric core stays independently testable and UI-free:
   that is supposed to catch a regression in it, because there is not one to find.
 - **The three shared picker views take an `identifier` parameter, defaulted to
   `PickerPanel`'s own strings, because the popover and the Pick tab can be on screen at
-  once.** The header swatch that opens `CompactPicker` sits above the tool switcher
-  (same reasoning as `RecentsRow`'s placement), so nothing stops opening the popover
-  while already on the Pick tab — two elements sharing one accessibility identifier
+  once.** The header swatch that opens `CompactPicker` sits above every tool panel,
+  outside the `switch` that swaps them, so nothing stops opening the popover while
+  already on the Pick tab — two elements sharing one accessibility identifier
   there would be an ambiguous XCUITest query with no tree to read, the exact hazard
   "never write a fallback chain of XCUITest queries" (Testing, below) exists to keep
   out. `CompactPicker` passes `"compactPickerPlane"` etc.; `PickerPanel` passes nothing
@@ -1567,6 +1588,22 @@ the accessibility-tree conventions before writing UI tests.
   tests: driving that panel from outside needs assistive access, which `osascript` does
   not have here, and `screencapture` is likewise blocked — so an agent cannot verify this
   one either, and should say so rather than infer it from a green suite.
+- **`screencapture` being blocked does not mean no screenshot is possible — `app
+  .screenshot()` inside a running XCUITest is a different capability and works.** It is
+  XCUITest's own in-process API (`XCTAttachment(screenshot:)`, already used by
+  `CVDSmokeTests`, `PickerSmokeTests`, `ExportSmokeTests`, `TransformSmokeTests` and
+  `ProjectsSmokeTests`), not a call out to the `screencapture` CLI — confirmed at M37:
+  `screencapture -x` still fails with *"could not create image from display"* in this
+  environment, and `app.screenshot()` in the same session succeeds. **It captures the
+  whole screen, not just the app under test** — the exported PNGs show the desktop,
+  menu bar and whatever else was behind the app's window — so a wide capture still
+  needs the window's own accessibility frame (`app.windows.firstMatch`, or read off
+  `app.debugDescription`) to crop down to the part that matters; do not assume the PNG
+  is already scoped to the app. `xcrun xcresulttool export attachments --path … --output-path …`
+  pulls the PNG out of the `.xcresult` once a run finishes. So a rendering claim that
+  matters — not just an accessibility-tree shape — can actually be looked at: write the
+  assertion, add a `capture(_:)` call at the moment that matters, run the one test,
+  export, and read the PNG, rather than reporting the visual result as unverifiable.
 - **A third shape in the same family: XCUITest cannot click into the window behind an
   open `.popover`.** A transient popover holds key-window status while shown, so every
   element in the main window reports `isHittable == false` and the whole

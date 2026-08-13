@@ -4453,6 +4453,109 @@ of a `GeometryReader`.
   `ContrastSmokeTests.swift`, `WebFriendlyModeSmokeTests.swift` (inline
   `radioButtons[...]` queries swapped for `buttons["tool-…"]`).
 
+**A same-day follow-up, after an advisor review of the first M36 commit caught real
+gaps a green suite could not:** `ToolSidebar` had no background at all — the same fill
+as the content column with only a `Divider()` between them, not what either reference
+screenshot showed — fixed with `.background(.regularMaterial)`, a real macOS sidebar
+material rather than a guessed flat `Color`, theme-aware by construction so there is no
+light/dark fork to get wrong. `InlineSettingsBar` had a `.frame(height: 22)` smaller
+than its own `Picker(.menu)`'s measured 26pt height — a number that didn't match its
+content, found by reading a failing test's own `app.debugDescription`, not reasoned
+about — removed so the row sizes itself. And nothing tested the sidebar's own
+collapse/expand behavior; every other suite's `selectTool(_:)` only ever ran against
+the *expanded* state. `SidebarSmokeTests` (new) covers a collapsed row still switching
+tools, a collapsed row still announcing its tool name via `.label` rather than an SF
+Symbol name, and the round trip back to expanded. Two documentation errors from the
+first pass were also caught and fixed: PLAN.md's "twelve affected UI test files" was
+actually eight of eleven, and CLAUDE.md's tool-switcher invariant still told a reader
+"seven is the tested ceiling, `minWidth: 520`" — the exact opposite of what M36 shipped.
+
+## M37 – recents move into the sidebar
+
+**Built**, same day as M36, on Parker's follow-up request: move `RecentsRow` out of the
+window body and into `ToolSidebar`, below the tool rows, as a full-width vertical list
+rather than the horizontal strip it had been since M23 — with a `"Recent Colors"`
+header that hides when the sidebar collapses, the same way a tool row's own label does.
+
+**The move is a real change of argument, not just of pixels, and is worth stating
+plainly rather than leaving implicit.** M23's placement — between `ColorInputField` and
+the tool switcher — was reasoned from "a recent belongs to no tool, so it lives with
+the other thing that doesn't either [the input field]." M37 reads a recent a different
+way: it is a *destination* you jump to, restoring a color and (via `store.use(_:)`) the
+exact text that produced it — the same category the tool rows immediately above it
+already are. Parker asked for this placement directly rather than it being inferred, so
+this is recorded as the reasoning behind an explicit request, not a reinterpretation
+volunteered unprompted.
+
+### What changed, concretely
+
+- **Orientation.** A `ScrollView(.horizontal)` of 30×30 squares becomes a
+  `ScrollView(.vertical)` of full-width bars, each `.frame(maxWidth: .infinity, height:
+  28)`. `ColorSwatch`'s `Rectangle().fill(...)` already fills whatever frame it is
+  given, so no change was needed there — only the caller's frame.
+- **Ordering was already free.** "Most recent on top" needs no reversal:
+  `ColorStore.remember()` inserts at index 0, so `ForEach(store.recents)` top-to-bottom
+  already reads newest-first, exactly as the horizontal strip's left-to-right already
+  did.
+- **The header text changed** from `"Recent"` to `"Recent Colors"`, Parker's own wording
+  in the request, and now hides under `store.sidebarCollapsed` — along with the Clear
+  button beside it, since there is nowhere to put a text button on a 52pt rail either.
+  **The swatches do not hide.** This is the same "icon rail, not fully hidden" call M36
+  made for the tool rows: `ToolSidebar.Metrics.collapsedWidth`/`.expandedWidth` both
+  still get a full-width bar, just a narrower one, so the list keeps working as a
+  destination list in either collapse state — collapsing hides the label, never the
+  content, matching the tool rows immediately above it.
+- **No fixed height.** M23's `RecentsRow` was `.frame(height: 56)`, a fixed footprint
+  chosen because the row sat *above* a sibling (the tool switcher) that a late-arriving
+  swatch would otherwise push down — see the M23 reasoning CLAUDE.md's own invariant
+  bullet records. M37's `RecentsRow` is the *last* thing in the sidebar's `VStack`, with
+  nothing below it to push, so it instead takes `.frame(maxHeight: .infinity, alignment:
+  .top)` and lets its own internal `ScrollView` absorb whatever `store.recentLimit` (up
+  to 50) actually produces, rather than growing the window.
+- **`ToolSidebar` branches on `store.showsRecents` for what fills the space below the
+  tool rows**: `RecentsRow()` when the preference is on (it renders nothing at all when
+  off, so this is not a duplicate check), the plain `Spacer(minLength: 0)` that already
+  held the tool rows at the top when it's off. Both keep the tool rows pinned to the top
+  of the sidebar regardless of how much — or how little — is below them.
+
+### Accessibility identifiers survived unchanged, which is why almost nothing else had to
+
+`recentColor-\(recent.id)` and `clearRecents` did not change — only the layout around
+them did. `RecentsSmokeTests` (restores authored text on click, Clear hides itself once
+empty) and `PickerSmokeTests`' `recentColor-` prefix match both needed no edits at all
+and passed unmodified. This is the reason M36's own lesson (verify the accessibility
+element kind empirically rather than guess) did not need repeating here — nothing about
+*what kind of element* a recent swatch is changed, only where it sits and which
+direction it stacks in.
+
+### Verified with a real screenshot, not only the accessibility tree
+
+M36 recorded pixel-level verification as impossible in this environment because the
+`screencapture` CLI is blocked (confirmed again here: `screencapture -x` still fails
+with *"could not create image from display"*). That is true of the CLI specifically —
+it is not true of `app.screenshot()`, XCUITest's own in-process capture API, which
+several existing suites (`CVDSmokeTests`, `PickerSmokeTests`, `ExportSmokeTests`,
+`TransformSmokeTests`, `ProjectsSmokeTests`) already call and attach via
+`XCTAttachment(screenshot:)`. `SidebarSmokeTests
+.testRecentColorsRenderInTheSidebarAtBothCollapseStates` submits three colors and
+captures both collapse states; `xcrun xcresulttool export attachments` pulled the two
+PNGs out of the result bundle and they were read directly — confirming, rather than
+assuming, that the header disappears, the swatches stay full-width and narrower when
+collapsed, most-recent-on-top holds (`#22c55e`, submitted last, renders first), and the
+`InlineSettingsBar` height fix from the M36 follow-up above actually resolved the
+picker/toggle alignment it was meant to. This is worth recording as a correction to
+M36's own claim that visual verification was categorically unavailable here — it is
+available, just not through the tool that was tried first.
+
+### Files touched
+
+- **ColorKit/Features/Shell** – `RecentsRow.swift` (rewritten: vertical, full-width,
+  header hidden under `sidebarCollapsed`, no fixed height), `ToolSidebar.swift`
+  (`RecentsRow()` embedded below the tool rows, branching on `showsRecents`).
+- **ColorKit** – `ContentView.swift` (`RecentsRow()` call removed from the window body).
+- **ColorKitUITests** – `SidebarSmokeTests.swift` (a new test, plus a `capture(_:)`
+  helper matching the convention several other suites already use).
+
 ## Verification
 
 **A feature reached through a system loupe or a global chord has links no test can touch**, and they fail independently – so check them separately rather than as one gesture. For M4 that was: (1) does the menu bar show the chord, proving the OS accepted the registration and a scene's `.task` fired; (2) does the chord raise the loupe from *another* app, proving the key is captured and the C callback reaches the main actor; (3) does the picked color reach the field and the clipboard, proving the sandbox and the bridge. All three passed. Everything either side of them is covered by [ScreenSamplerTests](ColorKitTests/ScreenSamplerTests.swift) and [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift).

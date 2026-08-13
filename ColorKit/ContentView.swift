@@ -34,14 +34,12 @@ struct ContentView: View {
         // Above every tool panel deliberately: the input field belongs to no tool.
         // Every tool is a different question asked about the same color, so moving
         // it inside a tab would imply each one has a color of its own.
+        //
+        // Recents used to sit right below this (M23–M36). M37 moved `RecentsRow`
+        // into `ToolSidebar`, below the tool rows — see its doc comment for why.
         ColorInputField()
           .padding(.horizontal, 16)
           .padding(.top, 12)
-
-        // Also above every panel, and for the identical reason — a recent belongs
-        // to no tool either. See `RecentsRow` for why it renders unconditionally
-        // once `showsRecents` is on, rather than only once something is in the list.
-        RecentsRow()
 
         Divider()
 

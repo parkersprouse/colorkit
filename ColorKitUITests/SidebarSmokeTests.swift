@@ -81,11 +81,56 @@ final class SidebarSmokeTests: XCTestCase {
     )
   }
 
+  /// M37: recents render below the tool rows, full sidebar width, in both collapse
+  /// states — only the "Recent Colors" header disappears when collapsed. Captured
+  /// at both states so a real rendering regression (not just an accessibility-tree
+  /// one) leaves a screenshot behind for review, the convention `CVDSmokeTests` and
+  /// several others already follow.
+  func testRecentColorsRenderInTheSidebarAtBothCollapseStates() {
+    submit("#3b82f6")
+    submit("rebeccapurple")
+    submit("#22c55e")
+
+    XCTAssertTrue(
+      app.buttons["recentColor-rebeccapurple"].waitForExistence(timeout: 15),
+      "No recent swatch in the sidebar. Tree was:\n\(app.debugDescription)",
+    )
+    XCTAssertTrue(app.staticTexts["Recent Colors"].exists, "Expanded sidebar should show the Recent Colors header")
+    capture("sidebar-recents-expanded")
+
+    toggleSidebar()
+
+    XCTAssertTrue(
+      app.buttons["recentColor-rebeccapurple"].waitForExistence(timeout: 15),
+      "A recent swatch should still render when the sidebar is collapsed",
+    )
+    XCTAssertFalse(
+      app.staticTexts["Recent Colors"].exists,
+      "The Recent Colors header should disappear once collapsed",
+    )
+    capture("sidebar-recents-collapsed")
+  }
+
   // MARK: Private
 
   private var app: XCUIApplication!
 
   // MARK: - Helpers
+
+  private func submit(_ text: String) {
+    let field = app.textFields["colorInput"]
+    XCTAssertTrue(field.waitForExistence(timeout: 30))
+    field.click()
+    field.typeKey("a", modifierFlags: .command)
+    field.typeText(text + "\n")
+  }
+
+  private func capture(_ name: String) {
+    let attachment = XCTAttachment(screenshot: app.screenshot())
+    attachment.name = name
+    attachment.lifetime = .keepAlways
+    add(attachment)
+  }
 
   private func toggleSidebar() {
     let toggle = app.buttons["toggleSidebar"]
