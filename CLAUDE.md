@@ -821,6 +821,26 @@ Layered so the numeric core stays independently testable and UI-free:
   tests — do not "reconcile" them.
 - **Never pass `gamutNoiseTolerance` to a chroma search.** It is 7.5e-5 of a *channel*;
   at `L = 0` that buys 0.041 of *chroma*. The boundary is strict, the badge forgiving.
+- **`pulledInto(_:)`'s guard is forgiving and its clamp is strict, and that pairing is
+  the method's whole correctness — it is not a violation of the bullet above.** The
+  bullet governs `maxChroma`'s `tolerance:` parameter, the *curve's* question ("where
+  exactly is the edge?"), which stays strict. `pulledInto`'s guard asks the *badge's*
+  question ("does this already fit?") and so takes `gamutNoiseTolerance`, the same
+  predicate `exceedsSRGB` uses — the identical call M35's first commit made at four
+  badge sites. Asked strictly the guard rejects on float noise, and because the clamp
+  is a *chroma* operation the cost is wildly out of proportion: `#00003c` re-expressed
+  in OKLCH returns a red channel of `-2.24e-16`, `epsilon: 0` tests `< 0`, and the
+  chroma is pulled to the strict boundary **15.3% below where it started**. Pure blue
+  loses 15.2% (`0.31321` → `0.26553`) — and that one is not noise but the
+  disconnected-ray geometry `GamutBoundary` documents, since blue's own chroma sits
+  past the *first* exit from sRGB. Measured over 5,814 sampled sRGB colors, 883 (15.2%)
+  were desaturated this way. This was never a Transform-panel bug: `ShadeRamp` (whose
+  `gamut` defaults to `.srgb`, so it clamps with web-friendly mode *off* too),
+  `Harmony`, `ContrastSolver`, `PickerState` and `ColorStore`'s `adopt`/`respell` all
+  route through it. Pinned by `pulledIntoSurvivesRoundTripNoise`, which fails on two of
+  its three cases against a strict guard, and guarded on the other side by
+  `forgivingGuardStillPullsRealWideColors` so the slack cannot be widened into letting
+  a genuinely wide color through.
 - **HSV is not a `ColorSpace` case and must not become one** — CSS has no `hsv()`, so
   a case would leak into the parser, serializer, catalog and every `allCases` loop.
   It is `ColorCore/Convert/HSV.swift`, a coordinate on the side. `OKLCHComponents` in

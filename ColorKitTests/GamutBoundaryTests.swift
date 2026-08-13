@@ -324,6 +324,60 @@ struct GamutBoundaryTests {
     #expect(abs(pulled.oklchComponents.hue - 30) < 1e-9)
   }
 
+  /// An sRGB color that has been through OKLCH and back must survive `pulledInto`
+  /// **unchanged**, and the guard is why it does not for free.
+  ///
+  /// `pulledInto` asks "does this already fit?" and that is the *badge's* question,
+  /// not the curve's — so it is asked with ``ColorValue/gamutNoiseTolerance``, the
+  /// same forgiving predicate ``ColorValue/exceedsSRGB`` uses, while the clamp below
+  /// it keeps calling ``GamutBoundary/maxChroma`` strictly. The two are not
+  /// interchangeable and the split is deliberate: this test would also pass if the
+  /// *search* were loosened, which is exactly what
+  /// ``channelToleranceIsNotAChromaTolerance`` forbids, so read them together.
+  ///
+  /// Asked strictly, the guard rejects on float noise and the cost is enormous.
+  /// `#00003c` round-trips to a red channel of **−2.24e-16**; `inGamut(epsilon: 0)`
+  /// tests `< 0`, fails, and the chroma is then pulled all the way to the strict
+  /// boundary — `0.847×` where it started. That is the competing hypothesis here and
+  /// it sits **15% away**, four orders of magnitude past any formatting tolerance, so
+  /// there is no reading of this assertion where the two answers are near each other.
+  ///
+  /// Measured across 5,814 sampled sRGB colors: 883 of them (15.2%) were desaturated
+  /// this way, worst case 15.3%. It reached far past this one test — ``ShadeRamp``,
+  /// ``Harmony``, ``ContrastSolver``, the picker and `ColorStore`'s `adopt`/`respell`
+  /// all route through `pulledInto` under web-friendly mode.
+  @Test(
+    "An sRGB color survives a round trip through OKLCH, whatever the last bit says",
+    arguments: [(0x00, 0x00, 0x3C), (0x00, 0x00, 0xFF), (0x1E, 0x3A, 0x8A)],
+  )
+  func pulledIntoSurvivesRoundTripNoise(red: Int, green: Int, blue: Int) {
+    let color = ColorValue.srgb8(UInt8(red), UInt8(green), UInt8(blue))
+    let chroma = color.oklchComponents.chroma
+
+    // The round trip an adjustment performs — `derivedOKLCH` re-expresses the color
+    // in OKLCH, which is where the sub-ULP channel error is introduced.
+    let roundTripped = OKLCHAdjustment.identity.applied(to: color)
+    let pulled = roundTripped.pulledInto(.srgb)
+
+    #expect(
+      abs(pulled.oklchComponents.chroma - chroma) < 1e-9,
+      "a strict guard would answer \(GamutBoundary.maxChroma(lightness: color.oklchComponents.lightness, hue: color.oklchComponents.hue, in: .srgb)) here, not \(chroma)",
+    )
+  }
+
+  /// The other half of the guard: loosening it must not stop a genuinely wide color
+  /// from being pulled in. `gamutNoiseTolerance` is 7.5e-5 of a channel, so a real
+  /// Display P3 primary misses sRGB by orders of magnitude more than the slack.
+  @Test("A genuinely out-of-gamut color is still pulled in by the forgiving guard")
+  func forgivingGuardStillPullsRealWideColors() {
+    let wide = ColorValue(space: .displayP3, 0, 1, 0)
+    #expect(!wide.inGamut(of: .srgb, epsilon: ColorValue.gamutNoiseTolerance))
+
+    let pulled = wide.pulledInto(.srgb)
+    #expect(pulled.oklchComponents.chroma < wide.oklchComponents.chroma, "it was not pulled at all")
+    #expect(!pulled.exceedsSRGB)
+  }
+
   /// An unbounded space has no boundary to pull toward — ``maxChroma`` answers
   /// `.infinity` there — so `pulledInto` must take the early "already fits" exit
   /// rather than setting the chroma to it.

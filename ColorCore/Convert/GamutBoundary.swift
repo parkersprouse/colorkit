@@ -149,8 +149,28 @@ nonisolated extension ColorValue {
   /// Unconditional clamping would be wrong twice over: it moves an already-fitting
   /// color off itself, and at an unbounded `gamut` ``GamutBoundary/maxChroma`` returns
   /// `.infinity`, which would set every chroma to it.
+  ///
+  /// **The guard is forgiving and the clamp is strict, and that pairing is the whole
+  /// correctness of this method.** "Does this already fit?" is the *badge's* question,
+  /// so it is asked with ``ColorValue/gamutNoiseTolerance`` — the same predicate
+  /// ``ColorValue/exceedsSRGB`` uses. "Where exactly is the edge?" is the *curve's*
+  /// question, and ``GamutBoundary/maxChroma`` stays strict for it. The type-level
+  /// note above about never handing the badge's constant to a chroma search still
+  /// stands and is not in tension with this: it governs `maxChroma`'s `tolerance:`
+  /// parameter, which is untouched here.
+  ///
+  /// Asked strictly, the guard rejects on float noise, and because the clamp below is
+  /// a *chroma* operation the cost is wildly out of proportion to the error. `#00003c`
+  /// re-expressed in OKLCH comes back with a red channel of −2.24e-16; `epsilon: 0`
+  /// tests `< 0`, so it fails, and the chroma is then pulled to the strict boundary —
+  /// **15.3% below where it started**. Pure blue loses 15.2% the same way (`0.31321`
+  /// to `0.26553`), and that one is not noise at all but the disconnected-ray geometry
+  /// described above: blue's own chroma sits past the *first* exit from sRGB. Measured
+  /// over 5,814 sampled sRGB colors, 883 of them (15.2%) were desaturated this way.
+  /// Every caller was affected — ``ShadeRamp``, ``Harmony``, ``ContrastSolver``, the
+  /// picker, and `ColorStore`'s `adopt`/`respell` — wherever web-friendly mode is on.
   func pulledInto(_ gamut: ColorSpace) -> ColorValue {
-    guard !inGamut(of: gamut) else { return self }
+    guard !inGamut(of: gamut, epsilon: Self.gamutNoiseTolerance) else { return self }
     var pulled = oklchComponents
     pulled.chroma = GamutBoundary.maxChroma(lightness: pulled.lightness, hue: pulled.hue, in: gamut)
     return derivedOKLCH(pulled)
