@@ -1019,26 +1019,33 @@ Layered so the numeric core stays independently testable and UI-free:
   quantizes onto the 8-bit grid, so a sub-1/255 nudge returns the original; and results
   that leave sRGB have no honest spelling in a bounded format. `TransformPanel` therefore
   adopts with `preferring: .oklch`.
-- **The Adjust panel's Lightness and Chroma sliders bind two different kinds of value,
-  and unifying them reintroduces a fixed bug (M35 and its two follow-ups).** Lightness
-  binds a *normalized fraction* — a fixed, color-independent `-1 ... 1`
-  (`OKLCHAdjustment.lightnessFractionRange`) converted through
-  `lightnessDelta(atFraction:for:)` / `lightnessFraction(forDelta:for:)`, whose two
-  halves scale independently against the room the base color has to black and to
-  white. Chroma binds *real units*, a `chromaScaleRange` mirrored about `×1`. They
-  look like one control implemented two ways and they are not. Lightness has a real
-  wall on **both** sides, so a single mirrored range of deltas can put the identity
-  value at the track's center or pin both ends to the walls, but not both at once
-  except at `L = 0.5` — mirroring stranded the more open side, which is the reported
-  bug (at `L = 0.9` the dark end stopped at `0.8` with `0.9` of room to black unused).
-  A fraction track buys both, at the cost of the two halves moving in different-sized
-  steps, which is the trade that was asked for. **Chroma still has the same stranding**
-  under web-friendly mode — measured `×0.917 ... ×1.083` for `#3b82f6`, so `×0` is
-  unreachable — and that is deferred, not defended; see the doc comment on
-  `chromaScaleRange`, which says so rather than arguing the reach does not matter.
-  Giving chroma the same fraction treatment (`-1` = `×0`, `+1` = the gamut ceiling) is
-  the fix if it is ever wanted; re-mirroring lightness to "match" chroma is the wrong
-  direction.
+- **Both Adjust sliders bind a fixed `-1 ... 1` *fraction*, never their own value, and
+  turning either back into a range of real units reintroduces a fixed bug (M35 and its
+  follow-ups).** `lightnessFractionRange` / `chromaFractionRange` are color-independent
+  constants; `lightnessDelta(atFraction:for:)`, `chromaScale(atFraction:for:in:)` and
+  their inverses convert. Each track's two halves scale independently against whatever
+  room that side actually has, which is what keeps the identity dead center *and* both
+  ends on real walls. A single mirrored range can do one or the other, not both —
+  mirroring caps the open side down to the tighter one, which stranded lightness's dark
+  end (at `L = 0.9` it stopped at `0.8` with `0.9` of room to black unused) and
+  stranded chroma's `×0` (`#3b82f6` reported `×0.917 ... ×1.083`, so a color could not
+  be fully desaturated). The cost is that the two halves move in different-sized steps,
+  which is the trade that was asked for.
+  **They are counterparts, not copies, and three differences are load-bearing.**
+  Chroma's operator is a multiplier, so its reduce side is a *fixed* wall at `×0` and
+  needs no gamut at all, where both of lightness's rooms vary with the base color.
+  Chroma's increase side takes an optional gamut — `nil` under web-friendly mode off,
+  where nothing clamps — and with `nil` its track maps onto exactly the `×0 ... ×2` the
+  slider had before M35, which is what scopes the change to web-friendly mode.
+  And chroma needs its `maxScale` cap because `ceiling` is a *ratio*: at chroma `0.001`
+  the sRGB ceiling is `×141.5`, which without the cap squeezes the useful `×1`–`×2`
+  span into the first 0.7% of the track. Lightness needs no cap — its two rooms sum to
+  `1` by construction.
+  **A zero-room half maps entirely to the identity, and for chroma that is protective
+  rather than merely honest.** Pure blue's own chroma sits past sRGB's *first* exit (the
+  disconnected ray `GamutBoundary` documents), so `×1.000` holds `0.31321` while
+  `×1.001` falls to `0.26553` and flatlines — a cliff, not a small increase. A dead half
+  is the right answer to a cliff.
 - **Never bisect the contrast ratio — it is a V, not a monotone curve.** Against a
   mid-tone background contrast falls to 1:1 as the color crosses the background's
   luminance and rises again, so a target has two crossings and bisection lands on

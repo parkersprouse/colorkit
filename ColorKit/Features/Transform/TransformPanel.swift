@@ -93,13 +93,13 @@ struct TransformPanel: View {
     let result = adjusted(color)
     let isPending = !adjustment.isIdentity || !curve.isIdentity
 
-    // Web-friendly or not: `applied(to:)` clamps lightness to `0...1` itself, so a
-    // slider that traveled past that would have the same dead zone with the mode
-    // off. The chroma ceiling *is* a gamut fact, so it only narrows under the mode —
-    // see the two doc comments on ``OKLCHAdjustment`` for why they disagree.
-    let chromaRange = store.webFriendly
-      ? OKLCHAdjustment.chromaScaleRange(for: color, in: .srgb)
-      : 0 ... 2
+    // Both sliders bind a fixed `-1 ... 1` fraction rather than their own value, so
+    // the identity always sits dead center while each half reaches whatever wall is
+    // actually on that side. Only Chroma's right-hand wall is a gamut fact, so only
+    // it takes a gamut, and only under web-friendly mode — lightness's `0...1` clamp
+    // lives in `applied(to:)` and runs either way. See the two `…FractionRange` doc
+    // comments on ``OKLCHAdjustment``.
+    let chromaGamut: ColorSpace? = store.webFriendly ? .srgb : nil
 
     return VStack(alignment: .leading, spacing: 12) {
       sectionHeading(
@@ -107,11 +107,6 @@ struct TransformPanel: View {
         note: "Relative, so it composes: the picker already sets L, C and h outright.",
       )
 
-      // The Lightness slider binds a fixed fraction, not the delta itself — its two
-      // halves scale against however much room `color` actually has to black and to
-      // white, which is what lets `-1`/`+1` always mean the true walls while `0`
-      // stays the identity value at the track's visual center. See
-      // ``OKLCHAdjustment/lightnessFractionRange``.
       slider(
         "Lightness",
         value: Binding(
@@ -124,10 +119,18 @@ struct TransformPanel: View {
       slider(
         "Chroma",
         value: Binding(
-          get: { adjustment.chromaScale },
-          set: { adjustment.chromaScale = $0 },
+          get: {
+            OKLCHAdjustment.chromaFraction(
+              forScale: adjustment.chromaScale, for: color, in: chromaGamut,
+            )
+          },
+          set: {
+            adjustment.chromaScale = OKLCHAdjustment.chromaScale(
+              atFraction: $0, for: color, in: chromaGamut,
+            )
+          },
         ),
-        range: chromaRange,
+        range: OKLCHAdjustment.chromaFractionRange,
         caption: String(format: "×%.2f", adjustment.chromaScale),
       )
       slider(

@@ -190,37 +190,46 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     return min(max(delta / room, lightnessFractionRange.lowerBound), lightnessFractionRange.upperBound)
   }
 
-  /// The ``chromaScale`` range past which every larger scale clamps to the same
-  /// chroma under web-friendly mode — because ``ColorValue/pulledInto(_:)`` pulls
-  /// every one of them back to `gamut`'s own boundary chroma regardless of how much
-  /// further the scale still climbs — **mirrored about the identity scale (`1`)**, so
-  /// a linear slider's own center always means "no change" and its two ends read as
-  /// equally far from it. `extent`'s un-narrowed `0...2` already put `×1.00` at the
-  /// middle by the same kind of accident that used to put Lightness's `0` at the
-  /// middle of a fixed `-0.5...0.5` — an interval picked so the identity sits in the
-  /// middle, not a claim about how far the color can honestly go.
+  /// The Chroma slider's fixed, color-independent track, the exact counterpart of
+  /// ``lightnessFractionRange``: `-1` is always `×0` (fully gray), `0` is always the
+  /// identity scale (`×1`), and `+1` is always as saturated as this color can get.
   ///
-  /// Reducing chroma toward `0` never clamps — it only ever moves a color further
-  /// *inside* the gamut — so unlike lightness there is no wall on that side to
-  /// discover, only `extent`'s own choice of how much reduction one drag should
-  /// cover. That is treated as the fixed quantity to mirror the increase side
-  /// against: the real wall, when increasing finds one, gives way to match it.
+  /// This replaced a `chromaScaleRange` that reported a range of *scales* mirrored
+  /// about `×1`, and it went for the reason lightness's mirrored range went. Mirroring
+  /// caps the more open side down to match the tighter one, and under web-friendly
+  /// mode the ceiling is often very tight: measured for `#3b82f6`, the mirrored range
+  /// came back `×0.917 ... ×1.083`, so the slider could not reach `×0` at all. Fully
+  /// gray is a real destination, not the last sliver of an arbitrary interval, and
+  /// stranding it is the same bug that retired lightness's version.
+  static let chromaFractionRange: ClosedRange<Double> = -1 ... 1
+
+  /// Converts a position on ``chromaFractionRange`` to the ``chromaScale`` it stands
+  /// for, given how much room `color` has left inside `gamut`.
   ///
-  /// **Lightness no longer works this way** — see ``lightnessFractionRange`` — and
-  /// this range has the same stranding lightness's did, left in deliberately rather
-  /// than defended. Mirroring the reduce side down to match a narrow ceiling costs
-  /// real reach: measured for `#3b82f6` under web-friendly mode, the range comes back
-  /// `×0.917 ... ×1.083`, so the slider cannot reach `×0` — the user cannot fully
-  /// desaturate their own color even though nothing in the gamut stops them. `×0` is
-  /// a real destination (fully gray), not the last sliver of an arbitrary `extent`,
-  /// which is exactly the argument that retired lightness's mirrored range.
+  /// The two halves scale independently, as lightness's do, but against *differently
+  /// shaped* rooms — chroma's operator is a multiplier, not an addend, so this is a
+  /// counterpart rather than a copy:
   ///
-  /// The fix is the same shape lightness now uses — a fraction track whose `-1` is
-  /// `×0` and whose `+1` is the gamut ceiling, two halves scaling independently — and
-  /// it is deferred rather than folded in here, because the reported bug was about
-  /// Lightness and this changes what a second slider means. Do not read the paragraph
-  /// above as a case for keeping the mirroring; it explains the shape, it does not
-  /// justify the reach it costs.
+  /// - **Down is always `1`.** `×0` is a true wall (nothing is less saturated than
+  ///   gray) and reducing chroma never clamps, since it only ever moves a color
+  ///   further *inside* the gamut. So `-1` maps to `×0` for every color, always.
+  /// - **Up is `min(ceiling, maxScale) - 1`**, where `ceiling` is
+  ///   ``GamutBoundary/maxChroma`` divided by `color`'s own chroma.
+  ///
+  /// `gamut` is optional because chroma's increase side, unlike lightness's, has no
+  /// wall at all when nothing is clamping: pass `nil` (web-friendly mode off) and the
+  /// ceiling is unbounded, so `upRoom` falls back to `maxScale - 1`. With the default
+  /// `maxScale` that makes the whole track map onto exactly `×0 ... ×2` — **identical
+  /// to the fixed range this slider used before any of the M35 work**, which is what
+  /// keeps this change scoped to web-friendly mode rather than quietly redefining a
+  /// control everyone else was happy with.
+  ///
+  /// **`maxScale` is not decoration, and dropping it makes the slider unusable.**
+  /// `ceiling` is a *ratio*, so a nearly-neutral color has an enormous one — measured
+  /// at chroma `0.001`, the sRGB ceiling is `×141.5`. Letting `+1` mean that would
+  /// squeeze the entire useful `×1`–`×2` span into the first 0.7% of the track's right
+  /// half. Lightness needs no such cap because its two rooms sum to `1` by
+  /// construction and neither can run away from the other.
   ///
   /// Derived from `color`'s own lightness and hue, **not** the pending adjustment's —
   /// reading the adjusted lightness or hue instead would make dragging the Lightness
@@ -229,30 +238,60 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   /// identity and a hair loose once they have moved too, which is the smaller and
   /// more predictable kind of wrong.
   ///
-  /// A base already at or past `gamut` — a typed wide-gamut color under web-friendly
-  /// mode, say, since the mode hides tools rather than rejecting input — leaves *no*
-  /// room to increase at all, the chroma equivalent of a lightness already at black
-  /// or white. Mirroring against that zero would collapse the reduce side to a
-  /// single point at the very moment it is most worth keeping open, so it is left at
-  /// its own full `1 - extent.lowerBound`, unmirrored, with the identity scale
-  /// sitting at that range's own edge rather than its center.
-  static func chromaScaleRange(
+  /// A base at or past `gamut`'s edge gets `upRoom == 0`, so the whole increase half
+  /// maps to `×1` — and here that is **protective, not merely honest**. Measured after
+  /// the `pulledInto` guard fix: pure blue holds its chroma of `0.31321` at `×1.000`
+  /// and drops to `0.26553` at `×1.001`, a 15.2% fall that then stays flat. Blue's own
+  /// chroma sits past sRGB's *first* exit (the disconnected ray ``GamutBoundary``
+  /// documents), so the first nudge rightward would not be a small increase but a
+  /// cliff. A dead half of the track is the right answer to a cliff.
+  static func chromaScale(
+    atFraction fraction: Double,
     for color: ColorValue,
-    in gamut: ColorSpace,
-    extent: ClosedRange<Double> = 0 ... 2,
-  ) -> ClosedRange<Double> {
-    guard !color.isAchromatic else { return extent }
+    in gamut: ColorSpace?,
+    maxScale: Double = 2,
+  ) -> Double {
+    let clamped = min(max(fraction, chromaFractionRange.lowerBound), chromaFractionRange.upperBound)
+    guard clamped != 0 else { return 1 }
+    // Down is the same wall for every color, so the reduce half needs no gamut at all.
+    guard clamped > 0 else { return 1 + clamped }
+    return 1 + clamped * chromaUpRoom(for: color, in: gamut, maxScale: maxScale)
+  }
+
+  /// The inverse of ``chromaScale(atFraction:for:in:maxScale:)`` — where a given scale
+  /// sits on ``chromaFractionRange``, so the slider's thumb reflects
+  /// `adjustment.chromaScale` even though the track's two halves scale differently.
+  /// A scale above a zero-room ceiling reports `0`, the same snap-to-center a walled
+  /// lightness half has.
+  static func chromaFraction(
+    forScale scale: Double,
+    for color: ColorValue,
+    in gamut: ColorSpace?,
+    maxScale: Double = 2,
+  ) -> Double {
+    guard scale != 1 else { return 0 }
+    guard scale > 1 else { return max(scale - 1, chromaFractionRange.lowerBound) }
+    let upRoom = chromaUpRoom(for: color, in: gamut, maxScale: maxScale)
+    guard upRoom > 0 else { return 0 }
+    return min((scale - 1) / upRoom, chromaFractionRange.upperBound)
+  }
+
+  /// How much *more* than `×1` the increase half of the chroma track is worth — the
+  /// one place the ceiling is derived, so the two conversions above cannot come to
+  /// disagree about where the right end of the slider is.
+  private static func chromaUpRoom(
+    for color: ColorValue,
+    in gamut: ColorSpace?,
+    maxScale: Double,
+  ) -> Double {
+    let headroom = maxScale - 1
+    // A gray has no chroma to scale, so there is no ratio to take — the guard is
+    // `isAchromatic` rather than a `chroma > 0` test of its own, matching how
+    // ``TransformPanel``'s harmony section already asks this question.
+    guard let gamut, !color.isAchromatic else { return headroom }
     let components = color.oklchComponents
     let boundary = GamutBoundary.maxChroma(lightness: components.lightness, hue: components.hue, in: gamut)
-    let ceiling = boundary / components.chroma
-
-    let upRoom = min(extent.upperBound - 1, max(0, ceiling - 1))
-    let downRoom = 1 - extent.lowerBound
-    guard upRoom > 0, downRoom > 0 else {
-      return (1 - downRoom) ... (1 + upRoom)
-    }
-    let room = min(upRoom, downRoom)
-    return (1 - room) ... (1 + room)
+    return min(headroom, max(0, boundary / components.chroma - 1))
   }
 
   /// Applies this nudge, in OKLCH.

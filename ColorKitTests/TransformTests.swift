@@ -149,9 +149,17 @@ struct OKLCHAdjustmentTests {
 /// mirrored about `0` could get the center right or the ends right but not both at
 /// once except at `L = 0.5`, so Lightness now binds a fixed range of *fractions*
 /// (``OKLCHAdjustment/lightnessFractionRange``) whose two halves scale independently
-/// against however much room the base color actually has to each wall. Chroma still
-/// mirrors a range of scales — see its own doc comment for why that shape still fits
-/// it even though it no longer fits lightness.
+/// against however much room the base color actually has to each wall.
+///
+/// **Chroma now works the same way** (``OKLCHAdjustment/chromaFractionRange``), for
+/// the same reason and one measurement: mirroring stranded `×0`, so under web-friendly
+/// mode `#3b82f6` reported `×0.917 ... ×1.083` and the color could not be fully
+/// desaturated at all. The two tracks are counterparts rather than copies — chroma's
+/// operator is a multiplier, its reduce side is a fixed wall at `×0` while lightness's
+/// two rooms both vary, and its increase side needs a `maxScale` cap that lightness
+/// has no use for. With no gamut to clamp against, chroma's track maps onto exactly
+/// the `×0 ... ×2` it used before any of this, which is what keeps the change scoped
+/// to web-friendly mode.
 @Suite("Adjust slider ranges")
 struct AdjustSliderRangeTests {
   /// Same base ``TransformTests`` uses, chosen for the same reason: no conversion
@@ -240,56 +248,109 @@ struct AdjustSliderRangeTests {
     #expect(abs(OKLCHAdjustment.lightnessDelta(atFraction: 1, for: black) - 1) < 1e-9, "full room above black")
   }
 
-  /// Chroma's ceiling is a gamut fact, not a fixed extent — a color with plenty of
-  /// room keeps the full, already-symmetric-about-1 `0...2`.
-  @Test("An in-gamut color with headroom keeps the full chroma extent")
-  func chromaRangeStaysFullWhenThereIsRoom() {
-    // A near-black, near-gray sample: its own chroma is tiny, so even a large
-    // multiple of it sits nowhere near the sRGB boundary.
-    let color = ColorValue(space: .oklch, 0.5, 0.01, 250)
-    let range = OKLCHAdjustment.chromaScaleRange(for: color, in: .srgb)
-    #expect(range == 0 ... 2)
+  /// `×0` is a true wall on chroma's reduce side, so `-1` reaches fully gray for
+  /// **every** color — gamut or no gamut, headroom or none. This is the assertion the
+  /// old mirrored `chromaScaleRange` could not make: for `#3b82f6` it reported
+  /// `×0.917 ... ×1.083`, stranding fully-gray behind a ceiling that has nothing to do
+  /// with it.
+  @Test(
+    "Fraction -1 always reaches a scale of zero, whatever the ceiling",
+    arguments: [nil, ColorSpace.srgb],
+  )
+  func chromaFractionMinusOneAlwaysFullyDesaturates(gamut: ColorSpace?) {
+    for color in [
+      ColorValue.srgb8(0x3B, 0x82, 0xF6), // narrow ceiling: the reported case
+      ColorValue.srgb8(0x00, 0x00, 0xFF), // ceiling below 1: no increase room at all
+      ColorValue(space: .oklch, 0.5, 0.01, 250), // plenty of headroom
+      ColorValue(space: .displayP3, 0.6, 0.35, 0.1), // already outside sRGB
+    ] {
+      #expect(OKLCHAdjustment.chromaScale(atFraction: -1, for: color, in: gamut) == 0)
+    }
   }
 
-  /// The case the bug report was actually about, now checked for symmetry rather
-  /// than only for the ceiling narrowing: a color close enough to the sRGB edge
-  /// that doubling its chroma would leave the gamut mirrors the identity scale, so
-  /// the reduce side gives up exactly as much of `0...2` as the increase side does.
-  @Test("A color near the edge narrows the chroma ceiling and mirrors the floor to match")
-  func chromaRangeNarrowsSymmetrically() {
+  /// With no gamut to clamp against, the whole track maps onto exactly the fixed
+  /// `×0 ... ×2` this slider used before any of the M35 work — which is what keeps the
+  /// change scoped to web-friendly mode instead of redefining a control that was never
+  /// reported as wrong. Checked at five positions rather than just the ends, since a
+  /// mapping that agreed only at the extremes would still have rescaled the middle.
+  @Test("With no gamut the track is exactly the pre-M35 zero-to-two range")
+  func chromaTrackWithoutAGamutMatchesTheOldFixedRange() {
     let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
-    let range = OKLCHAdjustment.chromaScaleRange(for: blue, in: .srgb)
-    #expect(range.upperBound < 2, "expected the boundary to narrow the range")
-    #expect(range.upperBound > 1, "the identity scale must stay reachable")
-    #expect(
-      abs((1 - range.lowerBound) - (range.upperBound - 1)) < 1e-12,
-      "the floor should give up exactly as much as the ceiling did",
-    )
+    for (fraction, expected) in [(-1.0, 0.0), (-0.5, 0.5), (0.0, 1.0), (0.5, 1.5), (1.0, 2.0)] {
+      let scale = OKLCHAdjustment.chromaScale(atFraction: fraction, for: blue, in: nil)
+      #expect(abs(scale - expected) < 1e-12, "fraction \(fraction) gave \(scale), not \(expected)")
+    }
+  }
 
-    // And the narrowed edge really is dead space closed off: the scale the range
-    // reports and a scale twice as large produce the identical pulled chroma.
-    let atEdge = OKLCHAdjustment(chromaScale: range.upperBound)
-      .applied(to: blue).pulledInto(.srgb)
-    let wellPast = OKLCHAdjustment(chromaScale: range.upperBound * 2)
-      .applied(to: blue).pulledInto(.srgb)
+  /// Under a gamut, `+1` lands on the ceiling — and the ceiling is where scaling
+  /// further genuinely stops changing the answer, which is the property the whole M35
+  /// series exists to give the slider's edges.
+  @Test("Fraction +1 lands on the gamut ceiling, past which nothing changes")
+  func chromaFractionPlusOneLandsOnTheCeiling() {
+    let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
+    let ceiling = OKLCHAdjustment.chromaScale(atFraction: 1, for: blue, in: .srgb)
+    #expect(ceiling > 1, "the identity must stay reachable from below")
+    #expect(ceiling < 2, "expected the sRGB boundary to bind before the default maxScale")
+
+    let atEdge = OKLCHAdjustment(chromaScale: ceiling).applied(to: blue).pulledInto(.srgb)
+    let wellPast = OKLCHAdjustment(chromaScale: ceiling * 2).applied(to: blue).pulledInto(.srgb)
+    #expect(abs(atEdge.oklchComponents.chroma - wellPast.oklchComponents.chroma) < 1e-9)
+  }
+
+  /// `maxScale` caps the increase half, and without it the slider is unusable rather
+  /// than merely generous: `ceiling` is a *ratio*, so a nearly-neutral color has an
+  /// enormous one. At chroma `0.001` the sRGB ceiling is about `×141`, which would
+  /// squeeze the entire useful `×1`–`×2` span into the first ~0.7% of the right half.
+  /// Lightness needs no equivalent because its two rooms sum to `1` by construction.
+  @Test("A near-neutral color's huge ceiling is capped by maxScale")
+  func chromaCeilingIsCappedForNearNeutrals() {
+    let nearNeutral = ColorValue(space: .oklch, 0.5, 0.001, 250)
+    let components = nearNeutral.oklchComponents
+    let rawCeiling = GamutBoundary.maxChroma(
+      lightness: components.lightness, hue: components.hue, in: .srgb,
+    ) / components.chroma
+    #expect(rawCeiling > 100, "the premise has changed: raw ceiling is \(rawCeiling)")
+
+    #expect(OKLCHAdjustment.chromaScale(atFraction: 1, for: nearNeutral, in: .srgb) == 2)
+  }
+
+  /// A base at or past the gamut edge has no increase room, so the whole right half
+  /// maps to the identity — and that is **protective**, not merely honest. Pure blue's
+  /// own chroma sits past sRGB's *first* exit (the disconnected ray ``GamutBoundary``
+  /// documents), so the first nudge rightward is not a small increase but a 15% fall
+  /// that then stays flat. The identity stays at the track's center either way, which
+  /// the old mirrored range could not manage — it pinned `×1` to the range's edge.
+  @Test("A base at the gamut edge has a dead increase half, and it is protecting a cliff")
+  func chromaEdgeBaseHasNoIncreaseRoom() {
+    let blue = ColorValue.srgb8(0x00, 0x00, 0xFF)
+    #expect(OKLCHAdjustment.chromaScale(atFraction: 1, for: blue, in: .srgb) == 1)
+    #expect(OKLCHAdjustment.chromaScale(atFraction: 0.5, for: blue, in: .srgb) == 1)
+    // The identity is still centered, and the reduce half still works.
+    #expect(OKLCHAdjustment.chromaScale(atFraction: 0, for: blue, in: .srgb) == 1)
+    #expect(OKLCHAdjustment.chromaScale(atFraction: -0.5, for: blue, in: .srgb) == 0.5)
+
+    // The cliff this is keeping the slider away from: a hair above ×1 is not a small
+    // increase, it is a 15% drop that then flatlines.
+    let base = blue.oklchComponents.chroma
+    let nudged = OKLCHAdjustment(chromaScale: 1.001).applied(to: blue).pulledInto(.srgb)
     #expect(
-      abs(atEdge.oklchComponents.chroma - wellPast.oklchComponents.chroma) < 1e-9,
+      nudged.oklchComponents.chroma < base * 0.9,
+      "expected the disconnected-ray cliff; got \(nudged.oklchComponents.chroma) from \(base)",
     )
   }
 
-  /// The chroma equivalent of the lightness endpoint case: a base already at or past
-  /// `gamut` (a typed wide-gamut color under web-friendly mode — the mode hides
-  /// tools, it does not reject input) has *no* room to increase at all. Mirroring
-  /// against that zero would collapse the reduce side to a single point at the
-  /// moment it is most worth keeping open, so the reduce side keeps its own full
-  /// reach and the identity scale sits at that range's edge rather than its center.
-  @Test("A base already outside the gamut leaves the reduce side at its own full reach")
-  func outOfGamutBaseDoesNotMirrorAgainstZero() {
-    // Comfortably inside Display P3 and outside sRGB.
-    let wide = ColorValue(space: .displayP3, 0.6, 0.35, 0.1)
-    let range = OKLCHAdjustment.chromaScaleRange(for: wide, in: .srgb)
-    #expect(range.upperBound == 1, "no room to increase should pin the ceiling at identity")
-    #expect(range.lowerBound == 0, "no room above should not shrink the reduce side below it")
+  /// A scale round-trips through a fraction and back, so the slider's thumb reports
+  /// where the value actually is rather than drifting from it.
+  @Test("A chroma fraction round-trips through a scale and back")
+  func chromaFractionRoundTrips() {
+    let blue = ColorValue.srgb8(0x3B, 0x82, 0xF6)
+    for gamut in [nil, ColorSpace.srgb] {
+      for fraction in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+        let scale = OKLCHAdjustment.chromaScale(atFraction: fraction, for: blue, in: gamut)
+        let back = OKLCHAdjustment.chromaFraction(forScale: scale, for: blue, in: gamut)
+        #expect(abs(back - fraction) < 1e-9, "gamut \(String(describing: gamut)), fraction \(fraction)")
+      }
+    }
   }
 
   /// `chroma` on the neutral axis is (near) zero, so a boundary/chroma division has
@@ -298,9 +359,10 @@ struct AdjustSliderRangeTests {
   @Test("An achromatic base does not divide by its own zero chroma")
   func achromaticBaseDoesNotDivideByZero() {
     let gray = ColorValue(space: .oklch, 0.5, 0, 0)
-    let range = OKLCHAdjustment.chromaScaleRange(for: gray, in: .srgb)
-    #expect(range == 0 ... 2)
-    #expect(range.upperBound.isFinite)
+    let top = OKLCHAdjustment.chromaScale(atFraction: 1, for: gray, in: .srgb)
+    #expect(top == 2)
+    #expect(top.isFinite)
+    #expect(OKLCHAdjustment.chromaScale(atFraction: -1, for: gray, in: .srgb) == 0)
   }
 }
 
