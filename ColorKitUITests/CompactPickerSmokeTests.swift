@@ -74,7 +74,7 @@ final class CompactPickerSmokeTests: XCTestCase {
   /// note exists to keep out.
   func testThePlaneAndItsPopoverCopyCanBothBeOnScreenAtOnce() {
     setField("#3b82f6")
-    click(radioButton: "Pick", "the tool switcher")
+    selectTool("Pick")
 
     XCTAssertTrue(
       app.otherElements["pickerPlane"].waitForExistence(timeout: 15),
@@ -201,7 +201,7 @@ final class CompactPickerSmokeTests: XCTestCase {
   /// hazard the plane's per-host `identifier` exists to keep out of *that* query.
   func testSwitchingAxesInThePopoverKeepsThePickTabInSync() {
     setField("#3b82f6")
-    click(radioButton: "Pick", "the tool switcher")
+    selectTool("Pick")
 
     let panelOKLCH = app.radioGroups["pickerMode"].radioButtons["OKLCH"]
     guard panelOKLCH.waitForExistence(timeout: 15) else {
@@ -254,14 +254,21 @@ final class CompactPickerSmokeTests: XCTestCase {
 
   /// One named query, and the tree on failure. A chain that falls back to an index is
   /// a test that cannot go red — the lesson the contrast switcher taught.
-  private func click(radioButton label: String, _ description: String) {
-    let button = app.radioButtons[label]
+  ///
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified rather
+  /// than labelled — see `ToolSidebar`'s doc comment for why a label query would not
+  /// survive its collapsed, icon-only rail. This file's other radio-button queries
+  /// (`pickerMode`/`compactPickerMode`) go straight through `app.radioGroups[…]`
+  /// rather than this helper, which is why there is no `click(radioButton:)` left to
+  /// keep beside it.
+  private func selectTool(_ title: String) {
+    let button = app.buttons["tool-\(title.lowercased())"]
     guard button.waitForExistence(timeout: 15) else {
-      XCTFail("No radio button labelled \(label) (\(description)). Tree was:\n\(app.debugDescription)")
+      XCTFail("No sidebar button for \(title). Tree was:\n\(app.debugDescription)")
       return
     }
     guard waitUntilHittable(button) else {
-      XCTFail("\(label) never became hittable (\(description)). Tree was:\n\(app.debugDescription)")
+      XCTFail("\(title) sidebar row never became hittable. Tree was:\n\(app.debugDescription)")
       return
     }
     button.click()

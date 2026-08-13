@@ -59,7 +59,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// same color and not the same answer.
   func testARecalledColorKeepsTheSpellingItWasSavedWith() {
     setField("rebeccapurple")
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
 
     clickButton("saveColor", "the save-color button")
@@ -96,7 +96,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// `ExportOptions`, rather than the export panel keeping whatever it was last set to.
   func testASavedRampExportsUnderItsOwnName() {
     setField("#3b82f6")
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
 
     typeInto("saveName", "brand")
@@ -131,7 +131,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// staged palette.
   func testExportProjectCombinesEveryPaletteAndLooseColor() {
     setField("#3b82f6")
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
 
     typeInto("saveName", "brand")
@@ -179,7 +179,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// what this adds is that the view stops showing what was deleted.
   func testDeletingAProjectClearsItsContents() {
     setField("#3b82f6")
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
     clickButton("saveColor", "the save-color button")
     XCTAssertTrue(app.buttons["savedColor-0"].waitForExistence(timeout: 15))
@@ -214,7 +214,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// `move(from:to:)` with the drop handler, so this covers the path both use and leaves
   /// only the gesture that opens it uncovered.
   func testMoveCommandsReorderTheGrid() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
     saveColors(["#ff0000", "#00ff00", "#0000ff"])
 
@@ -245,15 +245,15 @@ final class ProjectsSmokeTests: XCTestCase {
   /// reads `orderedColors`, so a move that never reached `sortIndex` would still look
   /// right until something forced a refetch.
   func testAReorderSurvivesLeavingThePanel() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
     saveColors(["#ff0000", "#00ff00", "#0000ff"])
 
     contextMenu("savedColor-2", item: "Move Left")
     XCTAssertTrue(waitForSwatchLabels(["#ff0000", "#0000ff", "#00ff00"]))
 
-    click(radioButton: "Convert", "the tool switcher")
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Convert")
+    selectTool("Projects")
 
     XCTAssertTrue(
       waitForSwatchLabels(["#ff0000", "#0000ff", "#00ff00"]),
@@ -265,7 +265,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// keeping them together. `ProjectStoreTests` covers what gets stored; this covers that
   /// the tick marks and the button are wired to it at all.
   func testSavingASelectionMakesAPalette() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
     saveColors(["rebeccapurple": "brand", "#00ff00": "leaf", "#0000ff": "sky"],
                order: ["rebeccapurple", "#00ff00", "#0000ff"])
@@ -339,7 +339,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// "From Text…" is drivable and gets its own test below, since it opens a sheet rather
   /// than a system panel.
   func testTheImportMenuOffersBothImportPaths() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
 
     let menu = app.menuButtons["importMenu"]
@@ -369,7 +369,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// the same segment-wise family inference `PaletteImportTests` checks in isolation —
   /// this is the one place it is checked reaching an actual saved `Palette`.
   func testImportingPastedCustomPropertiesCreatesAPalette() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
 
     select(menuItem: "From Text…", fromMenu: "importMenu", "the import menu")
@@ -426,7 +426,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// import from there has to be able to create the project that ends up holding it,
   /// since there is nothing yet for it to join.
   func testImportingFromTextWithNoProjectYetCreatesOneFromTheImport() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
 
     XCTAssertTrue(
       app.staticTexts["No projects yet"].waitForExistence(timeout: 15),
@@ -491,7 +491,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// specifically where a multi-group document — a whole-project export is the obvious
   /// one — is most likely to land first.
   func testImportingAMultiGroupDocumentFromTheGlobalEntryPointIsNotBlockedByAnEmptyProjectName() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
 
     select(menuItem: "From Text…", fromMenu: "projectsImport", "the global import menu")
 
@@ -542,7 +542,7 @@ final class ProjectsSmokeTests: XCTestCase {
   /// since reaching Import from up here is what happens before deciding which project the
   /// import belongs to.
   func testGlobalImportDefaultsToNewProjectEvenWhenOneAlreadyExists() {
-    click(radioButton: "Projects", "the tool switcher")
+    selectTool("Projects")
     createProject()
     let firstProjectName = app.textFields["projectName"].value as? String
 
@@ -601,19 +601,15 @@ final class ProjectsSmokeTests: XCTestCase {
   /// One named query, and the tree on failure — never a fallback chain, which is a test
   /// that cannot fail. Hittability rather than existence, because switching tools
   /// resizes the window under a click already in flight.
-  private func click(radioButton label: String, _ description: String) {
-    let button = app.radioButtons[label]
-    guard button.waitForExistence(timeout: 15) else {
-      XCTFail(
-        "No radio button labelled \(label) (\(description)). Tree was:\n\(app.debugDescription)",
-      )
-      return
-    }
-    guard waitUntilHittable(button) else {
-      XCTFail("\(label) never became hittable (\(description)). Tree:\n\(app.debugDescription)")
-      return
-    }
-    button.click()
+  ///
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified rather
+  /// than labelled — see `ToolSidebar`'s doc comment for why a label query would not
+  /// survive its collapsed, icon-only rail. Built on `clickButton(_:_:)` below, which
+  /// is why there is no separate `click(radioButton:)` left in this file. This file's
+  /// other radio button ("Project", the view-mode segmented control) is queried
+  /// directly, not through a shared helper.
+  private func selectTool(_ title: String) {
+    clickButton("tool-\(title.lowercased())", "the tool switcher")
   }
 
   private func clickButton(_ identifier: String, _ description: String) {

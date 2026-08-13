@@ -93,16 +93,21 @@ final class ContrastSmokeTests: XCTestCase {
   private var app: XCUIApplication!
 
   /// Switches to the contrast tool, failing with the accessibility tree rather than
-  /// a bare "not found" — a wrong guess about how SwiftUI exposes a segmented
-  /// picker should say what it exposes *instead*.
+  /// a bare "not found" — a wrong guess about how SwiftUI exposes the sidebar row
+  /// should say what it exposes *instead*.
+  ///
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified by
+  /// `"tool-\(rawValue)"` rather than queried as a radio button — see `ToolSidebar`'s
+  /// doc comment for why a label query would not survive its collapsed, icon-only
+  /// rail.
   private func showContrastPanel() {
     // A single named query rather than a fallback chain. A chain that quietly
     // succeeds on an index-based guess is a test that rots without ever going
-    // red — if SwiftUI changes how it exposes a segmented picker, this should say
-    // so, and the tree in the failure message is what says it.
-    let contrast = app.radioButtons["Contrast"]
+    // red — if SwiftUI changes how it exposes the sidebar, this should say so, and
+    // the tree in the failure message is what says it.
+    let contrast = app.buttons["tool-contrast"]
     guard contrast.waitForExistence(timeout: 15) else {
-      XCTFail("No radio button labelled Contrast. Tree was:\n\(app.debugDescription)")
+      XCTFail("No sidebar button for Contrast. Tree was:\n\(app.debugDescription)")
       return
     }
     contrast.click()

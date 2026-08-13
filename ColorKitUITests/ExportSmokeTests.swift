@@ -50,7 +50,7 @@ final class ExportSmokeTests: XCTestCase {
   /// kind of detail that looks fine until you paste it.
   func testDefaultExportIsARootBlockForTheCurrentColor() {
     setField("#3b82f6")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
     capture("export-panel")
 
     let document = readout("exportDocument")
@@ -86,7 +86,7 @@ final class ExportSmokeTests: XCTestCase {
   /// hittability assertion is the one carrying weight here.
   func testTheSaveControlIsThereToBeUsed() {
     setField("#3b82f6")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
 
     let save = app.buttons["exportSave"]
     XCTAssertTrue(
@@ -117,7 +117,7 @@ final class ExportSmokeTests: XCTestCase {
   /// a plausible-looking block, and this is where it fails.
   func testRampSourceWritesTheWholeTailwindScale() {
     setField("#3b82f6")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
     click(radioButton: "Ramp", "the export source picker")
 
     let document = readout("exportDocument")
@@ -141,7 +141,7 @@ final class ExportSmokeTests: XCTestCase {
   /// obvious.
   func testShapeMenuSwitchesToATailwindConfig() {
     setField("#3b82f6")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
     select(menuItem: "Tailwind v3", fromPopUp: "exportShape", "the shape picker")
 
     let document = readout("exportDocument")
@@ -163,7 +163,7 @@ final class ExportSmokeTests: XCTestCase {
   /// and leave eleven `--brand-500`s behind.
   func testRenamingTheFamilyRewritesEveryProperty() {
     setField("#3b82f6")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
     click(radioButton: "Ramp", "the export source picker")
 
     let name = app.textFields["exportName"]
@@ -185,7 +185,7 @@ final class ExportSmokeTests: XCTestCase {
   /// with it, because a `border` shorthand has nowhere to put one.
   func testDeclarationShapeDropsTheWrapperAndTheNameField() {
     setField("#3b82f6")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
     select(menuItem: "Declarations", fromPopUp: "exportShape", "the shape picker")
 
     let document = readout("exportDocument")
@@ -209,7 +209,7 @@ final class ExportSmokeTests: XCTestCase {
   /// block would still look right.
   func testP3ShapeWritesBothBlocksAndHidesTheFormatPicker() {
     setField("color(display-p3 0 1 0)")
-    click(radioButton: "Export", "the tool switcher")
+    selectTool("Export")
     select(menuItem: "P3 with fallback", fromPopUp: "exportShape", "the shape picker")
 
     let document = readout("exportDocument")
@@ -250,6 +250,23 @@ final class ExportSmokeTests: XCTestCase {
       XCTFail(
         "\(label) never became hittable (\(description)). Tree was:\n\(app.debugDescription)",
       )
+      return
+    }
+    button.click()
+  }
+
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified rather
+  /// than labelled — see `ToolSidebar`'s doc comment for why a label query would not
+  /// survive its collapsed, icon-only rail. The export source picker ("Ramp") is a
+  /// genuine radio button and still goes through `click(radioButton:_:)` above.
+  private func selectTool(_ title: String) {
+    let button = app.buttons["tool-\(title.lowercased())"]
+    guard button.waitForExistence(timeout: 15) else {
+      XCTFail("No sidebar button for \(title). Tree was:\n\(app.debugDescription)")
+      return
+    }
+    guard waitUntilHittable(button) else {
+      XCTFail("\(title) sidebar row never became hittable. Tree was:\n\(app.debugDescription)")
       return
     }
     button.click()

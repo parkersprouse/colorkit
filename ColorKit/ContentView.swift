@@ -16,86 +16,87 @@ struct ContentView: View {
   var body: some View {
     @Bindable var store = store
 
-    return VStack(spacing: 0) {
-      // Above the switcher deliberately: the input field belongs to no tool.
-      // Every tool is a different question asked about the same color, so moving
-      // it inside a tab would imply each one has a color of its own.
-      ColorInputField()
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-
-      // Also above the switcher, and for the identical reason — a recent belongs
-      // to no tool either. See `RecentsRow` for why it renders unconditionally
-      // once `showsRecents` is on, rather than only once something is in the list.
-      RecentsRow()
-
-      // In the window rather than the toolbar, which is where it used to live.
-      // `ToolbarItem(placement: .principal)` is *centered*, so its width budget is
-      // not what the toolbar has spare but `width - 2 × max(leading, trailing)` —
-      // and the window title alone spends that twice over. Six segments crossed
-      // the line and macOS swept the entire switcher into a "more toolbar items"
-      // overflow menu, taking every tool with it, at a window size well above the
-      // 520pt minimum. Raising the minimum would only have deferred it — M9 added a
-      // seventh segment, and all seven fit here.
-      //
-      // Text, not `Label`. A segmented control renders a `Label` icon-only and
-      // then hands VoiceOver the SF Symbol name — the picker literally announced
-      // "arrow.left.arrow.right" instead of "Convert". Two words are also plainer
-      // than two glyphs for a switcher nobody has seen before.
-      Picker("Tool", selection: $store.tool) {
-        ForEach(Tool.allCases) { tool in
-          Text(tool.title).tag(tool)
-        }
-      }
-      .pickerStyle(.segmented)
-      .labelsHidden()
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
+    return HStack(spacing: 0) {
+      // M36's replacement for the old segmented `Picker` above — see `ToolSidebar`
+      // for why it is a vertical, collapsible rail instead and for why it is a
+      // hand-rolled `HStack` rather than `NavigationSplitView`.
+      ToolSidebar()
 
       Divider()
 
-      switch store.tool {
-      case .convert:
-        if store.color != nil {
-          ConversionPanel()
-        } else {
-          ContentUnavailableView(
-            "No color yet",
-            systemImage: "eyedropper.halffull",
-            description: Text("Type a CSS color above and every other format appears here."),
-          )
+      VStack(spacing: 0) {
+        // M36: the settings that used to live only behind the toolbar's gear now
+        // get a wider stage when the window has room to spare. See
+        // `InlineSettingsBar` for why this sits in the body rather than back in
+        // `.toolbar`.
+        InlineSettingsBar()
+
+        // Above every tool panel deliberately: the input field belongs to no tool.
+        // Every tool is a different question asked about the same color, so moving
+        // it inside a tab would imply each one has a color of its own.
+        ColorInputField()
+          .padding(.horizontal, 16)
+          .padding(.top, 12)
+
+        // Also above every panel, and for the identical reason — a recent belongs
+        // to no tool either. See `RecentsRow` for why it renders unconditionally
+        // once `showsRecents` is on, rather than only once something is in the list.
+        RecentsRow()
+
+        Divider()
+
+        switch store.tool {
+        case .convert:
+          if store.color != nil {
+            ConversionPanel()
+          } else {
+            ContentUnavailableView(
+              "No color yet",
+              systemImage: "eyedropper.halffull",
+              description: Text("Type a CSS color above and every other format appears here."),
+            )
+          }
+        case .pick:
+          PickerPanel()
+        case .transform:
+          TransformPanel()
+        case .contrast:
+          ContrastPanel()
+        case .cvd:
+          CVDPanel()
+        case .projects:
+          ProjectsPanel()
+        case .export:
+          ExportPanel()
         }
-      case .pick:
-        PickerPanel()
-      case .transform:
-        TransformPanel()
-      case .contrast:
-        ContrastPanel()
-      case .cvd:
-        CVDPanel()
-      case .projects:
-        ProjectsPanel()
-      case .export:
-        ExportPanel()
       }
     }
-    .frame(minWidth: 520, minHeight: 460)
+    // The sidebar's own width varies with its collapse state, and the content
+    // column was tuned against the pre-M36 520pt minimum — so the window's floor
+    // has to track the sidebar rather than assume its widest (or narrowest) state.
+    // Without this, collapsing the sidebar would let the window shrink well below
+    // what the content column was ever designed to fit into.
+    .frame(
+      minWidth: sidebarWidth + 520,
+      minHeight: 460,
+    )
     // See `MenuBarLabel` — the shortcut is claimed from whichever scene appears
     // first, because neither scene is guaranteed to be on screen.
     .task { store.activateGlobalShortcut() }
-    .toolbar {
-      ToolbarItem {
-        OutputOptionsMenu()
-      }
-    }
   }
 
   // MARK: Private
 
   @Environment(ColorStore.self) private var store
+
+  private var sidebarWidth: CGFloat {
+    store.sidebarCollapsed ? ToolSidebar.Metrics.collapsedWidth : ToolSidebar.Metrics.expandedWidth
+  }
 }
 
-/// Serialization settings, tucked into the toolbar.
+/// Serialization settings, now reachable both from ``InlineSettingsBar`` (M36) and
+/// from this gear — see that file for why it moved out of `.toolbar` rather than
+/// picking up neighbors there.
 ///
 /// These change every row in the panel at once, which is why they live here rather
 /// than per-row: precision and legacy syntax are properties of how *you* write CSS,

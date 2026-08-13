@@ -39,7 +39,7 @@ final class PickerSmokeTests: XCTestCase {
   /// field does not hold.
   func testPanelReportsTheCurrentColorInBothModes() {
     setField("#3b82f6")
-    click(radioButton: "Pick", "the tool switcher")
+    selectTool("Pick")
 
     XCTAssertEqual(readout("readoutFirst"), "217.2°", "HSV hue")
     XCTAssertEqual(readout("readoutSecond"), "76.0%", "HSV saturation")
@@ -61,7 +61,7 @@ final class PickerSmokeTests: XCTestCase {
   /// widths. Here it should land past the drawn edge and say so.
   func testAWideColorIsReportedAsOutsideSRGB() {
     setField("oklch(0.7 0.3 140)")
-    click(radioButton: "Pick", "the tool switcher")
+    selectTool("Pick")
     click(radioButton: "OKLCH", "the axis switcher")
 
     XCTAssertEqual(readout("readoutSecond"), "0.3000", "chroma was not preserved")
@@ -80,7 +80,7 @@ final class PickerSmokeTests: XCTestCase {
   /// user did not choose.
   func testDraggingThePlaneWritesOKLCHToTheField() {
     setField("#3b82f6")
-    click(radioButton: "Pick", "the tool switcher")
+    selectTool("Pick")
     click(radioButton: "OKLCH", "the axis switcher")
 
     let plane = app.otherElements["pickerPlane"]
@@ -112,7 +112,7 @@ final class PickerSmokeTests: XCTestCase {
   /// (dedupe, the authored-text round trip) is `ColorStoreTests`'s job.
   func testReleasingTheDragFilesARecentWithoutTheOldDebounceDelay() {
     setField("#3b82f6")
-    click(radioButton: "Pick", "the tool switcher")
+    selectTool("Pick")
 
     let plane = app.otherElements["pickerPlane"]
     guard plane.waitForExistence(timeout: 15) else {
@@ -152,6 +152,22 @@ final class PickerSmokeTests: XCTestCase {
     }
     guard waitUntilHittable(button) else {
       XCTFail("\(label) never became hittable (\(description)). Tree was:\n\(app.debugDescription)")
+      return
+    }
+    button.click()
+  }
+
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified rather
+  /// than labelled — see `ToolSidebar`'s doc comment for why a label query would not
+  /// survive its collapsed, icon-only rail.
+  private func selectTool(_ title: String) {
+    let button = app.buttons["tool-\(title.lowercased())"]
+    guard button.waitForExistence(timeout: 15) else {
+      XCTFail("No sidebar button for \(title). Tree was:\n\(app.debugDescription)")
+      return
+    }
+    guard waitUntilHittable(button) else {
+      XCTFail("\(title) sidebar row never became hittable. Tree was:\n\(app.debugDescription)")
       return
     }
     button.click()

@@ -220,6 +220,7 @@ struct PreferencesTests {
     webFriendly: true,
     showsRecents: false,
     recentLimit: 25,
+    sidebarCollapsed: true,
     pickerMode: .oklch,
     cvdDeficiency: .protanomaly,
     exportShape: .tailwindConfig,

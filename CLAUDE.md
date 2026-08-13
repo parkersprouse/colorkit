@@ -169,6 +169,36 @@ nothing said about why, so `ExportShape.webFriendlyHiddenShapesNote(hidden:)` in
 than naming `p3WithFallback`/`designTokens` directly, unit-tested rather than covered by
 a new XCUITest, since nothing here drives the Settings window (see `ShortcutRecorderField`
 below).
+**M36 is done too**: the top-of-window tool switcher (a `Picker(.segmented)`, in place
+since M9) is now `ToolSidebar` — a collapsible vertical rail on the left, modeled on the
+Claude Code desktop app's own sidebar, with the seven-tool ceiling that segmented control
+was documented against (see the tool-switcher invariant below) no longer a live
+constraint. A hand-rolled `HStack` in `ContentView`, not `NavigationSplitView` — see the
+M36 entry in PLAN.md for why. Every row is a real `Button`, identified by
+`"tool-\(rawValue)"` rather than queried by label, because the collapsed rail is
+icon-only and has no `Text` for a query to match; `Tool.title` still supplies the
+accessibility label so VoiceOver announces "Convert" rather than an SF Symbol name on
+either row shape. Collapse state is `ColorStore.sidebarCollapsed`, a `Preferences` field
+like `showsRecents` — collapsing it every launch would defeat the point of collapsing it
+at all. **`InlineSettingsBar` moved alongside it, and for a related reason**: the ask was
+to put a few `formatOptions`/`webFriendly` controls beside the existing gear menu, and
+the gear menu was living in `.toolbar` — exactly the placement whose width budget
+(`windowWidth − 2 × max(leading, trailing)`, not "whatever's spare") already broke once,
+sweeping the old switcher into a "more toolbar items" overflow at M9. Both the gear menu
+and the new controls sit in the window body now, in a `ViewThatFits` that steps down from
+[toggle + precision + gamut + spacer + menu] to [toggle + spacer + menu] to [menu alone]
+rather than ever overflowing into a menu the new controls were supposed to supplement.
+Each inline control is a third surface onto bindings `OutputOptionsMenu` and
+`SettingsView` already expose — not a new setting, the same precedent
+`SettingsView`'s own doc comment already states. The sidebar eating into the window's
+width budget meant `ContentView`'s `minWidth` could no longer be the flat `520` it was —
+it is now `520 + sidebarWidth`, tracking the sidebar's own collapse state so a collapsed
+rail doesn't let the window shrink to a size the content column was never tuned against;
+`ColorKitApp`'s `defaultSize` grew by the sidebar's expanded width for the same reason.
+See the M36 entry in PLAN.md for the accessibility-element-kind question this raised
+(verified empirically, not assumed) and for the two decisions settled with Parker before
+building — icon rail over fully-hidden on collapse, and the gear menu moving out of
+`.toolbar` rather than gaining neighbors there.
 
 **[PLAN.md](PLAN.md) is the source of truth** for milestone status, what is deferred
 and why, and the reasoning behind every decision recorded below. This file is the

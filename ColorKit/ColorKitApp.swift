@@ -40,7 +40,12 @@ struct ColorKitApp: App {
           PreferenceStore.save(updated)
         }
     }
-    .defaultSize(width: 620, height: 700)
+    // 620 was tuned against the pre-M36 content column alone; the expanded sidebar
+    // (`ToolSidebar.Metrics.expandedWidth`, 176pt) plus its divider is added on top so
+    // the content column still opens at roughly its old width instead of the sidebar
+    // eating into room panels were designed against. Height is unchanged — the
+    // sidebar adds no vertical cost.
+    .defaultSize(width: 620 + 176 + 1, height: 700)
     .modelContainer(persistence.container)
 
     MenuBarExtra {

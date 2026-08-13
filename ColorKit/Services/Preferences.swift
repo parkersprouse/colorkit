@@ -27,6 +27,11 @@ nonisolated struct Preferences: Codable, Equatable, Sendable {
   var webFriendly = false
   var showsRecents = true
   var recentLimit = 12
+  /// Whether M36's sidebar shows full rows or the icon-only rail. A preference like
+  /// ``showsRecents``, not session state — the whole reason it collapses at all is to
+  /// stay out of the way once you already know where the tools are, and losing that
+  /// choice every launch would defeat the point.
+  var sidebarCollapsed = false
   var pickerMode: PickerMode = .hsv
   var cvdDeficiency: ColorVisionDeficiency = .deuteranomaly
   var exportShape: ExportShape = .customProperties
@@ -47,6 +52,7 @@ nonisolated struct Preferences: Codable, Equatable, Sendable {
     case webFriendly
     case showsRecents
     case recentLimit
+    case sidebarCollapsed
     case pickerMode
     case cvdDeficiency
     case exportShape

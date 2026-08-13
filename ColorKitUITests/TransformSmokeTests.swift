@@ -50,7 +50,7 @@ final class TransformSmokeTests: XCTestCase {
   /// distinctness check would fail rather than quietly pass.
   func testTriadIsThreeDistinctColorsAndAdoptingOneChangesTheField() {
     setField("#3b82f6")
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
     capture("transform-panel")
 
     let base = swatchLabel("transformHarmony-0")
@@ -83,7 +83,7 @@ final class TransformSmokeTests: XCTestCase {
   /// ignored the sliders entirely would show exactly the same thing.
   func testAdjustReadoutTracksTheSliders() {
     setField("#3b82f6")
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
 
     let unchanged = readout("transformAdjusted")
     XCTAssertFalse(unchanged.isEmpty, "The adjusted readout is empty")
@@ -112,7 +112,7 @@ final class TransformSmokeTests: XCTestCase {
   /// The ramp is eleven stops by default and the middle one is the user's own color.
   func testRampMarksTheBaseInTheMiddle() {
     setField("#3b82f6")
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
 
     let middle = swatchLabel("transformRamp-5")
     let lightEnd = swatchLabel("transformRamp-0")
@@ -134,7 +134,7 @@ final class TransformSmokeTests: XCTestCase {
   /// swatches carrying the same label and still look like a gradient in a screenshot.
   func testMixStripSpansThePairAndAdoptingAStopChangesTheField() {
     setField("#3b82f6")
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
 
     let start = swatchLabel("transformMix-0")
     let middle = swatchLabel("transformMix-2")
@@ -162,7 +162,7 @@ final class TransformSmokeTests: XCTestCase {
   /// lighter than white.
   func testSolverOffersAWayOutOfAFailingPair() {
     setField("#3b82f6")
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
 
     XCTAssertTrue(
       readout("transformCurrentRatio").contains("3.68"),
@@ -196,7 +196,7 @@ final class TransformSmokeTests: XCTestCase {
   /// sign means opposite things in the two polarities.
   func testPushingRaisesTheLiveRatio() {
     setField("#3b82f6")
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
 
     XCTAssertTrue(
       readout("transformCurrentRatio").contains("3.68"),
@@ -253,7 +253,7 @@ final class TransformSmokeTests: XCTestCase {
   func testAMidToneBackgroundOffersBothDirections() {
     setField("#3b82f6")
 
-    click(radioButton: "Contrast", "the tool switcher")
+    selectTool("Contrast")
     let background = app.textFields["backgroundInput"]
     guard background.waitForExistence(timeout: 15) else {
       XCTFail("No backgroundInput field. Tree was:\n\(app.debugDescription)")
@@ -263,7 +263,7 @@ final class TransformSmokeTests: XCTestCase {
     background.typeKey("a", modifierFlags: .command)
     background.typeText("#757575")
 
-    click(radioButton: "Transform", "the tool switcher")
+    selectTool("Transform")
 
     let lighter = app.buttons["transformSolution-lighter"]
     let darker = app.buttons["transformSolution-darker"]
@@ -285,21 +285,13 @@ final class TransformSmokeTests: XCTestCase {
   /// One named query, and the tree on failure — never a fallback chain. Hittability
   /// rather than existence, because switching tools resizes the window under a click
   /// already in flight.
-  private func click(radioButton label: String, _ description: String) {
-    let button = app.radioButtons[label]
-    guard button.waitForExistence(timeout: 15) else {
-      XCTFail(
-        "No radio button labelled \(label) (\(description)). Tree was:\n\(app.debugDescription)",
-      )
-      return
-    }
-    guard waitUntilHittable(button) else {
-      XCTFail(
-        "\(label) never became hittable (\(description)). Tree was:\n\(app.debugDescription)",
-      )
-      return
-    }
-    button.click()
+  ///
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified rather
+  /// than labelled — see `ToolSidebar`'s doc comment for why a label query would not
+  /// survive its collapsed, icon-only rail. Built on `click(button:_:)` below, which
+  /// is why there is no separate `click(radioButton:)` left in this file.
+  private func selectTool(_ title: String) {
+    click(button: "tool-\(title.lowercased())", "the tool switcher")
   }
 
   private func click(button identifier: String, _ description: String) {

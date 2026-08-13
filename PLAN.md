@@ -4325,6 +4325,132 @@ parameter; and the intro paragraph's "six document shapes" becomes seven.
   `ColorKitCLITests/CommandTests.swift` (unchanged, but its shape-name round trip now
   covers the new row for free). `README.md`'s Export table and Import bullets.
 
+## M36 – a collapsible sidebar and inline settings
+
+**Built.** Not on the original numbered plan — a redesign request, prompted by Parker
+wanting the tool switcher to scale past its documented seven-tool ceiling (see the
+tool-switcher invariant in CLAUDE.md) without repeating the M9 toolbar-overflow bug, and
+by wanting a few `formatOptions`/`webFriendly` controls reachable without opening the
+gear menu. Two things, landed together because the second reshapes where the first one's
+neighbor (the gear menu) lives:
+
+1. `ToolSidebar` — a vertical, collapsible rail replacing the top-of-window
+   `Picker(.segmented)`, modeled on the Claude Code desktop app's own sidebar.
+2. `InlineSettingsBar` — a body-level strip carrying a web-friendly toggle, a precision
+   picker and a gamut picker, plus `OutputOptionsMenu` moved out of `.toolbar` to sit
+   beside them.
+
+**Two decisions were asked of Parker before building, both settled with the recommended
+option:**
+
+1. **Collapsed state is an icon rail, not fully hidden.** The stated goal was never
+   running out of room for tools, and hiding the sidebar on collapse would trade one
+   space problem for a worse one — no way to switch tools at all without expanding it
+   again. `Tool.systemImage` exists for this state specifically; see below for why its
+   accessibility label still has to carry the real work.
+2. **The gear menu moves into the new body-level strip, rather than gaining inline
+   neighbors while staying in `.toolbar`.** `.toolbar`'s `ToolbarItem(placement:
+   .principal)` collapses a wide switcher into a "more toolbar items" overflow at a
+   width that looked like plenty of room — that is exactly what forced the *old*
+   switcher into the window body at M9 — and doing the same thing to three more controls
+   risked repeating it. Here the cost would have been worse than in M9: an overflowed
+   gear menu would have hidden the only way to reach every other output setting, not
+   just a convenience duplicate of one.
+
+### Why a hand-rolled `HStack`, not `NavigationSplitView`
+
+`NavigationSplitView` is the obvious API for "sidebar plus content" and was rejected
+anyway. It wants to own the window's toolbar and renders a native sidebar `List`, and
+this app already has one toolbar-shaped bug on file (the M9 overflow above) traced by
+reading exactly how a specific SwiftUI container computes its own width budget — a
+second, less-inspectable layout container is the wrong tool to risk repeating that with.
+`ToolSidebar` is a plain `VStack` of `Button`s inside `ContentView`'s top-level `HStack`,
+sized by two named constants (`ToolSidebar.Metrics.collapsedWidth`/`expandedWidth`) that
+`ContentView` also reads to compute its own `minWidth` — see below.
+
+### The accessibility-element-kind question was measured, not assumed
+
+Every XCUITest that switches tools drove the old switcher through
+`app.radioButtons[label]`, because a SwiftUI `Picker(.segmented)` exposes each segment as
+a radio button. A sidebar row is not a segmented control, and guessing what AppKit
+exposes it as (`buttons`, `cells`, and `outlineRows` were all plausible going in) would
+have meant writing a query and hoping. Instead: `ToolSidebar`'s rows were built as plain
+`Button`s first, one affected UI test (`CVDSmokeTests`) was run against them, and the
+failure's own `app.debugDescription` dump named the actual answer —
+`Button, …, identifier: 'tool-cvd', label: 'CVD'`. Rows are real `Button`s, queried by
+`app.buttons["tool-\(rawValue)"]`, confirmed rather than assumed.
+
+That also settled how to query a collapsed, icon-only row: by identifier, not by label.
+`.accessibilityIdentifier("tool-\(rawValue)")` stays constant across the collapse
+transition; `Tool.title` is supplied separately as `.accessibilityLabel` so VoiceOver
+still announces "Convert" on either row shape rather than an SF Symbol name — the same
+failure mode the segmented switcher's own `title` doc comment already warns about
+(M9: `Text`, not `Label`, because a segmented control renders a `Label` icon-only and
+hands VoiceOver the SF Symbol name instead).
+
+### Fixing the tests: mechanically separable from other radio-button uses
+
+Every `ColorKitUITests` file that switches tools had a private `click(radioButton:_:)`
+helper querying `app.radioButtons[label]`, and in several files (`PickerSmokeTests`'s
+HSV/OKLCH axis switcher, `ExportSmokeTests`'s "Ramp" export-source picker) the *same*
+helper is also used for a genuine radio button that has nothing to do with the sidebar.
+Rewriting the helper body itself would have broken those call sites, so the fix was
+call-site-scoped instead: every `click(radioButton: "X", "the tool switcher")` became
+`selectTool("X")`, a small per-file helper querying `app.buttons["tool-\(title
+.lowercased())"]`, built on whatever button-click helper the file already had
+(`click(button:_:)` in `CVDSmokeTests`/`TransformSmokeTests`, `clickButton(_:_:)` in
+`ProjectsSmokeTests`) or written standalone where none existed
+(`PickerSmokeTests`/`ExportSmokeTests`). Six files needed the swap; three of them
+(`CompactPickerSmokeTests`, `TransformSmokeTests`, `ProjectsSmokeTests`) had every one of
+their `click(radioButton:_:)` call sites be tool-switcher-only, so that helper became
+fully dead and was replaced outright rather than left beside its unused former self.
+Two more files queried `app.radioButtons["Contrast"]`/`["Transform"]` directly, inline,
+with no shared helper at all (`ContrastSmokeTests.showContrastPanel()`,
+`WebFriendlyModeSmokeTests`'s two tests) — both updated the same way. All twelve affected
+UI test files build and were run; see the commit for the pass/fail tally.
+
+### The width budget, and what tracks it
+
+`ContentView`'s `minWidth` was a flat `520` before this, tuned against the content
+column alone. The sidebar now sits to its left, so a flat `520` would have let the window
+shrink to a size the content column was never designed to fit into — every panel's own
+internal layout assumptions (Transform's harmony row, Export's format grid) are
+unchanged and still want that much room. `minWidth` is now `sidebarWidth + 520`, where
+`sidebarWidth` reads `store.sidebarCollapsed` and picks
+`ToolSidebar.Metrics.collapsedWidth` (52) or `.expandedWidth` (176) — so the window's
+floor tracks whichever state the sidebar is actually in, rather than assuming its widest
+or narrowest case. `ColorKitApp`'s `.defaultSize` grew by the same `176` (plus a 1pt
+divider) for the parallel reason: `620` was tuned against the content column opening at
+a comfortable width, and the sidebar now sits in front of it.
+
+### What `InlineSettingsBar` duplicates, and why that is not new
+
+The web-friendly toggle, precision picker and gamut picker each already exist in
+`OutputOptionsMenu` (precision, gamut) or as a direct `ColorStore.webFriendly` binding
+(the toggle, from `SettingsView`). `InlineSettingsBar` binds to the identical properties
+rather than introducing parallel state — a third surface onto bindings that already had
+two, the same precedent `SettingsView`'s own doc comment states for why it duplicates
+`OutputOptionsMenu`'s seven controls rather than replacing them. `ViewThatFits` picks the
+widest of three tiers (toggle + precision + gamut + menu → toggle + menu → menu alone)
+without a measured breakpoint, the same reason it is used elsewhere in this app instead
+of a `GeometryReader`.
+
+### Files touched
+
+- **ColorKit/Features/Shell** – `ColorStore.swift` (`Tool.systemImage`,
+  `sidebarCollapsed`), `ToolSidebar.swift` (new), `InlineSettingsBar.swift` (new).
+- **ColorKit/Services** – `Preferences.swift` (`sidebarCollapsed` field and
+  `CodingKeys` entry).
+- **ColorKit** – `ContentView.swift` (the `HStack` restructure, `minWidth`, the old
+  segmented `Picker` and `.toolbar` item removed), `ColorKitApp.swift` (`.defaultSize`).
+- **ColorKitTests** – `PreferencesTests.swift` (`sidebarCollapsed` added to the
+  `nonDefault` fixture).
+- **ColorKitUITests** – `CVDSmokeTests.swift`, `PickerSmokeTests.swift`,
+  `CompactPickerSmokeTests.swift`, `ExportSmokeTests.swift`, `TransformSmokeTests.swift`,
+  `ProjectsSmokeTests.swift` (the `selectTool` helper and call-site swap),
+  `ContrastSmokeTests.swift`, `WebFriendlyModeSmokeTests.swift` (inline
+  `radioButtons[...]` queries swapped for `buttons["tool-…"]`).
+
 ## Verification
 
 **A feature reached through a system loupe or a global chord has links no test can touch**, and they fail independently – so check them separately rather than as one gesture. For M4 that was: (1) does the menu bar show the chord, proving the OS accepted the registration and a scene's `.task` fired; (2) does the chord raise the loupe from *another* app, proving the key is captured and the C callback reaches the main actor; (3) does the picked color reach the field and the clipboard, proving the sandbox and the bridge. All three passed. Everything either side of them is covered by [ScreenSamplerTests](ColorKitTests/ScreenSamplerTests.swift) and [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift).

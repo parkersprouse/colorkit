@@ -140,8 +140,8 @@ enum Tool: String, CaseIterable, Identifiable, Sendable {
     rawValue
   }
 
-  /// Also the accessibility label, because the switcher shows text rather than
-  /// icons — see the note in `ContentView`.
+  /// Also the accessibility label for a collapsed, icon-only sidebar row (M36) — see
+  /// `ToolSidebar`. Expanded rows show this text right beside their icon regardless.
   var title: String {
     switch self {
     case .convert: "Convert"
@@ -151,6 +151,21 @@ enum Tool: String, CaseIterable, Identifiable, Sendable {
     case .cvd: "CVD"
     case .projects: "Projects"
     case .export: "Export"
+    }
+  }
+
+  /// M36's sidebar row icon. Picked for recognizability over cleverness — a collapsed
+  /// rail has nothing but this to go on, so an icon that requires the label to explain
+  /// it has already failed the collapsed case it exists for.
+  var systemImage: String {
+    switch self {
+    case .convert: "arrow.left.arrow.right"
+    case .pick: "eyedropper"
+    case .transform: "wand.and.stars"
+    case .contrast: "circle.lefthalf.filled"
+    case .cvd: "eye.trianglebadge.exclamationmark"
+    case .projects: "folder"
+    case .export: "square.and.arrow.up"
     }
   }
 }
@@ -265,6 +280,11 @@ final class ColorStore {
   /// Whether the recents row is shown. Off is a legitimate preference for someone who
   /// never uses it, not a way to clear the list — ``recents`` keeps filling either way.
   var showsRecents = true
+
+  /// Whether ``ToolSidebar`` (M36) shows full rows or the icon-only rail. A plain
+  /// stored `var`, unlike ``webFriendly`` — collapsing the sidebar has nothing
+  /// downstream to reconcile, so there is no `didSet` to write.
+  var sidebarCollapsed = false
 
   /// Which project the Projects panel is showing.
   ///
@@ -399,6 +419,7 @@ final class ColorStore {
         webFriendly: webFriendly,
         showsRecents: showsRecents,
         recentLimit: recentLimit,
+        sidebarCollapsed: sidebarCollapsed,
         pickerMode: pickerMode,
         cvdDeficiency: cvdDeficiency,
         exportShape: exportOptions.shape,
@@ -419,6 +440,7 @@ final class ColorStore {
       // panel's own Stepper already restricts to `1...50`; this is the boundary where
       // a value that did *not* come from that Stepper becomes trusted.
       recentLimit = max(1, newValue.recentLimit)
+      sidebarCollapsed = newValue.sidebarCollapsed
       pickerMode = newValue.pickerMode
       cvdDeficiency = newValue.cvdDeficiency
       exportOptions.shape = newValue.exportShape

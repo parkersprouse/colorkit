@@ -42,7 +42,7 @@ final class CVDSmokeTests: XCTestCase {
   /// the swatches but forgot to pass the selection through would pass neither check.
   func testSimulatingRedChangesItAndTracksTheDeficiency() {
     setField("#ff0000")
-    click(radioButton: "CVD", "the tool switcher")
+    selectTool("CVD")
 
     XCTAssertTrue(readout("cvdSeverity").contains("100%"), "Severity should start at full")
 
@@ -70,7 +70,7 @@ final class CVDSmokeTests: XCTestCase {
   /// `SwatchButton`'s adopt path rather than doing nothing.
   func testClickingTheSimulatedSwatchAdoptsIt() {
     setField("#ff0000")
-    click(radioButton: "CVD", "the tool switcher")
+    selectTool("CVD")
 
     click(button: "cvdSimulatedSwatch", "the simulated swatch")
 
@@ -114,6 +114,13 @@ final class CVDSmokeTests: XCTestCase {
       return
     }
     button.click()
+  }
+
+  /// M36: the tool switcher moved into a sidebar of real `Button`s, identified rather
+  /// than labelled — see `ToolSidebar`'s doc comment for why a label query would not
+  /// survive its collapsed, icon-only rail.
+  private func selectTool(_ title: String) {
+    click(button: "tool-\(title.lowercased())", "the tool switcher")
   }
 
   private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval = 15) -> Bool {

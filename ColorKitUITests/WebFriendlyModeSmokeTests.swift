@@ -50,7 +50,7 @@ final class WebFriendlyModeSmokeTests: XCTestCase {
     field.typeKey("a", modifierFlags: .command)
     field.typeText("oklch(0.65 0.2 30)")
 
-    let transform = app.radioButtons["Transform"]
+    let transform = app.buttons["tool-transform"]
     XCTAssertTrue(transform.waitForExistence(timeout: 15))
     transform.click()
 
@@ -93,7 +93,7 @@ final class WebFriendlyModeSmokeTests: XCTestCase {
     field.typeKey("a", modifierFlags: .command)
     field.typeText("#3b82f6\n")
 
-    let transform = app.radioButtons["Transform"]
+    let transform = app.buttons["tool-transform"]
     XCTAssertTrue(transform.waitForExistence(timeout: 15))
     transform.click()
 
