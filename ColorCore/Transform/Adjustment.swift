@@ -99,6 +99,8 @@ nonisolated extension ColorValue {
 ///   and would double a muted one. Halving is meaningful everywhere.
 /// - **Hue adds**, in degrees, and wraps. It is an angle.
 nonisolated struct OKLCHAdjustment: Sendable, Equatable {
+  // MARK: Internal
+
   static let identity = OKLCHAdjustment()
 
   /// The Lightness slider's fixed, color-independent track: `-1` always means "as far
@@ -119,6 +121,19 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   /// fixed range of *fractions* whose two halves scale against different amounts of
   /// room, not a differently-computed range of deltas.
   static let lightnessFractionRange: ClosedRange<Double> = -1 ... 1
+
+  /// The Chroma slider's fixed, color-independent track, the exact counterpart of
+  /// ``lightnessFractionRange``: `-1` is always `×0` (fully gray), `0` is always the
+  /// identity scale (`×1`), and `+1` is always as saturated as this color can get.
+  ///
+  /// This replaced a `chromaScaleRange` that reported a range of *scales* mirrored
+  /// about `×1`, and it went for the reason lightness's mirrored range went. Mirroring
+  /// caps the more open side down to match the tighter one, and under web-friendly
+  /// mode the ceiling is often very tight: measured for `#3b82f6`, the mirrored range
+  /// came back `×0.917 ... ×1.083`, so the slider could not reach `×0` at all. Fully
+  /// gray is a real destination, not the last sliver of an arbitrary interval, and
+  /// stranding it is the same bug that retired lightness's version.
+  static let chromaFractionRange: ClosedRange<Double> = -1 ... 1
 
   /// Added to lightness, on the `0...1` scale.
   var lightnessDelta: Double = 0
@@ -189,19 +204,6 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     guard room > 0 else { return 0 }
     return min(max(delta / room, lightnessFractionRange.lowerBound), lightnessFractionRange.upperBound)
   }
-
-  /// The Chroma slider's fixed, color-independent track, the exact counterpart of
-  /// ``lightnessFractionRange``: `-1` is always `×0` (fully gray), `0` is always the
-  /// identity scale (`×1`), and `+1` is always as saturated as this color can get.
-  ///
-  /// This replaced a `chromaScaleRange` that reported a range of *scales* mirrored
-  /// about `×1`, and it went for the reason lightness's mirrored range went. Mirroring
-  /// caps the more open side down to match the tighter one, and under web-friendly
-  /// mode the ceiling is often very tight: measured for `#3b82f6`, the mirrored range
-  /// came back `×0.917 ... ×1.083`, so the slider could not reach `×0` at all. Fully
-  /// gray is a real destination, not the last sliver of an arbitrary interval, and
-  /// stranding it is the same bug that retired lightness's version.
-  static let chromaFractionRange: ClosedRange<Double> = -1 ... 1
 
   /// Converts a position on ``chromaFractionRange`` to the ``chromaScale`` it stands
   /// for, given how much room `color` has left inside `gamut`.
@@ -276,6 +278,21 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     return min((scale - 1) / upRoom, chromaFractionRange.upperBound)
   }
 
+  /// Applies this nudge, in OKLCH.
+  ///
+  /// Lightness is clamped to `0...1` because it has real endpoints — nothing is
+  /// darker than black — while chroma and hue are left unbounded, since a result
+  /// outside the sRGB gamut is a legitimate answer this app is built to carry.
+  func applied(to color: ColorValue) -> ColorValue {
+    var components = color.oklchComponents
+    components.lightness = min(max(components.lightness + lightnessDelta, 0), 1)
+    components.chroma = max(components.chroma * chromaScale, 0)
+    components.hue = Conversion.constrainAngle(components.hue + hueRotation)
+    return color.derivedOKLCH(components)
+  }
+
+  // MARK: Private
+
   /// How much *more* than `×1` the increase half of the chroma track is worth — the
   /// one place the ceiling is derived, so the two conversions above cannot come to
   /// disagree about where the right end of the slider is.
@@ -292,18 +309,5 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     let components = color.oklchComponents
     let boundary = GamutBoundary.maxChroma(lightness: components.lightness, hue: components.hue, in: gamut)
     return min(headroom, max(0, boundary / components.chroma - 1))
-  }
-
-  /// Applies this nudge, in OKLCH.
-  ///
-  /// Lightness is clamped to `0...1` because it has real endpoints — nothing is
-  /// darker than black — while chroma and hue are left unbounded, since a result
-  /// outside the sRGB gamut is a legitimate answer this app is built to carry.
-  func applied(to color: ColorValue) -> ColorValue {
-    var components = color.oklchComponents
-    components.lightness = min(max(components.lightness + lightnessDelta, 0), 1)
-    components.chroma = max(components.chroma * chromaScale, 0)
-    components.hue = Conversion.constrainAngle(components.hue + hueRotation)
-    return color.derivedOKLCH(components)
   }
 }
