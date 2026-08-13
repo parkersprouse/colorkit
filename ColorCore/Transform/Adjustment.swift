@@ -172,8 +172,10 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   /// straight back to the center rather than letting it settle partway down the track.
   static func lightnessDelta(atFraction fraction: Double, for color: ColorValue) -> Double {
     let lightness = color.oklchComponents.lightness
+    let downRoom = lightness
+    let upRoom = 1 - lightness
     let clamped = min(max(fraction, lightnessFractionRange.lowerBound), lightnessFractionRange.upperBound)
-    return clamped < 0 ? clamped * lightness : clamped * (1 - lightness)
+    return clamped < 0 ? clamped * downRoom : clamped * upRoom
   }
 
   /// The inverse of ``lightnessDelta(atFraction:for:)`` — where a given delta
@@ -183,7 +185,7 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   static func lightnessFraction(forDelta delta: Double, for color: ColorValue) -> Double {
     guard delta != 0 else { return 0 }
     let lightness = color.oklchComponents.lightness
-    let room = delta < 0 ? lightness : 1 - lightness
+    let room = delta < 0 ? lightness : 1 - lightness // downRoom / upRoom, as above
     guard room > 0 else { return 0 }
     return min(max(delta / room, lightnessFractionRange.lowerBound), lightnessFractionRange.upperBound)
   }
@@ -204,15 +206,21 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   /// cover. That is treated as the fixed quantity to mirror the increase side
   /// against: the real wall, when increasing finds one, gives way to match it.
   ///
-  /// **Lightness no longer works this way** — see ``lightnessFractionRange`` — because
-  /// lightness has a real wall on *both* sides (black and white), so mirroring one
-  /// range against the other necessarily strands whichever side has more room, which
-  /// was a real, reported bug. Chroma's reduce side has no such wall to strand: giving
-  /// it up to match the increase side loses nothing but the last bit of `extent`, the
-  /// same trade ``LightnessCurve`` already makes by fixing its own pivot at `0.5`
-  /// rather than leaving it configurable. If chroma ever grows a real wall on the
-  /// reduce side too, it should take the same fraction-based shape lightness now
-  /// does, not keep mirroring a range that no longer fits either side honestly.
+  /// **Lightness no longer works this way** — see ``lightnessFractionRange`` — and
+  /// this range has the same stranding lightness's did, left in deliberately rather
+  /// than defended. Mirroring the reduce side down to match a narrow ceiling costs
+  /// real reach: measured for `#3b82f6` under web-friendly mode, the range comes back
+  /// `×0.917 ... ×1.083`, so the slider cannot reach `×0` — the user cannot fully
+  /// desaturate their own color even though nothing in the gamut stops them. `×0` is
+  /// a real destination (fully gray), not the last sliver of an arbitrary `extent`,
+  /// which is exactly the argument that retired lightness's mirrored range.
+  ///
+  /// The fix is the same shape lightness now uses — a fraction track whose `-1` is
+  /// `×0` and whose `+1` is the gamut ceiling, two halves scaling independently — and
+  /// it is deferred rather than folded in here, because the reported bug was about
+  /// Lightness and this changes what a second slider means. Do not read the paragraph
+  /// above as a case for keeping the mirroring; it explains the shape, it does not
+  /// justify the reach it costs.
   ///
   /// Derived from `color`'s own lightness and hue, **not** the pending adjustment's —
   /// reading the adjusted lightness or hue instead would make dragging the Lightness

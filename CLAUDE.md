@@ -999,6 +999,26 @@ Layered so the numeric core stays independently testable and UI-free:
   quantizes onto the 8-bit grid, so a sub-1/255 nudge returns the original; and results
   that leave sRGB have no honest spelling in a bounded format. `TransformPanel` therefore
   adopts with `preferring: .oklch`.
+- **The Adjust panel's Lightness and Chroma sliders bind two different kinds of value,
+  and unifying them reintroduces a fixed bug (M35 and its two follow-ups).** Lightness
+  binds a *normalized fraction* — a fixed, color-independent `-1 ... 1`
+  (`OKLCHAdjustment.lightnessFractionRange`) converted through
+  `lightnessDelta(atFraction:for:)` / `lightnessFraction(forDelta:for:)`, whose two
+  halves scale independently against the room the base color has to black and to
+  white. Chroma binds *real units*, a `chromaScaleRange` mirrored about `×1`. They
+  look like one control implemented two ways and they are not. Lightness has a real
+  wall on **both** sides, so a single mirrored range of deltas can put the identity
+  value at the track's center or pin both ends to the walls, but not both at once
+  except at `L = 0.5` — mirroring stranded the more open side, which is the reported
+  bug (at `L = 0.9` the dark end stopped at `0.8` with `0.9` of room to black unused).
+  A fraction track buys both, at the cost of the two halves moving in different-sized
+  steps, which is the trade that was asked for. **Chroma still has the same stranding**
+  under web-friendly mode — measured `×0.917 ... ×1.083` for `#3b82f6`, so `×0` is
+  unreachable — and that is deferred, not defended; see the doc comment on
+  `chromaScaleRange`, which says so rather than arguing the reach does not matter.
+  Giving chroma the same fraction treatment (`-1` = `×0`, `+1` = the gamut ceiling) is
+  the fix if it is ever wanted; re-mirroring lightness to "match" chroma is the wrong
+  direction.
 - **Never bisect the contrast ratio — it is a V, not a monotone curve.** Against a
   mid-tone background contrast falls to 1:1 as the color crosses the background's
   luminance and rises again, so a target has two crossings and bisection lands on

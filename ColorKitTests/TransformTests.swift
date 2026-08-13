@@ -684,3 +684,4 @@ struct ShadeRampTests {
     }
   }
 }
+
