@@ -26,6 +26,14 @@ import SwiftUI
 struct ToolSidebar: View {
   // MARK: Internal
 
+  /// Not `private` — `ContentView` reads both widths to size the window's own
+  /// `minWidth` against whichever one is currently showing, so the content column
+  /// keeps the same effective width the sidebar's collapse state left it before.
+  enum Metrics {
+    static let collapsedWidth: CGFloat = 52
+    static let expandedWidth: CGFloat = 176
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
       collapseToggle
@@ -42,14 +50,6 @@ struct ToolSidebar: View {
     .frame(width: store.sidebarCollapsed ? Metrics.collapsedWidth : Metrics.expandedWidth)
     .frame(maxHeight: .infinity, alignment: .top)
     .animation(.easeInOut(duration: 0.16), value: store.sidebarCollapsed)
-  }
-
-  /// Not `private` — `ContentView` reads both widths to size the window's own
-  /// `minWidth` against whichever one is currently showing, so the content column
-  /// keeps the same effective width the sidebar's collapse state left it before.
-  enum Metrics {
-    static let collapsedWidth: CGFloat = 52
-    static let expandedWidth: CGFloat = 176
   }
 
   // MARK: Private
