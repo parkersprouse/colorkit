@@ -130,65 +130,89 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
     )
   }
 
-  /// How far ``lightnessDelta`` can move `color` before ``applied(to:)``'s own
-  /// `0...1` clamp swallows the rest — expressed as a range **mirrored about the
-  /// identity delta (`0`)**, so a linear slider's own visual center always means "no
-  /// change" and its two ends read as equally far from it.
+  /// The Lightness slider's fixed, color-independent track: `-1` always means "as far
+  /// down as `color` can go," `0` is always the identity delta (no change), and `+1`
+  /// always means "as far up as `color` can go." Pass this as a `Slider`'s own
+  /// `in:` range and convert its value through ``lightnessDelta(atFraction:for:)`` /
+  /// ``lightnessFraction(forDelta:for:)``.
   ///
-  /// A first version of this took the fixed extent on whichever side had more room
-  /// and the gamut wall on whichever side had less, independently per side — which
-  /// is a coherent range but an incoherent *pair*: which kind of constraint wins
-  /// flips depending on `color`'s own lightness, so the two ends disagree about what
-  /// "as far as this goes" even means. Capping the more open side down to match the
-  /// tighter one costs some of the fixed extent, but the extent was never a fact
-  /// about anything — it is a UI choice about how much travel one drag should cover,
-  /// the same choice ``LightnessCurve`` already makes by fixing its own pivot at
-  /// `0.5` rather than leaving it configurable, for the identical reason: exact
-  /// symmetry is worth more than the last bit of reach.
+  /// This replaced a version that reported a *range of deltas* (`lightnessDeltaRange`)
+  /// mirrored about `0` so a linear slider's center would land on the identity value —
+  /// which worked, but only by capping the more open side down to match whichever side
+  /// had less room. At `L = 0.9`, the wall above sits `0.1` away and the fixed extent
+  /// below allowed `0.5`; mirroring took the tighter `0.1` for *both* sides, so the
+  /// slider's dark end stopped at `0.8` with `0.9` of real room to black sitting
+  /// unused — the bug this shape exists to fix. A single linear scale cannot put the
+  /// identity value at its center *and* pin both ends to the true walls unless
+  /// `L = 0.5` exactly, so there is no range of deltas that does both; the fix is a
+  /// fixed range of *fractions* whose two halves scale against different amounts of
+  /// room, not a differently-computed range of deltas.
+  static let lightnessFractionRange: ClosedRange<Double> = -1 ... 1
+
+  /// Converts a position on ``lightnessFractionRange`` to the delta it stands for,
+  /// given `color`'s own lightness.
   ///
-  /// **Not mode-dependent.** The clamp inside `applied(to:)` runs whether or not
-  /// web-friendly mode is on — nothing is darker than black or lighter than white in
-  /// either case — so a slider whose travel reached past it would have the identical
-  /// dead zone with the mode off.
+  /// The two halves of the track scale independently against whatever room
+  /// `applied(to:)`'s `0...1` clamp actually leaves on that side — `downRoom` is
+  /// `color`'s own lightness (the distance to black), `upRoom` is `1` minus it (the
+  /// distance to white) — which is why the same drag distance moves the color by a
+  /// different amount depending on which half of the track it is in. That is the
+  /// point: it is what lets `-1` and `+1` mean "true black" and "true white" for
+  /// every base color rather than only the one where the two rooms happen to match.
   ///
-  /// A base already at black or white leaves one side with *no* room at all rather
-  /// than merely less — `0`, not "small". Mirroring against a genuine zero would
-  /// collapse the healthy side to zero too, discarding real travel to manufacture a
-  /// symmetry that has nothing left to be symmetric with. That side is left at its
-  /// own full reach instead; the identity delta simply sits at one end of the range
-  /// rather than at its center, which is the honest picture when there is nothing on
-  /// the other side to balance it against.
-  static func lightnessDeltaRange(
-    for color: ColorValue,
-    extent: ClosedRange<Double> = -0.5 ... 0.5,
-  ) -> ClosedRange<Double> {
+  /// **Not mode-dependent**, for the same reason the old range function was not — the
+  /// clamp inside `applied(to:)` runs whether or not web-friendly mode is on, so a
+  /// track that reached past it would have the identical dead zone either way.
+  ///
+  /// A base already at black or white leaves one side with *no* room at all, so every
+  /// fraction on that half maps to `0` — the honest answer, since there is nowhere
+  /// further to go, but note it is a different shape of "clamped" than the far side:
+  /// dragging into a zero-room half snaps the reported delta (and so the slider's own
+  /// thumb, which reads its position back through ``lightnessFraction(forDelta:for:)``)
+  /// straight back to the center rather than letting it settle partway down the track.
+  static func lightnessDelta(atFraction fraction: Double, for color: ColorValue) -> Double {
     let lightness = color.oklchComponents.lightness
-    let upRoom = min(extent.upperBound, 1 - lightness)
-    let downRoom = min(-extent.lowerBound, lightness)
-    guard upRoom > 0, downRoom > 0 else {
-      return -downRoom ... upRoom
-    }
-    let room = min(upRoom, downRoom)
-    return -room ... room
+    let clamped = min(max(fraction, lightnessFractionRange.lowerBound), lightnessFractionRange.upperBound)
+    return clamped < 0 ? clamped * lightness : clamped * (1 - lightness)
+  }
+
+  /// The inverse of ``lightnessDelta(atFraction:for:)`` — where a given delta
+  /// currently sits on ``lightnessFractionRange``, so a slider's thumb reflects
+  /// `adjustment.lightnessDelta` even though the track's two halves scale
+  /// differently. See that method's doc comment for what a zero-room half does here.
+  static func lightnessFraction(forDelta delta: Double, for color: ColorValue) -> Double {
+    guard delta != 0 else { return 0 }
+    let lightness = color.oklchComponents.lightness
+    let room = delta < 0 ? lightness : 1 - lightness
+    guard room > 0 else { return 0 }
+    return min(max(delta / room, lightnessFractionRange.lowerBound), lightnessFractionRange.upperBound)
   }
 
   /// The ``chromaScale`` range past which every larger scale clamps to the same
   /// chroma under web-friendly mode — because ``ColorValue/pulledInto(_:)`` pulls
   /// every one of them back to `gamut`'s own boundary chroma regardless of how much
-  /// further the scale still climbs — **mirrored about the identity scale (`1`)**,
-  /// for the identical reason ``lightnessDeltaRange(for:extent:)`` mirrors about
-  /// `0`: a linear slider's own center should mean "no change," and `extent`'s
-  /// un-narrowed `0...2` already put `×1.00` there by the same kind of accident that
-  /// put `0` at the middle of `-0.5...0.5` — an interval picked so the identity sits
-  /// in the middle, not a claim about how far the color can honestly go.
+  /// further the scale still climbs — **mirrored about the identity scale (`1`)**, so
+  /// a linear slider's own center always means "no change" and its two ends read as
+  /// equally far from it. `extent`'s un-narrowed `0...2` already put `×1.00` at the
+  /// middle by the same kind of accident that used to put Lightness's `0` at the
+  /// middle of a fixed `-0.5...0.5` — an interval picked so the identity sits in the
+  /// middle, not a claim about how far the color can honestly go.
   ///
   /// Reducing chroma toward `0` never clamps — it only ever moves a color further
   /// *inside* the gamut — so unlike lightness there is no wall on that side to
   /// discover, only `extent`'s own choice of how much reduction one drag should
   /// cover. That is treated as the fixed quantity to mirror the increase side
-  /// against, the reverse of lightness's shape: there, the fixed extent gives way to
-  /// a real wall; here, in the ordinary case, the real wall (found on the increase
-  /// side) gives way to match the fixed extent.
+  /// against: the real wall, when increasing finds one, gives way to match it.
+  ///
+  /// **Lightness no longer works this way** — see ``lightnessFractionRange`` — because
+  /// lightness has a real wall on *both* sides (black and white), so mirroring one
+  /// range against the other necessarily strands whichever side has more room, which
+  /// was a real, reported bug. Chroma's reduce side has no such wall to strand: giving
+  /// it up to match the increase side loses nothing but the last bit of `extent`, the
+  /// same trade ``LightnessCurve`` already makes by fixing its own pivot at `0.5`
+  /// rather than leaving it configurable. If chroma ever grows a real wall on the
+  /// reduce side too, it should take the same fraction-based shape lightness now
+  /// does, not keep mirroring a range that no longer fits either side honestly.
   ///
   /// Derived from `color`'s own lightness and hue, **not** the pending adjustment's —
   /// reading the adjusted lightness or hue instead would make dragging the Lightness

@@ -97,7 +97,6 @@ struct TransformPanel: View {
     // slider that traveled past that would have the same dead zone with the mode
     // off. The chroma ceiling *is* a gamut fact, so it only narrows under the mode —
     // see the two doc comments on ``OKLCHAdjustment`` for why they disagree.
-    let lightnessRange = OKLCHAdjustment.lightnessDeltaRange(for: color)
     let chromaRange = store.webFriendly
       ? OKLCHAdjustment.chromaScaleRange(for: color, in: .srgb)
       : 0 ... 2
@@ -108,13 +107,18 @@ struct TransformPanel: View {
         note: "Relative, so it composes: the picker already sets L, C and h outright.",
       )
 
+      // The Lightness slider binds a fixed fraction, not the delta itself — its two
+      // halves scale against however much room `color` actually has to black and to
+      // white, which is what lets `-1`/`+1` always mean the true walls while `0`
+      // stays the identity value at the track's visual center. See
+      // ``OKLCHAdjustment/lightnessFractionRange``.
       slider(
         "Lightness",
         value: Binding(
-          get: { adjustment.lightnessDelta },
-          set: { adjustment.lightnessDelta = $0 },
+          get: { OKLCHAdjustment.lightnessFraction(forDelta: adjustment.lightnessDelta, for: color) },
+          set: { adjustment.lightnessDelta = OKLCHAdjustment.lightnessDelta(atFraction: $0, for: color) },
         ),
-        range: lightnessRange,
+        range: OKLCHAdjustment.lightnessFractionRange,
         caption: signed(adjustment.lightnessDelta, decimals: 3),
       )
       slider(

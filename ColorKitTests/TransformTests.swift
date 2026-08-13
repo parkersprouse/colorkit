@@ -142,81 +142,102 @@ struct OKLCHAdjustmentTests {
 
 /// The Adjust panel's slider ranges (M35): a slider's travel should mean something,
 /// which means its edges have to land where the value actually stops changing rather
-/// than well past it — and (a same-day follow-up) it has to keep the identity value
-/// at the visual center of a linear slider, so the two ends read as equally far from
-/// "no change" instead of whichever of a gamut wall or the fixed extent happened to
-/// bind tighter on that particular side. See the two doc comments on
-/// ``OKLCHAdjustment`` for why the two axes mirror around different pivots and treat
-/// their own collapsed-to-zero edge case the same way.
+/// than well past it. Two follow-ups since: the identity value has to stay at the
+/// visual center of a linear slider (not drift to wherever a gamut wall or a fixed
+/// extent happened to bind tighter), and — this one — the two *ends* have to keep
+/// meaning true black and true white, whatever the base lightness. A range of deltas
+/// mirrored about `0` could get the center right or the ends right but not both at
+/// once except at `L = 0.5`, so Lightness now binds a fixed range of *fractions*
+/// (``OKLCHAdjustment/lightnessFractionRange``) whose two halves scale independently
+/// against however much room the base color actually has to each wall. Chroma still
+/// mirrors a range of scales — see its own doc comment for why that shape still fits
+/// it even though it no longer fits lightness.
 @Suite("Adjust slider ranges")
 struct AdjustSliderRangeTests {
   /// Same base ``TransformTests`` uses, chosen for the same reason: no conversion
   /// happens on the way in, so the numbers here are exact.
   static let base = ColorValue(space: .oklch, 0.65, 0.18, 250)
 
-  @Test("Lightness range straddles the identity delta, whatever the base lightness")
-  func lightnessRangeAlwaysContainsZero() {
+  @Test("The identity fraction is always the identity delta, whatever the base lightness")
+  func identityFractionIsAlwaysIdentityDelta() {
     for lightness in [0.0, 0.02, 0.65, 0.98, 1.0] {
       let color = ColorValue(space: .oklch, lightness, 0.1, 250)
-      let range = OKLCHAdjustment.lightnessDeltaRange(for: color)
-      #expect(range.contains(0), "lightness \(lightness) excluded the identity delta")
+      #expect(
+        OKLCHAdjustment.lightnessDelta(atFraction: 0, for: color) == 0,
+        "lightness \(lightness) did not keep 0 at the identity delta",
+      )
     }
   }
 
-  /// The bug report this follow-up fixes: at a lightness where the two sides'
-  /// *natural* limits disagree (the fixed extent is tighter below, the white wall is
-  /// tighter above), the reported range must still be exactly symmetric, not the
-  /// mismatched pair of "whichever constraint bound tighter on this side."
-  @Test("Lightness range is exactly symmetric, not whichever bound is tighter per side")
-  func lightnessRangeIsSymmetric() {
+  /// The discriminating case: at `L = 0.9`, the old mirrored range capped *both*
+  /// sides to the tighter `upRoom` (`0.1`, the distance to white), so the dark side
+  /// stopped at `0.8` with `0.9` of real room to black going unused — the bug report
+  /// this shape replaces the old one to fix. The fraction track keeps the two halves
+  /// independent, so `-1` reaches the full `downRoom` and `+1` the full `upRoom`
+  /// regardless of how different those two numbers are.
+  @Test("The two halves of the fraction track scale independently, not mirrored to the tighter side")
+  func fractionHalvesScaleIndependently() {
     let nearWhite = ColorValue(space: .oklch, 0.9, 0.1, 250)
-    let range = OKLCHAdjustment.lightnessDeltaRange(for: nearWhite)
-
-    // The upper edge is the gamut fact: `0.9 + delta` reaches white at `0.1`, well
-    // inside the fixed `-0.5...0.5` extent — the tighter side.
-    #expect(abs(range.upperBound - 0.1) < 1e-12)
-    // The lower edge mirrors it exactly, giving up the rest of the fixed extent
-    // rather than sitting at `-0.5`.
-    #expect(abs(range.lowerBound - -0.1) < 1e-12)
-    #expect(range.lowerBound == -range.upperBound)
-
-    // Confirm the edge really is where `applied(to:)` stops moving: one step past
-    // the reported upper bound produces the identical clamped result as the bound
-    // itself.
-    let atEdge = OKLCHAdjustment(lightnessDelta: range.upperBound).applied(to: nearWhite)
-    let pastEdge = OKLCHAdjustment(lightnessDelta: range.upperBound + 0.05).applied(to: nearWhite)
-    #expect(atEdge.oklchComponents.lightness == pastEdge.oklchComponents.lightness)
+    let toBlack = OKLCHAdjustment.lightnessDelta(atFraction: -1, for: nearWhite)
+    let toWhite = OKLCHAdjustment.lightnessDelta(atFraction: 1, for: nearWhite)
+    #expect(
+      abs(toBlack - -0.9) < 1e-9,
+      "expected the full room to black (-0.9), not the old mirrored -0.1, got \(toBlack)",
+    )
+    #expect(abs(toWhite - 0.1) < 1e-9)
   }
 
-  /// The mirror image of ``lightnessRangeIsSymmetric``: this time the fixed extent
-  /// is the tighter bound above and the black wall is tighter below, and the
-  /// reported range still has to be symmetric rather than favoring whichever side
-  /// happened to have more room.
-  @Test("Lightness range narrows below the extent and mirrors the narrowing above it")
-  func lightnessRangeNarrowsSymmetrically() {
-    let nearBlack = ColorValue(space: .oklch, 0.3, 0.1, 250)
-    let range = OKLCHAdjustment.lightnessDeltaRange(for: nearBlack)
-    #expect(abs(range.lowerBound - -0.3) < 1e-12)
-    #expect(abs(range.upperBound - 0.3) < 1e-12)
-    #expect(range.lowerBound == -range.upperBound)
+  /// `-1` always lands on true black and `+1` always lands on true white, across a
+  /// sweep of base lightnesses — including the two that used to leave one side with
+  /// no room at all. A tolerance rather than exact equality: `color`'s lightness can
+  /// itself arrive from a conversion (a hex-authored base, say), so `1 - lightness`
+  /// is not guaranteed to be bit-exact.
+  @Test("Fraction -1 always reaches true black, and +1 always reaches true white")
+  func fractionExtremesReachTheWalls() {
+    for lightness in [0.0, 0.02, 0.1, 0.65, 0.9, 0.98, 1.0] {
+      let color = ColorValue(space: .oklch, lightness, 0.1, 250)
+      let toBlack = OKLCHAdjustment(
+        lightnessDelta: OKLCHAdjustment.lightnessDelta(atFraction: -1, for: color),
+      ).applied(to: color)
+      let toWhite = OKLCHAdjustment(
+        lightnessDelta: OKLCHAdjustment.lightnessDelta(atFraction: 1, for: color),
+      ).applied(to: color)
+      #expect(abs(toBlack.oklchComponents.lightness - 0) < 1e-9, "lightness \(lightness) did not reach black")
+      #expect(abs(toWhite.oklchComponents.lightness - 1) < 1e-9, "lightness \(lightness) did not reach white")
+    }
   }
 
-  /// A base already at black or white leaves *no* room on one side, not merely less
-  /// — and mirroring against a genuine zero would zero out the healthy side too,
-  /// discarding real travel to manufacture a symmetry with nothing left to balance.
-  /// The identity delta ends up at one edge of the range instead of its center,
-  /// which is the honest picture rather than a bug to paper over.
-  @Test("A base at an endpoint leaves the open side at its own full reach")
-  func endpointBaseDoesNotMirrorAgainstZero() {
+  /// A delta converted to a fraction and back reproduces the fraction it started
+  /// from — the two conversions are exact inverses of each other away from the
+  /// zero-room edge cases, which get their own test below.
+  @Test("A fraction round-trips through a delta and back")
+  func fractionRoundTrips() {
+    for lightness in [0.02, 0.3, 0.65, 0.9, 0.98] {
+      let color = ColorValue(space: .oklch, lightness, 0.1, 250)
+      for fraction in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+        let delta = OKLCHAdjustment.lightnessDelta(atFraction: fraction, for: color)
+        let roundTripped = OKLCHAdjustment.lightnessFraction(forDelta: delta, for: color)
+        #expect(abs(roundTripped - fraction) < 1e-9, "lightness \(lightness), fraction \(fraction)")
+      }
+    }
+  }
+
+  /// A base already at black or white leaves *no* room on the walled-off half — not
+  /// merely less. Every fraction on that half maps to the identity delta rather than
+  /// a partial step, which is the honest answer (there is nowhere further to go) even
+  /// though it means the slider's own thumb, reading its position back through
+  /// ``OKLCHAdjustment/lightnessFraction(forDelta:for:)``, snaps to center rather
+  /// than settling partway down that half of the track.
+  @Test("A base at an endpoint leaves the walled-off half at the identity delta")
+  func endpointBaseCollapsesTheWalledOffHalf() {
     let white = ColorValue(space: .oklch, 1.0, 0, 250)
-    let whiteRange = OKLCHAdjustment.lightnessDeltaRange(for: white)
-    #expect(whiteRange.upperBound == 0)
-    #expect(whiteRange.lowerBound == -0.5, "no room above should not shrink the room below")
+    #expect(OKLCHAdjustment.lightnessDelta(atFraction: 1, for: white) == 0, "no room above white")
+    #expect(abs(OKLCHAdjustment.lightnessDelta(atFraction: -1, for: white) - -1) < 1e-9, "full room below white")
+    #expect(OKLCHAdjustment.lightnessFraction(forDelta: 0, for: white) == 0)
 
     let black = ColorValue(space: .oklch, 0.0, 0, 250)
-    let blackRange = OKLCHAdjustment.lightnessDeltaRange(for: black)
-    #expect(blackRange.lowerBound == 0)
-    #expect(blackRange.upperBound == 0.5, "no room below should not shrink the room above")
+    #expect(OKLCHAdjustment.lightnessDelta(atFraction: -1, for: black) == 0, "no room below black")
+    #expect(abs(OKLCHAdjustment.lightnessDelta(atFraction: 1, for: black) - 1) < 1e-9, "full room above black")
   }
 
   /// Chroma's ceiling is a gamut fact, not a fixed extent — a color with plenty of
