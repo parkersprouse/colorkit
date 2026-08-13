@@ -101,6 +101,25 @@ nonisolated extension ColorValue {
 nonisolated struct OKLCHAdjustment: Sendable, Equatable {
   static let identity = OKLCHAdjustment()
 
+  /// The Lightness slider's fixed, color-independent track: `-1` always means "as far
+  /// down as `color` can go," `0` is always the identity delta (no change), and `+1`
+  /// always means "as far up as `color` can go." Pass this as a `Slider`'s own
+  /// `in:` range and convert its value through ``lightnessDelta(atFraction:for:)`` /
+  /// ``lightnessFraction(forDelta:for:)``.
+  ///
+  /// This replaced a version that reported a *range of deltas* (`lightnessDeltaRange`)
+  /// mirrored about `0` so a linear slider's center would land on the identity value —
+  /// which worked, but only by capping the more open side down to match whichever side
+  /// had less room. At `L = 0.9`, the wall above sits `0.1` away and the fixed extent
+  /// below allowed `0.5`; mirroring took the tighter `0.1` for *both* sides, so the
+  /// slider's dark end stopped at `0.8` with `0.9` of real room to black sitting
+  /// unused — the bug this shape exists to fix. A single linear scale cannot put the
+  /// identity value at its center *and* pin both ends to the true walls unless
+  /// `L = 0.5` exactly, so there is no range of deltas that does both; the fix is a
+  /// fixed range of *fractions* whose two halves scale against different amounts of
+  /// room, not a differently-computed range of deltas.
+  static let lightnessFractionRange: ClosedRange<Double> = -1 ... 1
+
   /// Added to lightness, on the `0...1` scale.
   var lightnessDelta: Double = 0
   /// Multiplied into chroma. `1` leaves it alone, `0` neutralizes the color.
@@ -129,25 +148,6 @@ nonisolated struct OKLCHAdjustment: Sendable, Equatable {
       hueRotation: -hueRotation,
     )
   }
-
-  /// The Lightness slider's fixed, color-independent track: `-1` always means "as far
-  /// down as `color` can go," `0` is always the identity delta (no change), and `+1`
-  /// always means "as far up as `color` can go." Pass this as a `Slider`'s own
-  /// `in:` range and convert its value through ``lightnessDelta(atFraction:for:)`` /
-  /// ``lightnessFraction(forDelta:for:)``.
-  ///
-  /// This replaced a version that reported a *range of deltas* (`lightnessDeltaRange`)
-  /// mirrored about `0` so a linear slider's center would land on the identity value —
-  /// which worked, but only by capping the more open side down to match whichever side
-  /// had less room. At `L = 0.9`, the wall above sits `0.1` away and the fixed extent
-  /// below allowed `0.5`; mirroring took the tighter `0.1` for *both* sides, so the
-  /// slider's dark end stopped at `0.8` with `0.9` of real room to black sitting
-  /// unused — the bug this shape exists to fix. A single linear scale cannot put the
-  /// identity value at its center *and* pin both ends to the true walls unless
-  /// `L = 0.5` exactly, so there is no range of deltas that does both; the fix is a
-  /// fixed range of *fractions* whose two halves scale against different amounts of
-  /// room, not a differently-computed range of deltas.
-  static let lightnessFractionRange: ClosedRange<Double> = -1 ... 1
 
   /// Converts a position on ``lightnessFractionRange`` to the delta it stands for,
   /// given `color`'s own lightness.
