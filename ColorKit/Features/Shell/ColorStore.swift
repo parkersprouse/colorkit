@@ -140,8 +140,7 @@ enum Tool: String, CaseIterable, Identifiable, Sendable {
     rawValue
   }
 
-  /// Also the accessibility label for a collapsed, icon-only sidebar row (M36) — see
-  /// `ToolSidebar`. Expanded rows show this text right beside their icon regardless.
+  /// Expanded rows show this text right beside their icon regardless.
   var title: String {
     switch self {
     case .convert: "Convert"
@@ -149,6 +148,19 @@ enum Tool: String, CaseIterable, Identifiable, Sendable {
     case .transform: "Transform"
     case .contrast: "Contrast"
     case .cvd: "CVD"
+    case .projects: "Projects"
+    case .export: "Export"
+    }
+  }
+  
+  /// The accessibility label for a collapsed, icon-only sidebar row (M36) — see `ToolSidebar`.
+  var tooltip: String {
+    switch self {
+    case .convert: "Convert"
+    case .pick: "Pick"
+    case .transform: "Transform"
+    case .contrast: "Contrast"
+    case .cvd: "Color Vision Deficiency"
     case .projects: "Projects"
     case .export: "Export"
     }

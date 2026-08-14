@@ -41,7 +41,9 @@ struct ToolSidebar: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
       collapseToggle
-        .padding(.bottom, 10)
+      
+      Divider()
+        .padding(.vertical, 8)
 
       ForEach(Tool.allCases) { tool in
         row(for: tool)
@@ -77,19 +79,22 @@ struct ToolSidebar: View {
   @Environment(ColorStore.self) private var store
 
   private var collapseToggle: some View {
-    Button {
-      store.sidebarCollapsed.toggle()
-    } label: {
-      Image(systemName: "sidebar.left")
-        .frame(width: 20)
-        .frame(maxWidth: store.sidebarCollapsed ? nil : .infinity, alignment: .leading)
-        .contentShape(Rectangle())
+    HStack(spacing: 10) {
+      Button {
+        store.sidebarCollapsed.toggle()
+      } label: {
+        Image(systemName: "sidebar.left")
+          .frame(width: 20)
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.secondary)
+      .accessibilityIdentifier("toggleSidebar")
+      .accessibilityLabel(store.sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
+      .help(store.sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
     }
-    .buttonStyle(.plain)
-    .foregroundStyle(.secondary)
-    .accessibilityIdentifier("toggleSidebar")
-    .accessibilityLabel(store.sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
-    .help(store.sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar")
+    .padding(.horizontal, store.sidebarCollapsed ? 0 : 8)
+    .frame(maxWidth: .infinity, alignment: store.sidebarCollapsed ? .center : .trailing)
+    .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
   }
 
   private func row(for tool: Tool) -> some View {
@@ -108,7 +113,7 @@ struct ToolSidebar: View {
       }
       .padding(.vertical, 7)
       .padding(.horizontal, store.sidebarCollapsed ? 0 : 8)
-      .frame(maxWidth: store.sidebarCollapsed ? nil : .infinity, alignment: .leading)
+      .frame(maxWidth: .infinity, alignment: store.sidebarCollapsed ? .center : .leading)
       .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
     .buttonStyle(.plain)
@@ -118,8 +123,8 @@ struct ToolSidebar: View {
     )
     .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
     .accessibilityIdentifier("tool-\(tool.rawValue)")
-    .accessibilityLabel(tool.title)
-    .help(tool.title)
+    .accessibilityLabel(tool.tooltip)
+    .help(tool.tooltip)
   }
 }
 

@@ -4556,6 +4556,387 @@ available, just not through the tool that was tried first.
 - **ColorKitUITests** – `SidebarSmokeTests.swift` (a new test, plus a `capture(_:)`
   helper matching the convention several other suites already use).
 
+## M38 – Sparkle, for update distribution
+
+**Planned, not built.** Parker's request: integrate [Sparkle](https://sparkle-project.org)
+so a shipped build can update itself, rather than a user having to notice a new version
+exists and re-download it by hand. This is the natural sequel to M28 (Developer ID
+archive/notarize path) — Sparkle is what makes a direct-download app maintainable, and it
+is the *only* option here, since the Mac App Store forbids it outright and M28 already
+chose Developer ID.
+
+**The honest headline first: end-to-end verification of this milestone is blocked on
+exactly the credentialed step M28 left open, and no amount of care in the code closes
+it.** An update flow needs *two* signed, notarized builds — an old one installed and a new
+one published — and `security find-identity -v -p codesigning` still finds no "Developer
+ID Application" identity in this environment, only the "Apple Development" identity
+ordinary builds use. Sparkle additionally refuses to install an update whose signature
+does not match the running app's, so a self-signed or development-signed pair cannot even
+stand in for a rehearsal. So M38 splits cleanly into a half that is buildable and
+checkable here (the framework, the entitlements, the Info.plist keys, the UI surface, the
+signing of the nested XPC services) and a half that is a **recorded manual check** the
+same way `NSOpenPanel`/`NSSavePanel` already are (the actual download-verify-install-
+relaunch cycle). Plan it that way from the start rather than discovering it at the end.
+
+**Note also the standing item this finally triggers**: the Deferred section closes with
+*"the APCA algorithm has carried usage/attribution terms … worth checking before ever
+distributing the app publicly."* Shipping an auto-updater is the strongest possible
+statement of intent to distribute publicly, so that check belongs inside this milestone,
+before the first appcast goes up — not after.
+
+### What this actually is: two halves that fail independently
+
+1. **In-app.** Link and embed `Sparkle.framework`; add the project's first
+   `.entitlements` file; add `SUFeedURL`, `SUPublicEDKey` and
+   `SUEnableInstallerLauncherService` to `Info.plist`; hold one
+   `SPUStandardUpdaterController` somewhere sane; put a "Check for Updates…" surface in
+   front of it.
+2. **Out-of-app.** A *release process*: bump `CURRENT_PROJECT_VERSION`, archive, export,
+   notarize, staple, zip, sign the zip with an EdDSA key, regenerate the appcast, publish
+   both the zip and the appcast to an HTTPS host.
+
+Neither half is worth much alone, and each can be green while the other is broken — a
+perfectly wired updater pointed at an appcast nobody publishes does nothing, and a
+correct appcast reaching an app whose nested XPC services were signed wrong fails at the
+install step, on the user's machine, long after every local build looked fine.
+
+### Decisions to settle with Parker before building
+
+**1. Keep the app with no network entitlement at all, using Sparkle's Downloader XPC
+service — recommended, with one caveat that has to be measured rather than reasoned
+about.** Measured baseline, read off a real build with the command CLAUDE.md's file-access
+invariant already recommends:
+
+```bash
+codesign -d --entitlements - --xml <built ColorKit.app> | plutil -convert xml1 -o - -
+```
+
+returns exactly three keys — `com.apple.security.app-sandbox`,
+`com.apple.security.files.user-selected.read-write`, and (Debug only)
+`com.apple.security.get-task-allow`. **This app has never had network access**, which is a
+real property of a local color tool and not an accident worth spending casually.
+Sparkle's own [sandboxing guide](https://sparkle-project.org/documentation/sandboxing/)
+offers both routes: grant the app `com.apple.security.network.client`, or set
+`SUEnableDownloaderService` to `YES` and let `Downloader.xpc` hold the network access on
+the app's behalf. The second keeps the shipped binary's entitlement set at *one* new
+addition (the mach-lookup exception below) instead of two, and keeps "this app cannot
+talk to the network" true of everything except the updater's own downloader.
+
+**The caveat is release notes, it is genuine, and it is deliberately left unresolved —
+so read the causal model carefully rather than the convenient version of it.** Sparkle's
+docs state that its update window falls back to a deprecated `WebView` for release notes
+because of a WKWebView defect, and name `com.apple.security.network.client` **on the app**
+as what avoids that fallback. That is a question about *which web view class renders the
+notes* in a sandboxed process — **not** about whether a fetch happens. So publishing
+release notes *inline* in the appcast as a CDATA `<description>` rather than as a remote
+`<sparkle:releaseNotesLink>` is worth doing on its own merits (one file to publish per
+release instead of two, and no second HTTPS asset to keep alive), but **it should not be
+expected to avoid the fallback** — local HTML still renders in a web view. Do the inline
+notes; expect the fallback question to remain open.
+
+**It cannot be settled here.** Which web view Sparkle picks is observable only in a
+running, signed build's update window, which is step 9 below — the same wall the rest of
+this milestone hits. So decision 1 is explicitly reversible: if the legacy view turns out
+to be what ships, add `com.apple.security.network.client` to the entitlements file and
+drop `SUEnableDownloaderService`. That is a one-line change in each of two files, and
+**nothing else in the milestone depends on which way it goes** — which is exactly why it
+is safe to start from the privacy-preserving option rather than pre-emptively spending an
+entitlement the app has never needed.
+
+**2. Where the appcast and the zips live.** Recommendation: GitHub Releases for the
+`.zip` artifacts, `appcast.xml` served from GitHub Pages over HTTPS (Sparkle requires
+HTTPS for the feed). This is Parker's call — it fixes `SUFeedURL` forever, in the sense
+that a feed URL is baked into every build already shipped and cannot be moved without
+stranding those installs on a dead feed. Whatever is chosen, choose a URL that can be
+*redirected* later (a domain Parker controls, e.g. `https://parkersprouse.me/colorkit/
+appcast.xml`, pointing wherever the file actually lives) rather than a
+`github.io`/`githubusercontent.com` URL that pins hosting to one account forever.
+
+**3. Where "Check for Updates…" lives.** Recommendation: **both** the standard app-menu
+item and a Settings section, not the `MenuBarExtra` panel.
+- App menu, via `CommandGroup(after: .appInfo) { CheckForUpdatesView(...) }` — the
+  placement macOS users look for, right under "About ColorKit".
+- A new `Section("Updates")` in `SettingsView`, carrying "Automatically check for
+  updates" and "Automatically download updates" — the same shape as the existing
+  `Section("Command Line Tool")`, and the natural home for the two settings Sparkle owns.
+- **Not** `MenuBarPanel`. That panel is a fast color-copying surface reached by one
+  click; an updater control there costs a row on every use and buys nothing a user is
+  looking for in that moment.
+
+### The riskiest change is the project's first `.entitlements` file
+
+The mach-lookup exception Sparkle needs is an **array of strings**, which — exactly like
+`UTExportedTypeDeclarations` in `Info.plist` — has no `INFOPLIST_KEY_`-style build-setting
+spelling. So M38 introduces `CODE_SIGN_ENTITLEMENTS` where this project has deliberately
+never had one, and CLAUDE.md's Release-build section says so twice ("no `.entitlements`
+file exists … Xcode synthesizes one from those four build settings at sign time").
+
+The file itself, per Sparkle's guide (`$(PRODUCT_BUNDLE_IDENTIFIER)` substitutes at build
+time, so these are literal):
+
+```xml
+<key>com.apple.security.app-sandbox</key>
+<true/>
+<key>com.apple.security.files.user-selected.read-write</key>
+<true/>
+<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+<array>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
+</array>
+```
+
+**Three rules about that file, each with a specific failure behind it:**
+
+- **It re-declares the sandbox and the user-selected-files entitlement, and the existing
+  build settings stay.** Whether Xcode *merges* a `CODE_SIGN_ENTITLEMENTS` file with the
+  settings-derived entitlements or *replaces* them is not something to assume in either
+  direction — the analogous `INFOPLIST_FILE`-beside-`GENERATE_INFOPLIST_FILE` question
+  was settled here by measurement (24 keys in, 24 plus the declaration out), and this one
+  gets the same treatment. Writing both keys into the file is correct under either
+  answer; omitting them is catastrophic under one of them, and the catastrophe is silent:
+  all three documented file-system paths (M17's token read, M8b's export write, M29's
+  `colorkit` install write) lose their entitlement and start failing at runtime with a
+  perfectly green build.
+- **Never put `com.apple.security.get-task-allow` in the file.** Xcode injects it for
+  Debug and — measured in M28 — its *absence* from a Release archive is the one fact
+  distinguishing a distributable build from a debug build wearing distribution settings.
+  Hard-coding it would quietly destroy that distinction.
+- **Set it in both the Debug and Release blocks**, for the same reason `INFOPLIST_FILE`
+  and `ENABLE_USER_SELECTED_FILES` are set in both: entitlements are consulted at
+  runtime, so a Release-only omission is invisible from a Debug build.
+
+**Named verification step, not an inference:** after wiring it, re-run the `codesign -d
+--entitlements -` command above against (a) a Debug build and (b) a *Release archive*,
+and confirm five keys in Debug (the original three, plus the two-name mach-lookup array)
+and four in Release (the same, minus `get-task-allow`). This is the single check that
+proves the file did not replace what it was meant to extend.
+
+### Signing the XPC services nested inside `Sparkle.framework`
+
+**Xcode's "Code Sign on Copy" re-signs the framework and does *not* re-sign the XPC
+services nested inside it.** Sparkle's own documentation says so, and this repo has
+already been bitten once by trusting a Copy Files phase's apparent behaviour rather than
+inspecting the built bundle — M29's `dstSubfolderSpec = 6` ("Executables") that puts a
+binary in `Contents/MacOS/` instead. Treat this identically: add the re-sign as an
+explicit Run Script phase after embedding,
+
+```bash
+codesign -f -s "$CODE_SIGN_IDENTITY" -o runtime "$CODESIGNING_FOLDER_PATH/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+```
+
+(and the same for `Downloader.xpc` if decision 1 keeps it), then **inspect a real built
+bundle and a real archive** rather than trusting the phase:
+
+```bash
+codesign -dv --verbose=4 <app>/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc
+```
+
+The `Versions/B/` path and the exact set of nested helpers are properties of whichever
+Sparkle release gets pinned — read them off the checkout, do not transcribe them from
+here. This is the item most likely to produce a build that runs perfectly on this machine
+and fails to install an update on someone else's.
+
+**The same class of check applies to the new `Info.plist` keys, and costs one line.**
+`SUEnableInstallerLauncherService` is *mandatory* for a sandboxed app, and it has no
+`INFOPLIST_KEY_` counterpart to collide with — but "no collision" is not "it landed."
+Read it off the built bundle, not off the source file:
+
+```bash
+plutil -p <built ColorKit.app>/Contents/Info.plist | grep SU
+```
+
+A missing `SUEnableInstallerLauncherService` produces an app that builds, launches,
+checks for updates, downloads one, and then fails at the install step — on a user's
+machine, and nowhere earlier.
+
+### Versioning is a prerequisite, not a footnote
+
+Sparkle compares `CFBundleVersion`. **`CURRENT_PROJECT_VERSION = 1` is currently set on
+every target in the project and has never moved**, and `MARKETING_VERSION = 1.0`
+likewise — so as it stands, every build this project has ever produced claims to be the
+same version, and Sparkle would never see an update. Before the first appcast:
+
+- `CURRENT_PROJECT_VERSION` becomes a **monotonically increasing integer**, bumped on
+  every published release. It is the machine's number; users never see it. A build number
+  that only ever counts up is the whole contract — Sparkle's default comparator treats a
+  non-increasing one as "no update available," which looks exactly like a broken feed.
+- `MARKETING_VERSION` stays the human string (`1.0`, `1.1`, …) and is what the update
+  window shows.
+- Both belong in the appcast entry: `sparkle:version` = `CFBundleVersion`,
+  `sparkle:shortVersionString` = `CFBundleShortVersionString`. `generate_appcast` reads
+  them out of the zipped app, so the app bundle stays the single source of truth and the
+  two cannot drift.
+
+### Sparkle is this project's first third-party runtime dependency
+
+That sentence is currently false — CLAUDE.md and README both say "no third-party runtime
+dependencies," and it is true today. M38 makes it false, and **the claim gets revised when
+the milestone is built, not now.** The accurate replacement is narrower rather than gone:
+`ColorCore` and `colorkit` still have none, and Sparkle links into the app target alone.
+
+Two consequences worth planning:
+
+- **`Package.resolved` is currently gitignored and must stop being.** This repo pins
+  colorjs.io exact at 0.7.0 because a conversion oracle that drifts is worse than no
+  oracle; an updater framework that drifts is worse in a different way, since it is the
+  one dependency whose failure mode is "an installed build can no longer be updated."
+  Pin Sparkle to an exact version in the Xcode package reference, and commit
+  `Package.resolved` so a fresh clone builds the same updater. Un-ignoring it is part of
+  the milestone, and it is a **one-line** `.gitignore` change: delete the
+  `Package.resolved` entry. `.swiftpm/` stays ignored — it holds per-user Xcode state,
+  not the resolution, and the file that actually pins the version lives at
+  `ColorKit.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, which
+  the current ignore rule matches by basename and the edit therefore frees.
+- **The `ColorKitCLI` target must not link Sparkle**, and neither must
+  `ColorKitCLITests`. A CLI does not update itself — it is replaced when the app bundle
+  around it is — and linking a framework into it would break the "`colorkit` is a plain
+  binary in the bundle" story M29 established.
+
+### The one object, and why it is a wrapper rather than a bare controller
+
+`SPUStandardUpdaterController` is held by exactly one object — call it
+`UpdaterController`, in `ColorKit/Services/` beside `GlobalHotKey.swift` and
+`CommandLineToolInstaller.swift`, which are the two closest precedents (both wrap
+something AppKit-or-lower and expose a small surface to SwiftUI).
+
+**It earns its place for three concrete reasons, and "so there is something to unit test"
+is deliberately not one of them:**
+
+1. **One instance, both scenes.** The same argument that makes `ColorStore` a single
+   `@State` in `ColorKitApp`: two updaters would compile and then silently disagree —
+   two scheduled check cycles, and potentially two update windows for one release.
+2. **The UI-test gate.** Sparkle must not run during an XCUITest (see below), so
+   *something* has to own the decision not to start the updater. That is a real branch,
+   not a passthrough.
+3. **The `canCheckForUpdates` bridge.** It is a KVO-observable property on
+   `SPUUpdater`, and the menu item's disabled state depends on it. Sparkle's own docs
+   supply this shape (a small view model observing `canCheckForUpdates`); an
+   `@Observable` wrapper is the modern spelling of it.
+
+**No unit-test claim is made for this type**, on purpose. A test asserting that a
+passthrough passes through is a test that cannot fail — the trap CLAUDE.md already
+records twice (M8b's `writableContentTypes` derived from `contentType`; the surviving
+mutations that proved coverage rather than rules). If a test appears here it should be a
+real claim, e.g. that the UI-test gate genuinely leaves the updater unstarted.
+
+### Sparkle owns its own persistence, and must not be mirrored into `Preferences`
+
+Sparkle writes `SUEnableAutomaticChecks`, `SUAutomaticallyUpdate`,
+`SUScheduledCheckInterval` and `SULastCheckTime` into the app's `UserDefaults` itself.
+**Do not add fields for these to `Preferences`.** A mirrored copy is two sources of truth
+for one setting, and the failure is the one M34's follow-up spent a whole milestone on —
+a control whose display does not match its value. The Settings toggles bind straight
+through to `updater.automaticallyChecksForUpdates` /
+`automaticallyDownloadsUpdates`, which is Parker's own principle applied: *a display must
+always match its associated value.*
+
+**This does create a real interaction with `UITestEphemeralPreferences`.** That argument
+makes `PreferenceStore` ephemeral; it does **not** redirect the `UserDefaults` Sparkle
+writes to, so a UI-test run would leave Sparkle's own keys on the developer's machine —
+and worse, could schedule a check, hit the network, and put an update window in front of
+a suite that is trying to click a swatch. The fix is the gate, not another ephemeral
+shim: `UpdaterController` checks for the existing UI-test launch arguments (or a new
+`UITestNoUpdater` beside them) and never constructs or starts the updater. Everything
+about a `MenuBarExtra` app makes this worse, not better: the app can be running with no
+window open, which is precisely when an unexpected update window is most confusing.
+
+### What UI tests can honestly say here — and the tension in saying it
+
+The obvious XCUITest is "the Check for Updates… menu item exists and is enabled," and
+**that test is in direct tension with the gate above**: gating the updater off is what
+makes `canCheckForUpdates` false, so under a gated launch the item is either absent or
+disabled. Name the tension rather than writing around it. Two honest options:
+
+- Assert the item **exists and is disabled** under the gate. That is a true claim about a
+  real state (the app renders its updater surface, the updater is not running) and it
+  fails if the menu item disappears entirely.
+- Or add a launch argument that starts the updater but points `SUFeedURL` at nothing,
+  which buys an enabled item at the cost of a code path shipping only for tests.
+
+Recommendation: the first. The second's "enabled" is not the enabled state a user ever
+sees, so the test would be asserting a fiction it built for itself.
+
+### The release process, end to end
+
+Recorded here because half of it is not code and would otherwise live only in somebody's
+shell history. Steps 1–2 are one-time; 3–9 are per release.
+
+1. `./bin/generate_keys` (from the Sparkle release) — creates an **EdDSA private key in
+   the login keychain** and prints the public key. **An agent cannot do this and must not
+   try**: it touches the keychain and produces a secret. Its output, `SUPublicEDKey`, is
+   the only half that lands in the repo, in `Info.plist`.
+2. Publish the feed URL's host and put an empty (or single-entry) `appcast.xml` there, so
+   the first shipped build has something to fetch rather than a 404.
+3. Bump `CURRENT_PROJECT_VERSION` (and `MARKETING_VERSION` when the user-visible version
+   changes).
+4. `xcodebuild … archive`, then `-exportArchive` with `ExportOptions.plist` — the M28
+   path, still unverified here for want of a Developer ID certificate.
+5. `xcrun notarytool submit … --wait`, then `xcrun stapler staple`. **Staple before
+   zipping**, so the download works offline and Gatekeeper does not have to reach out.
+6. Zip the stapled `.app` (`ditto -c -k --sequesterRsrc --keepParent`, which preserves
+   the bundle correctly where a naive `zip` does not).
+7. `./bin/generate_appcast <folder-of-zips>` — signs each zip with the private key from
+   step 1, reads versions out of each bundle, writes `appcast.xml`, and can produce delta
+   updates.
+8. Publish the zip and the regenerated `appcast.xml`.
+9. **The actual check, which is the whole milestone:** install the *previous* signed
+   build, launch it, and watch it find, download, verify, install and relaunch into the
+   new one. Nothing before step 9 proves the feature works.
+
+### Interaction with M29's installed `colorkit` symlink
+
+Worth stating because it looks like a problem and is not, quite. `CommandLineToolInstaller`
+symlinks a user-chosen directory entry at `…/ColorKit.app/Contents/MacOS/cli/colorkit`.
+Sparkle replaces the app bundle **in place, at the same path**, so the symlink keeps
+resolving across an update with nothing to re-run. Two edges do exist and belong in the
+plan rather than in a bug report later:
+
+- If the user moved or renamed the app after installing the symlink, the link was already
+  broken before Sparkle touched anything — and M29 deliberately persists no "installed"
+  status, so the app cannot detect or repair it. Unchanged by M38; worth a sentence in
+  the Settings section's help text at most.
+- Sparkle's installer validates the new bundle's signature. The embedded `colorkit` is
+  signed independently by the Copy Files phase's `CodeSignOnCopy`, so it must be signed
+  with the same Developer ID identity as the app — automatic under the M28 export path,
+  but one more reason the nested-code signing check above is done against a real
+  *archive* and not only a Debug build.
+
+### Files touched (projected)
+
+- **repo root** – `ColorKit.entitlements` (**new**, the project's first);
+  `Info.plist` (`SUFeedURL`, `SUPublicEDKey`, `SUEnableInstallerLauncherService`, and
+  `SUEnableDownloaderService` if decision 1 holds — all scalars, but they join
+  `UTExportedTypeDeclarations` in this file rather than becoming `INFOPLIST_KEY_*`
+  settings, since the file already exists and merges); `.gitignore` (stop ignoring
+  `Package.resolved`); `README.md` (the "no third-party runtime dependencies" claim).
+- **ColorKit.xcodeproj** – package reference pinned to an exact Sparkle version;
+  `CODE_SIGN_ENTITLEMENTS` in *both* configurations; Embed Frameworks phase; a Run Script
+  phase re-signing the nested XPC services; `CURRENT_PROJECT_VERSION` scheme.
+- **ColorKit/Services** – `UpdaterController.swift` (**new**).
+- **ColorKit** – `ColorKitApp.swift` (one `@State` updater controller; a
+  `.commands { CommandGroup(after: .appInfo) { … } }`).
+- **ColorKit/Features/Settings** – `SettingsView.swift` (a new `Section("Updates")`).
+- **ColorKitUITests** – one suite asserting the menu item's presence and its gated
+  disabled state; every existing suite unchanged, provided the gate keys off the launch
+  arguments they already pass.
+- **CLAUDE.md** – *when built*: the "no third-party runtime dependencies" line, the
+  file-access invariant (which currently says "no `.entitlements` file exists anywhere"),
+  and the Release-build section's list of what is and is not verified.
+
+### Deferred out of M38 deliberately
+
+- **Delta updates.** `generate_appcast` can produce them and they are a bandwidth
+  optimization, not a correctness feature. Add once the ordinary path is proven end to
+  end — a broken delta and a broken full update look identical from the user's side.
+- **Update channels** (beta/stable). Sparkle supports them; there is one user today.
+- **A custom user driver.** The standard UI is the right default and a custom one is
+  where the sandboxed-install edge cases get interesting.
+- **Anything that would make this App Store-shippable.** The mach-lookup
+  `temporary-exception` entitlement is legal for Developer ID and rejected for the Mac App
+  Store, and Sparkle is disallowed there regardless. M28 already chose; M38 makes the
+  choice structural.
+
 ## Verification
 
 **A feature reached through a system loupe or a global chord has links no test can touch**, and they fail independently – so check them separately rather than as one gesture. For M4 that was: (1) does the menu bar show the chord, proving the OS accepted the registration and a scene's `.task` fired; (2) does the chord raise the loupe from *another* app, proving the key is captured and the C callback reaches the main actor; (3) does the picked color reach the field and the clipboard, proving the sandbox and the bridge. All three passed. Everything either side of them is covered by [ScreenSamplerTests](ColorKitTests/ScreenSamplerTests.swift) and [GlobalHotKeyTests](ColorKitTests/GlobalHotKeyTests.swift).
