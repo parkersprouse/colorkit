@@ -56,6 +56,10 @@ enum CommandLineToolInstaller {
     /// missing from the user's `$PATH`, just that this app has no way to know either
     /// way. The associated string is the profile line to add *if* `colorkit` turns out
     /// not to be reachable, `$HOME`-relative where applicable and always quoted.
+    /// **`InstallOutcome.message` no longer prints it** (same 2026-08-14 wording pass
+    /// as `writeDenied`'s), so the string is carried for `adviceForInstalling`'s tests
+    /// but currently reaches no UI. Kept rather than dropped: shortening the message
+    /// was the deliberate change, not the case shape.
     case needsProfileLine(String)
   }
 
@@ -83,8 +87,13 @@ enum CommandLineToolInstaller {
     /// installed, since Homebrew on Apple Silicon lives under `/opt/homebrew`
     /// instead and never touches it. Confirmed directly (`stat -f "%Su:%Sg %A"
     /// /usr/local/bin`) after a real install attempt reported exactly this outcome
-    /// against exactly that directory. Carries the directory so the message can
-    /// name it and give the one-line fix.
+    /// against exactly that directory. Carries the directory so the message can name
+    /// it. **The message itself no longer spells out the `sudo chown`/`~/.local/bin`
+    /// fix M29's addendum added** — a same-day wording pass (2026-08-14) shortened it
+    /// back to naming the directory and suggesting a different one, the simplification
+    /// PLAN.md's M29 entry originally called "true and useless." Recorded as a
+    /// deliberate trade of actionability for brevity, not an oversight — see that
+    /// entry's follow-up addendum.
     case writeDenied(URL)
     /// The symlink was created. Carries ``PathAdvice`` for whether anything else is
     /// needed before `colorkit` actually runs from a fresh Terminal.
@@ -119,7 +128,7 @@ enum CommandLineToolInstaller {
         switch advice {
         case .likelyOnPath:
           "colorkit CLI successfully installed. Open a new terminal session and run colorkit --help to try it."
-        case let .needsProfileLine(_line):
+        case .needsProfileLine:
           "colorkit CLI successfully installed. Ensure the location you installed the CLI to is included on your PATH, "
           + "then open a new terminal session and run colorkit --help to try it."
         }

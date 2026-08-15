@@ -7,7 +7,9 @@ import SwiftUI
 
 /// The app's `Settings` scene (⌘,).
 ///
-/// Five sections: General, Shortcuts, Command Line Tool, Output, and a reset. **Output
+/// Five sections: General, Shortcuts, Output, Command Line Tool, and a reset — Command
+/// Line Tool moved below Output in a 2026-08-14 wording pass; nothing about the swap
+/// changed which sections exist, only their order. **Output
 /// duplicates `OutputOptionsMenu`'s seven controls rather than replacing them** — the
 /// same precedent the export panel's own Decimal Precision picker already set, documented at
 /// ``ColorStore/formatOptions``. Both are surfaces onto the one set of bindings, so

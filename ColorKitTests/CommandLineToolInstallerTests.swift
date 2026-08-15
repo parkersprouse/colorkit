@@ -111,35 +111,43 @@ struct CommandLineToolInstallerTests {
     }
   }
 
-  /// The bug this test guards against was real, not hypothetical: `/usr/local/bin`
-  /// — this feature's own default destination — is `root:wheel 755` on a stock Mac
-  /// and stays that way even with Homebrew installed on Apple Silicon, which lives
-  /// under `/opt/homebrew` instead. A first version of this message said only "You
-  /// don't have permission to write to that folder. Choose a different one." — true,
-  /// but useless against the one destination the panel actually opens to by default.
-  @Test("writeDenied names the directory and offers an actual fix")
+  /// The bug this test originally guarded against was real, not hypothetical:
+  /// `/usr/local/bin` — this feature's own default destination — is `root:wheel 755`
+  /// on a stock Mac and stays that way even with Homebrew installed on Apple Silicon,
+  /// which lives under `/opt/homebrew` instead. A first version of this message said
+  /// only "You don't have permission to write to that folder. Choose a different
+  /// one." — true, but useless against the one destination the panel actually opens
+  /// to by default, and the fix at the time was to add the failed directory *and* a
+  /// `sudo chown`/`~/.local/bin` fix. **A 2026-08-14 wording pass shortened the
+  /// message back down** — the directory is still named, but the specific fix is
+  /// gone again; that shortening was a deliberate, confirmed choice, not a regression
+  /// this test should still fail on. What remains worth pinning is the one fact that
+  /// keeps the message from reading like the original bug: it names the directory.
+  @Test("writeDenied names the failed directory")
   func writeDeniedMessageIsActionable() {
     let outcome = CommandLineToolInstaller.InstallOutcome.writeDenied(
       URL(fileURLWithPath: "/usr/local/bin"),
     )
     #expect(outcome.message.contains("/usr/local/bin"))
-    #expect(outcome.message.contains("sudo chown"))
-    #expect(outcome.message.contains("~/.local/bin"))
   }
 
   /// The bug this test guards against was also real, and reported by hand: a user
   /// whose `~/.local/bin` was already on their shell `$PATH` (`.writeDenied`'s own
-  /// message suggests it) still got told the folder wasn't. `needsProfileLine`'s
+  /// message used to suggest it) still got told the folder wasn't. `needsProfileLine`'s
   /// message must not *assert* the folder is missing — it can only honestly suggest
-  /// trying `colorkit --help` first, since this app has no way to read the user's
-  /// real shell `$PATH` from inside the sandbox.
-  @Test(".needsProfileLine suggests trying colorkit first, not that PATH is missing it")
+  /// checking, since this app has no way to read the user's real shell `$PATH` from
+  /// inside the sandbox. **A 2026-08-14 wording pass rewrote the sentence again and,
+  /// with it, stopped printing the associated profile line at all** — `message` no
+  /// longer reads the case's payload (see `PathAdvice.needsProfileLine`'s doc comment),
+  /// so this test no longer asserts the line appears. What still has to hold, and is
+  /// the actual point of the test, is that the message keeps recommending a check
+  /// (`colorkit --help`) instead of a flat claim that the folder is missing.
+  @Test(".needsProfileLine suggests checking first, not that PATH is missing it")
   func needsProfileLineMessageDoesNotAssertPathIsMissing() {
     let line = "export PATH=\"$HOME/.local/bin:$PATH\""
     let outcome = CommandLineToolInstaller.InstallOutcome.success(.needsProfileLine(line))
 
     #expect(outcome.message.contains("colorkit --help"))
-    #expect(outcome.message.contains(line))
     // The old wording stated flatly that the folder was missing from PATH — wrong
     // whenever it happened to already be there, which is exactly what was reported.
     #expect(!outcome.message.contains("isn't on your PATH by default. Add"))
@@ -186,7 +194,8 @@ struct CommandLineToolInstallerTests {
     let error = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteNoPermissionError)
     let destination = URL(fileURLWithPath: "/usr/local/bin/colorkit")
     #expect(
-      CommandLineToolInstaller.outcome(for: error, at: destination, scoped: false) == .securityScopeFailed,
+      CommandLineToolInstaller.outcome(for: error, at: destination, scoped: false)
+        == .securityScopeFailed(URL(fileURLWithPath: "/usr/local/bin")),
     )
   }
 
@@ -205,7 +214,8 @@ struct CommandLineToolInstallerTests {
     let error = NSError(domain: NSPOSIXErrorDomain, code: Int(EACCES))
     let destination = URL(fileURLWithPath: "/usr/local/bin/colorkit")
     #expect(
-      CommandLineToolInstaller.outcome(for: error, at: destination, scoped: false) == .securityScopeFailed,
+      CommandLineToolInstaller.outcome(for: error, at: destination, scoped: false)
+        == .securityScopeFailed(URL(fileURLWithPath: "/usr/local/bin")),
     )
   }
 
@@ -291,7 +301,7 @@ struct CommandLineToolInstallerTests {
     .translocated,
     .binaryMissing,
     .destinationOccupied("a file"),
-    .securityScopeFailed,
+    .securityScopeFailed(URL(fileURLWithPath: "/usr/local/bin")),
     .writeDenied(URL(fileURLWithPath: "/usr/local/bin")),
     .success(.likelyOnPath),
     .success(.needsProfileLine("export PATH=\"$HOME/bin:$PATH\"")),

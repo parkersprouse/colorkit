@@ -3276,6 +3276,25 @@ which a table entry never can be. `needsProfileLineMessageDoesNotAssertPathIsMis
 pins it, confirmed by mutation: reverting to the old assertive wording fails both of
 its assertions, not zero and not one.
 
+**Third addendum, 2026-08-14: a "lots of small UX improvements" wording pass shortened
+both messages back down, deliberately.** `.writeDenied`'s message dropped the
+`sudo chown …` line and the `~/.local/bin` suggestion — it now only names the failed
+directory and says to try a different one. `.success(.needsProfileLine(_))`'s message
+dropped the literal `export PATH=…` line entirely — `InstallOutcome.message` no longer
+reads that case's associated `String` at all, so `PathAdvice.needsProfileLine`'s payload
+currently reaches no UI. Confirmed with Parker as intentional rather than treated as a
+silent regression of the two addenda above: the earlier fixes were about *correctness*
+(naming the right directory, not asserting a folder is missing when it might not be),
+and both of those corrected facts survive — only the extra actionable detail was cut
+for brevity. `writeDeniedMessageIsActionable` and
+`needsProfileLineMessageDoesNotAssertPathIsMissing` were both narrowed to match: the
+first now only pins that the directory is named, the second drops its
+`contains(line)` assertion and keeps only the "doesn't wrongly assert PATH is
+missing" claim. Same commit also gave `InstallOutcome.securityScopeFailed` its own
+associated `URL` (previously payload-less), so its message can name the directory the
+identical way `.writeDenied` already did — a straightforward addition, not a
+simplification, and every call site and test updated to match.
+
 ## M30–M34 – close the import/export round trip
 
 **M30, M31, M32 and M33 are built (see their ✅ entries below); M34 remains planned.** M0–M29 were done when

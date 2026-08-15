@@ -44,14 +44,14 @@ struct GlobalHotKeyTests {
   /// anyone who knows the convention.
   @Test("The shortcut prints modifiers in the order menus use")
   func displayStringFollowsConvention() {
-    #expect(GlobalShortcut.sampleColor.displayString == "⌃⌥⌘C")
+    #expect(GlobalShortcut.sampleColor.displayString == "⌃ ⌥ ⌘ C")
 
     let everything = GlobalShortcut(
       keyCode: UInt32(kVK_Space),
       modifiers: UInt32(cmdKey | shiftKey | optionKey | controlKey),
       keyLabel: "Space",
     )
-    #expect(everything.displayString == "⌃⌥⇧⌘Space")
+    #expect(everything.displayString == "⌃ ⌥ ⇧ ⌘ Space")
   }
 
   @Test("A shortcut with no modifiers prints as just its key")
