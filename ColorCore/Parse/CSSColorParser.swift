@@ -142,7 +142,7 @@ nonisolated enum CSSColorParser {
     case space, comma, slash
   }
 
-  // MARK: - Hex
+  // MARK: - hex
 
   private static func parseHex(_ digits: String) throws(ParseError) -> ParseResult {
     let chars = Array(digits)

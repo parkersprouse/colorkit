@@ -162,7 +162,7 @@ struct MenuBarPanel: View {
       // Advertising a chord that was never registered is worse than offering
       // none: the user presses it, nothing happens, and the app looks broken.
       MenuBarRow(
-        title: "Pick Color from Screen",
+        title: "Color Picker",
         systemImage: "eyedropper",
         shortcut: store.globalShortcutIsActive
           ? store.globalShortcut.displayString

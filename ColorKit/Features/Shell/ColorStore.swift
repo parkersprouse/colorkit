@@ -782,7 +782,7 @@ final class ColorStore {
   /// a format itself when the one it prefers can't hold the value losslessly, silently
   /// substituting `color(display-p3 …)` for whatever was asked — the right behavior for
   /// an eyedropper sample, which arrives with no notation opinion of its own, and the
-  /// wrong one here, where the format *is* the opinion: a click on "Hex" means hex, gamut
+  /// wrong one here, where the format *is* the opinion: a click on "hex" means hex, gamut
   /// mapping and all, not a quiet swap to a format the click never named. So this writes
   /// exactly what ``ColorValue/formatted(as:options:)`` returns for the chosen format, or
   /// nothing if the color can't be named in it — only `.keyword` ever answers that way.

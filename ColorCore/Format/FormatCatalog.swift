@@ -111,7 +111,7 @@ nonisolated extension ColorValue {
   /// A format that can write this color down without throwing part of it away —
   /// `format` itself when it suffices, and a wide-gamut fallback when it does not.
   ///
-  /// Needed anywhere a color becomes text that will later be read back. Hex is the
+  /// Needed anywhere a color becomes text that will later be read back. hex is the
   /// natural preference and the right answer for almost everything, but it is 8-bit
   /// sRGB: asking it to spell a Display P3 sample forces a gamut map, and the color
   /// that comes back is not the color that went in.

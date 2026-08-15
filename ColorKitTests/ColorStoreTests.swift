@@ -172,7 +172,7 @@ struct ColorStoreTests {
     #expect(readBack.exceedsSRGB, "the trip through text flattened the color")
     #expect(readBack.deltaEOK(to: p3Red) < 1e-9)
 
-    // The obvious spelling, shown next to the working one. Hex has to gamut-map to
+    // The obvious spelling, shown next to the working one. hex has to gamut-map to
     // exist at all, and what comes back is a color the display never showed.
     let asHex = try #require(p3Red.cssString(as: .hex))
     let viaHex = try CSSColorParser.parse(asHex).color
@@ -186,7 +186,7 @@ struct ColorStoreTests {
   @Test("Adoption ignores the display precision the user picked")
   func adoptIgnoresDisplayPrecision() throws {
     let store = ColorStore(initialInput: "")
-    store.formatOptions.precision = 2 // "Compact"
+    store.formatOptions.precision = 2 // "Minimum"
 
     // Deliberately outside sRGB, so adoption takes the `color(display-p3 …)`
     // branch where precision is actually expressible — a color hex could spell
@@ -216,7 +216,7 @@ struct ColorStoreTests {
   // MARK: - Web-friendly mode (M22)
 
   /// The counterpart to ``adoptPreservesWideGamut`` above, with the flag on: now the
-  /// mode's whole promise is that the field receives an sRGB spelling instead. Hex
+  /// mode's whole promise is that the field receives an sRGB spelling instead. hex
   /// alone would prove nothing here — hex `cannotRepresentOutOfGamut`, so it maps a
   /// wide sample regardless of the flag — so this checks the `.oklch` preferred
   /// format too, which is unbounded and would otherwise carry the wide value straight
@@ -368,7 +368,7 @@ struct ColorStoreTests {
   /// a different method from ``adopt(_:preferring:)`` rather than a thin wrapper
   /// around it. `adopt`'s `spelling(preferring:)` would see that hex can't hold a
   /// Display P3 red and silently substitute `color(display-p3 …)` instead; a click on
-  /// "Hex" in the menu means hex.
+  /// "hex" in the menu means hex.
   @Test("Re-spelling into a format that cannotRepresentOutOfGamut maps instead of substituting another format")
   func respellGamutMapsInsteadOfSubstitutingFormat() throws {
     let store = ColorStore(initialInput: "color(display-p3 1 0 0)")
@@ -389,7 +389,7 @@ struct ColorStoreTests {
     let precise = ColorValue(space: .displayP3, 0.9876543210, 0.1234567891, 0.0246813579)
     let text = try #require(precise.cssString(as: .color(.displayP3), options: .lossless))
     let store = ColorStore(initialInput: text)
-    store.formatOptions.precision = 2 // "Compact"
+    store.formatOptions.precision = 2 // "Minimum"
     let before = try #require(store.color)
 
     store.respell(as: .oklch)

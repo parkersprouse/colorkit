@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This is the CLI's half of the layering rule the app already follows — ColorCore owns
 /// facts, a front end owns the words for them. The app's `FormatPresentation` names the
-/// same formats "Hex" and "OKLCH" because it is drawing a menu; these are *identifiers*
+/// same formats "hex" and "OKLCH" because it is drawing a menu; these are *identifiers*
 /// typed into a shell, so they are lowercase, hyphenated and stable. Two front ends
 /// legitimately hold two tables; what neither may do is reach into the other's.
 ///

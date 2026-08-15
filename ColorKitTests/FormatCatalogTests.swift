@@ -197,7 +197,7 @@ struct FormatCatalogTests {
     // survives intact — that is what `.preserve` is for.
     #expect(rgb.css.contains("-") || rgb.css.contains("2"))
 
-    // Hex still has to map: there is no spelling for a negative channel.
+    // hex still has to map: there is no spelling for a negative channel.
     let hex = try #require(vivid.formatted(as: .hex, options: options))
     #expect(hex.isGamutMapped)
   }
@@ -262,7 +262,7 @@ struct FormatCatalogTests {
   /// vacuous or permanently red:
   ///
   /// - **Gamut-mapped** values were moved on purpose, by up to one JND.
-  /// - **Hex** quantizes to 8 bits per channel, so `oklch(0.7 0.15 250)` comes back
+  /// - **hex** quantizes to 8 bits per channel, so `oklch(0.7 0.15 250)` comes back
   ///   as `#4ba3f7` — off by ~0.0005 ΔEOK no matter how much precision is asked
   ///   for. That is the format working correctly, not losing data unexpectedly.
   /// - **Everything else** is decimal text at 12 places and should be exact.

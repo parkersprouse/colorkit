@@ -39,7 +39,7 @@ struct ContentView: View {
         // into `ToolSidebar`, below the tool rows — see its doc comment for why.
         ColorInputField()
           .padding(.horizontal, 16)
-          .padding(.top, 12)
+          .padding(.vertical, 12)
 
         Divider()
 
@@ -110,43 +110,34 @@ struct OutputOptionsMenu: View {
         .help("Writes rgb(255, 0, 0) and hsl(). Other functions have no legacy form.")
       Toggle("rgb() as percentages", isOn: $store.formatOptions.rgbAsPercentage)
 
-      Section("Hex") {
+      Section("hex") {
         Toggle("Uppercase", isOn: $store.formatOptions.uppercaseHex)
         Toggle("Shorten when possible", isOn: $store.formatOptions.collapseHex)
       }
 
-      Section("Precision") {
-        // Named levels rather than decimal counts, because precision is
-        // relative to each component's scale — "4 decimals" would be true of
-        // an OKLCH lightness and a lie about a hue in the same row.
-        Picker("Precision", selection: $store.formatOptions.precision) {
-          Text("Compact").tag(2)
-          Text("Normal").tag(4)
-          Text("Fine").tag(6)
-          Text("Maximum").tag(10)
-        }
-        .pickerStyle(.inline)
-        .labelsHidden()
+      // Named levels rather than decimal counts, because precision is
+      // relative to each component's scale — "4 decimals" would be true of
+      // an OKLCH lightness and a lie about a hue in the same row.
+      Picker("Decimal Precision", selection: $store.formatOptions.precision) {
+        Text("Minimum").tag(2)
+        Text("Normal").tag(4)
+        Text("Increased").tag(6)
+        Text("Maximum").tag(10)
       }
+      .pickerStyle(.inline)
 
-      Section("Out of gamut") {
-        Picker("Out of gamut", selection: $store.formatOptions.gamut) {
-          Text("Map into gamut").tag(CSSFormatOptions.GamutPolicy.map)
-          Text("Keep original values").tag(CSSFormatOptions.GamutPolicy.preserve)
-        }
-        .pickerStyle(.inline)
-        .labelsHidden()
+      Picker("Out of gamut", selection: $store.formatOptions.gamut) {
+        Text("Map into gamut").tag(CSSFormatOptions.GamutPolicy.map)
+        Text("Keep original values").tag(CSSFormatOptions.GamutPolicy.preserve)
       }
+      .pickerStyle(.inline)
 
-      Section("Alpha") {
-        Picker("Alpha", selection: $store.formatOptions.alpha) {
-          Text("Only when transparent").tag(CSSFormatOptions.AlphaPolicy.whenNotOpaque)
-          Text("Always").tag(CSSFormatOptions.AlphaPolicy.always)
-          Text("Never").tag(CSSFormatOptions.AlphaPolicy.never)
-        }
-        .pickerStyle(.inline)
-        .labelsHidden()
+      Picker("Alpha", selection: $store.formatOptions.alpha) {
+        Text("Only when transparent").tag(CSSFormatOptions.AlphaPolicy.whenNotOpaque)
+        Text("Always").tag(CSSFormatOptions.AlphaPolicy.always)
+        Text("Never").tag(CSSFormatOptions.AlphaPolicy.never)
       }
+      .pickerStyle(.inline)
     } label: {
       Label("Output options", systemImage: "slider.horizontal.3")
     }

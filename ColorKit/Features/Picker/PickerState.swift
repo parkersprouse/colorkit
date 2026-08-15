@@ -33,7 +33,7 @@ nonisolated enum PickerMode: String, CaseIterable, Identifiable, Sendable, Codab
 
   /// How a pick in this mode gets written down.
   ///
-  /// Not cosmetic. Hex is 8-bit sRGB, so writing an OKLCH pick as hex would quantize
+  /// Not cosmetic. hex is 8-bit sRGB, so writing an OKLCH pick as hex would quantize
   /// it onto the 8-bit grid and re-parse it back as an sRGB color — the chroma
   /// slider would snap, sub-8-bit values would be unreachable, and a color authored
   /// in OKLCH would be stored in a space the user did not choose. `oklch()` is

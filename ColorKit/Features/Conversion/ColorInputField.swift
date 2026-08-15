@@ -125,7 +125,7 @@ struct ColorInputField: View {
   private var status: some View {
     switch store.parsed {
     case .empty:
-      Text("Hex, rgb(), hsl(), hwb(), lab(), lch(), oklab(), oklch(), color(), or a keyword.")
+      Text("hex, rgb(), hsl(), hwb(), lab(), lch(), oklab(), oklch(), color(), or a keyword.")
         .foregroundStyle(.secondary)
 
     case let .failed(error):

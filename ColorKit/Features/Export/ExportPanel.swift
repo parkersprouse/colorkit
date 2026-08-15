@@ -206,11 +206,11 @@ struct ExportPanel: View {
       // again here because precision is the one serialization choice you actually think
       // about while exporting, and sending someone to a toolbar menu mid-task to find it
       // is a worse answer than showing one knob in two places.
-      LabeledContent("Precision") {
-        Picker("Precision", selection: $store.formatOptions.precision) {
-          Text("Compact").tag(2)
+      LabeledContent("Decimal Precision") {
+        Picker("Decimal Precision", selection: $store.formatOptions.precision) {
+          Text("Minimum").tag(2)
           Text("Normal").tag(4)
-          Text("Fine").tag(6)
+          Text("Increased").tag(6)
           Text("Maximum").tag(10)
         }
         .pickerStyle(.segmented)

@@ -71,7 +71,7 @@ struct ExportRoundTripTests {
     }
   }
 
-  /// Precision reaches every shape, at both cardinalities.
+  /// Decimal Precision reaches every shape, at both cardinalities.
   ///
   /// This is the mutation check made permanent. Swap `.lossless` for `.default` anywhere
   /// a shape renders and the exact string stops appearing, so a shape that quietly
@@ -442,7 +442,7 @@ struct ExportShapeTests {
   /// `formattingReachesEveryShape` reads this shape's *wide* block, and it has to — hex is
   /// precision-invariant, so a precision claim made against the fallback could not fail.
   /// That leaves the fallback's `formatting` argument unpinned: hardcoding `.default`
-  /// there would survive every other test in this file. Hex casing is the cheapest setting
+  /// there would survive every other test in this file. hex casing is the cheapest setting
   /// that hex does observe, so it is the one asserted.
   @Test("The fallback honors the formatting, not just the override")
   func p3FallbackReceivesTheFormatting() {
@@ -809,7 +809,7 @@ struct GroupedExportTests {
   func multiGroupDocumentRoundTrips() throws {
     var options = ExportOptions.default
     options.shape = .customProperties
-    // Hex, and both colors already on the 8-bit grid — so the round trip is exact,
+    // hex, and both colors already on the 8-bit grid — so the round trip is exact,
     // not merely close. `options.format` defaults to `oklch()`, which is a real
     // conversion round trip and would need a tolerance instead of `==`.
     options.format = .hex

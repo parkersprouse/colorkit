@@ -96,16 +96,16 @@ struct InlineSettingsBar: View {
   private func precisionPicker(store: ColorStore) -> some View {
     @Bindable var store = store
 
-    return Picker("Precision", selection: $store.formatOptions.precision) {
-      Text("Compact").tag(2)
+    return Picker("Decimal Precision", selection: $store.formatOptions.precision) {
+      Text("Minimum").tag(2)
       Text("Normal").tag(4)
-      Text("Fine").tag(6)
+      Text("Increased").tag(6)
       Text("Maximum").tag(10)
     }
     .pickerStyle(.menu)
     .labelsHidden()
     .fixedSize()
-    .help("Precision")
+    .help("How rounding of decimal values should be handled, with larger values being more verbose in favor of accuracy")
     .accessibilityIdentifier("inlinePrecisionPicker")
   }
 

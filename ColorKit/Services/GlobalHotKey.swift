@@ -68,16 +68,16 @@ nonisolated struct GlobalShortcut: Sendable, Hashable, Codable {
   var displayString: String {
     var symbols = ""
     if modifiers & UInt32(controlKey) != 0 {
-      symbols += "⌃"
+      symbols += "⌃ "
     }
     if modifiers & UInt32(optionKey) != 0 {
-      symbols += "⌥"
+      symbols += "⌥ "
     }
     if modifiers & UInt32(shiftKey) != 0 {
-      symbols += "⇧"
+      symbols += "⇧ "
     }
     if modifiers & UInt32(cmdKey) != 0 {
-      symbols += "⌘"
+      symbols += "⌘ "
     }
     return symbols + keyLabel
   }

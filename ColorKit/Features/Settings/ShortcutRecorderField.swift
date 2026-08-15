@@ -28,12 +28,16 @@ struct ShortcutRecorderField: View {
 
   var body: some View {
     VStack(alignment: .trailing, spacing: 4) {
-      HStack(spacing: 8) {
+      LabeledContent("Color Picker") {
         Text(isRecording ? "Press a key combination…" : store.globalShortcut.displayString)
           .foregroundStyle(isRecording ? .secondary : .primary)
           .monospaced()
           .frame(minWidth: 120, alignment: .trailing)
-
+      }
+      .help("Global shortcut to enable the color picker from anywhere.")
+      .padding(.bottom, 8)
+      
+      HStack(spacing: 8) {
         Button(isRecording ? "Cancel" : "Record Shortcut…") {
           if isRecording {
             stopRecording()

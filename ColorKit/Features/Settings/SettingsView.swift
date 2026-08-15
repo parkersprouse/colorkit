@@ -9,7 +9,7 @@ import SwiftUI
 ///
 /// Five sections: General, Shortcuts, Command Line Tool, Output, and a reset. **Output
 /// duplicates `OutputOptionsMenu`'s seven controls rather than replacing them** — the
-/// same precedent the export panel's own Precision picker already set, documented at
+/// same precedent the export panel's own Decimal Precision picker already set, documented at
 /// ``ColorStore/formatOptions``. Both are surfaces onto the one set of bindings, so
 /// changing precision here and in the toolbar menu can never disagree.
 ///
@@ -27,7 +27,7 @@ struct SettingsView: View {
     Form {
       Section("General") {
         Toggle("Web-friendly mode", isOn: $store.webFriendly)
-          .help("Hides exotic formats and keeps every value inside sRGB.")
+          .help("Hides less common formats and keeps every value inside sRGB to maintain web compatibility.")
         Toggle("Show recents", isOn: $store.showsRecents)
         Stepper(
           "Recent colors kept: \(store.recentLimit)",
@@ -37,26 +37,7 @@ struct SettingsView: View {
       }
 
       Section("Shortcuts") {
-        LabeledContent("Pick Color from Screen") {
-          ShortcutRecorderField()
-        }
-        .help("Works from any app, not only while ColorKit is frontmost.")
-      }
-
-      Section("Command Line Tool") {
-        LabeledContent("colorkit") {
-          Button("Install…") { runInstall() }
-            .accessibilityIdentifier("installColorkit")
-        }
-        .help("Adds a colorkit command you can run from Terminal.")
-
-        if let installOutcome {
-          Text(installOutcome.message)
-            .font(.caption)
-            .foregroundStyle(installOutcome.isSuccess ? Color.secondary : Color.orange)
-            .textSelection(.enabled)
-            .accessibilityIdentifier("installOutcome")
-        }
+        ShortcutRecorderField()
       }
 
       Section("Output") {
@@ -69,10 +50,10 @@ struct SettingsView: View {
         // Named levels rather than decimal counts, same as the toolbar menu:
         // precision is relative to each component's scale, so "4 decimals" is not
         // one fact about every row.
-        Picker("Precision", selection: $store.formatOptions.precision) {
-          Text("Compact").tag(2)
+        Picker("Decimal Precision", selection: $store.formatOptions.precision) {
+          Text("Minimum").tag(2)
           Text("Normal").tag(4)
-          Text("Fine").tag(6)
+          Text("Increased").tag(6)
           Text("Maximum").tag(10)
         }
 
@@ -88,6 +69,34 @@ struct SettingsView: View {
         }
       }
 
+      Section("Command Line Tool") {
+        VStack(spacing: 8) {
+          HStack(alignment: .center, spacing: 8) {
+            Text("colorkit")
+              .monospaced()
+              .font(.system(size: 12))
+            
+            Spacer()
+            
+            Button("Install…") { runInstall() }
+              .accessibilityIdentifier("installColorkit")
+          }
+          .help("Adds a colorkit command you can run from the command line.")
+          
+          if let installOutcome {
+            HStack() {
+              Text(installOutcome.message)
+                .font(.caption)
+                .foregroundStyle(installOutcome.isSuccess ? Color.init(hue: 0.37, saturation: 0.75, brightness: 0.75, opacity: 1) : Color.orange)
+                .textSelection(.enabled)
+                .accessibilityIdentifier("installOutcome")
+              
+              Spacer()
+            }
+          }
+        }
+      }
+      
       Section {
         Button("Reset to Defaults", role: .destructive) {
           store.preferences = Preferences()

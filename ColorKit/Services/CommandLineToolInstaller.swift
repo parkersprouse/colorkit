@@ -75,7 +75,7 @@ enum CommandLineToolInstaller {
     /// The write failed with a permission error *and* the security-scoped claim on
     /// the chosen directory had already come back `false` — the most likely
     /// explanation, though not a certainty; see ``install(embeddedBinary:into:)``.
-    case securityScopeFailed
+    case securityScopeFailed(URL)
     /// The write failed with a permission error despite a successfully claimed
     /// security scope — a genuine filesystem-level denial. **The common case, not an
     /// edge case**: `/usr/local/bin` — this feature's own default destination — is
@@ -105,29 +105,23 @@ enum CommandLineToolInstaller {
     var message: String {
       switch self {
       case .translocated:
-        "Move ColorKit to your Applications folder, relaunch, then try again."
+        "Move ColorKit to your Applications/ folder, relaunch it, then try again."
       case .binaryMissing:
-        "colorkit isn't in this copy of the app. Reinstall ColorKit and try again."
+        "The colorkit CLI isn't in this copy of the app. Reinstall ColorKit and try again."
       case let .destinationOccupied(existing):
         "\(existing.prefix(1).capitalized + existing.dropFirst()) is already there. "
-          + "Remove it yourself, then try again."
-      case .securityScopeFailed:
-        "ColorKit couldn't get permission to write there. Try picking the folder again."
+          + "Remove it and try again."
+      case let .securityScopeFailed(directory):
+        "ColorKit couldn't get permission to write to \(directory.path). Try again or choose a different location."
       case let .writeDenied(directory):
-        "ColorKit doesn't have permission to write to \(directory.path). If you "
-          + "own this Mac, run this once in Terminal, then try again:\n"
-          + "sudo chown \"$(whoami)\" \"\(directory.path)\"\n"
-          + "Or choose a folder you already own instead — ~/.local/bin works well, "
-          + "and this panel can create it for you."
+        "ColorKit doesn't have permission to write to \(directory.path). Try choosing a different location."
       case let .success(advice):
         switch advice {
         case .likelyOnPath:
-          "Installed. Open a new Terminal window and run colorkit --help to try it."
-        case let .needsProfileLine(line):
-          "Installed. Open a new Terminal window and run colorkit --help. If that "
-            + "says \"command not found,\" that folder isn't on your PATH by "
-            + "default — add this line to your shell profile and open a new "
-            + "Terminal window again:\n\(line)"
+          "colorkit CLI successfully installed. Open a new terminal session and run colorkit --help to try it."
+        case let .needsProfileLine(_line):
+          "colorkit CLI successfully installed. Ensure the location you installed the CLI to is included on your PATH, "
+          + "then open a new terminal session and run colorkit --help to try it."
         }
       }
     }
@@ -225,7 +219,7 @@ enum CommandLineToolInstaller {
     guard permissionDenied else {
       return .writeDenied(directory)
     }
-    return scoped ? .writeDenied(directory) : .securityScopeFailed
+    return scoped ? .writeDenied(directory) : .securityScopeFailed(directory)
   }
 
   /// Opens a directory-choosing panel, or `nil` if the user cancels.
@@ -246,8 +240,8 @@ enum CommandLineToolInstaller {
     panel.canCreateDirectories = true
     panel.allowsMultipleSelection = false
     panel.directoryURL = url
-    panel.prompt = "Choose"
-    panel.message = "Choose where to install the colorkit command."
+    panel.prompt = "Choose Location"
+    panel.message = "Choose where to install the colorkit CLI."
     return panel.runModal() == .OK ? panel.url : nil
   }
 

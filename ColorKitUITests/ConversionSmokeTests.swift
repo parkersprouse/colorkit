@@ -44,12 +44,12 @@ final class ConversionSmokeTests: XCTestCase {
     app = nil
   }
 
-  /// Precision is relative to each component's scale, and this is the only test
+  /// Decimal Precision is relative to each component's scale, and this is the only test
   /// that proves it survives the trip through the real view. A hue printed to four
   /// decimals — `hsl(217.2193 …)` — is the defect being guarded against.
   func testPanelRendersEveryFormatAtReadablePrecision() {
     XCTAssertTrue(
-      row("Hex", "#3b82f6").waitForExistence(timeout: 30),
+      row("hex", "#3b82f6").waitForExistence(timeout: 30),
       "The conversion panel never rendered its default color",
     )
 
@@ -104,7 +104,7 @@ final class ConversionSmokeTests: XCTestCase {
     field.typeText("rgb(calc(128 * 2 - 1) calc(0 * 5) calc(255 / 2))")
 
     XCTAssertTrue(
-      row("Hex", "#ff0080").waitForExistence(timeout: 15),
+      row("hex", "#ff0080").waitForExistence(timeout: 15),
       "A calc() expression never reached the panel",
     )
   }

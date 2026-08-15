@@ -507,7 +507,7 @@ nonisolated enum PaletteImport {
 
   /// `p3WithFallback` writes the same properties twice — hex, then again in
   /// `color(display-p3 …)` behind `@media (color-gamut: p3)`. **Only the override block
-  /// is read.** Hex `cannotRepresentOutOfGamut`, so any color that motivated choosing
+  /// is read.** hex `cannotRepresentOutOfGamut`, so any color that motivated choosing
   /// this shape in the first place would come back rounded if the fallback block were
   /// the one trusted — the media block is the one spelling that can actually carry it.
   private static func parseP3WithFallback(_ text: String) -> ImportedPalette {

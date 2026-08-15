@@ -155,7 +155,7 @@ nonisolated struct ExportOptions: Sendable, Equatable {
 
   /// What ``ExportShape/p3WithFallback`` writes its first block in.
   ///
-  /// Hex on principle rather than for convenience: that block's job is to be what a
+  /// hex on principle rather than for convenience: that block's job is to be what a
   /// browser without P3 support gets, and hex is the most broadly compatible spelling
   /// there is. It is also the only choice that cannot itself carry an out-of-sRGB
   /// value — `cannotRepresentOutOfGamut` — so the fallback provably falls back.
@@ -603,7 +603,7 @@ nonisolated struct ExportOptions: Sendable, Equatable {
   /// same rule now holds per group as well as per entry — every group appears in both
   /// blocks, never just the fallback.
   ///
-  /// The formatting argument is passed through untouched. Hex maps regardless of policy
+  /// The formatting argument is passed through untouched. hex maps regardless of policy
   /// because it `cannotRepresentOutOfGamut`; the P3 block follows whatever the app-wide
   /// gamut policy is, exactly as choosing `color(display-p3 …)` in any other shape does.
   private func p3WithFallback(

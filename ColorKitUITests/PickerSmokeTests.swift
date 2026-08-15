@@ -75,7 +75,7 @@ final class PickerSmokeTests: XCTestCase {
   /// The write-back loop, end to end: dragging the plane has to reach the shared
   /// field, and in OKLCH mode it has to arrive as `oklch()` rather than as hex.
   ///
-  /// Hex would still *look* right — the swatch and the plane would agree — while
+  /// hex would still *look* right — the swatch and the plane would agree — while
   /// quietly quantizing every pick onto the 8-bit grid and storing it in a space the
   /// user did not choose.
   func testDraggingThePlaneWritesOKLCHToTheField() {

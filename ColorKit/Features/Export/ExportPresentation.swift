@@ -101,7 +101,7 @@ nonisolated extension ExportShape {
     case .tailwindConfig:
       "tailwind.config.js, under theme.extend so the stock palette survives."
     case .p3WithFallback:
-      "Hex for everyone, then the same properties in Display P3 behind "
+      "hex for everyone, then the same properties in Display P3 behind "
         + "@media (color-gamut: p3). Fixed formats — the fallback has to be hex."
     case .designTokens:
       "$value objects, one per color, each in the space it was authored in — what "
@@ -134,7 +134,7 @@ nonisolated extension ExportShape {
     switch self {
     case .p3WithFallback:
       let them = count == 1 ? "it" : "them"
-      return "Hex cannot express \(colors), so the fallback block rounds \(them); the "
+      return "hex cannot express \(colors), so the fallback block rounds \(them); the "
         + "@media block writes \(them) in Display P3."
     case .declaration, .customProperties, .json, .tailwindTheme, .tailwindConfig:
       return "\(format.title) cannot express \(colors), so the values below were "

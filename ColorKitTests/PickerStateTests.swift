@@ -21,7 +21,7 @@ struct PickerStateTests {
   /// The heart of the OKLCH mode, and the assertion that fails the moment somebody
   /// simplifies the two formats into one.
   ///
-  /// Hex is 8-bit sRGB. Writing an OKLCH pick as hex would quantize it onto that grid
+  /// hex is 8-bit sRGB. Writing an OKLCH pick as hex would quantize it onto that grid
   /// and — because the store re-parses whatever it is handed — bring it back as an
   /// **sRGB** color. The mode's own axes would then be derived from a color in a
   /// different space on every frame, and chroma would snap to whatever the 8-bit grid
@@ -50,7 +50,7 @@ struct PickerStateTests {
     #expect(coarse.cssToWrite() != fine.cssToWrite())
   }
 
-  /// Hex where hex is the right currency. An HSV pick is an sRGB color by
+  /// hex where hex is the right currency. An HSV pick is an sRGB color by
   /// construction, and 8 bits is the resolution the square is drawn at anyway.
   @Test("An HSV pick is written as hex")
   func hsvIsWrittenAsHex() throws {

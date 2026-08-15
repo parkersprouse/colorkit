@@ -87,7 +87,7 @@ struct OutputOptionTests {
   @Test("The mapped note counts against the format the values are written in")
   func theMappedNoteFollowsTheFormat() {
     // One predicate decides this and the value beside it, so the two cannot disagree.
-    // Hex cannot represent an out-of-gamut color at all; oklch is unbounded and never
+    // hex cannot represent an out-of-gamut color at all; oklch is unbounded and never
     // moves one — which is why the same command says different things under each.
     let hex = ColorKitCLI.run(["harmony", "color(display-p3 0 1 0)", "triad",
                                "--format", "hex"])

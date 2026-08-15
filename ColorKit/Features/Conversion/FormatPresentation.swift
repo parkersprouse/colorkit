@@ -17,7 +17,7 @@ nonisolated extension CSSOutputFormat {
   /// reminder of the syntax you are about to paste.
   var title: String {
     switch self {
-    case .hex: "Hex"
+    case .hex: "hex"
     case .keyword: "Keyword"
     case .rgb: "rgb()"
     case .hsl: "hsl()"

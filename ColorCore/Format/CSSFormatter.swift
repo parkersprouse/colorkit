@@ -40,7 +40,7 @@ nonisolated enum CSSOutputFormat: Hashable, Sendable {
 
   /// Formats that cannot express an out-of-gamut value at all.
   ///
-  /// Hex is 8-bit unsigned, so a negative channel simply has no spelling; a keyword
+  /// hex is 8-bit unsigned, so a negative channel simply has no spelling; a keyword
   /// is one of 148 fixed points. Both must be gamut-mapped regardless of policy.
   /// `rgb()` and friends, by contrast, accept out-of-range numbers syntactically.
   var cannotRepresentOutOfGamut: Bool {
@@ -287,7 +287,7 @@ nonisolated extension ColorValue {
     return result
   }
 
-  // MARK: - Hex
+  // MARK: - hex
 
   private func hexString(options: CSSFormatOptions) -> String {
     func channel(_ value: Double) -> Int {

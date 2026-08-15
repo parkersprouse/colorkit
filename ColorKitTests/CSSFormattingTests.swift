@@ -18,7 +18,7 @@ import Testing
 /// `hslToSRGB` maps it straight back. The out-of-gamut samples below exercise that
 /// branch and still round-trip.
 ///
-/// Hex is excluded — 8-bit quantization genuinely does lose information.
+/// hex is excluded — 8-bit quantization genuinely does lose information.
 private let fullPrecisionFormats: [CSSOutputFormat] = [
   .lab, .lch, .oklab, .oklch, .color(.xyzD65), .color(.xyzD50),
   .rgb, .hsl, .hwb, .color(.srgb), .color(.displayP3), .color(.rec2020),
@@ -99,7 +99,7 @@ struct CSSFormattingTests {
     let vivid = ColorValue(space: .oklch, 0.9, 0.3, 140)
     #expect(!vivid.inGamut(of: .srgb))
 
-    // Hex is 8-bit unsigned — a negative channel has no spelling, so mapping is
+    // hex is 8-bit unsigned — a negative channel has no spelling, so mapping is
     // not optional even when the caller asks to preserve.
     let hex = try #require(vivid.cssString(as: .hex, options: CSSFormatOptions(gamut: .preserve)))
     #expect(hex.count == 7, "expected #rrggbb, got \(hex)")
@@ -210,7 +210,7 @@ struct CSSFormattingTests {
     #expect(flagged.contains("none"), "expected a powerless hue in \(flagged)")
   }
 
-  @Test("Hex options behave")
+  @Test("hex options behave")
   func hexOptions() {
     let color = ColorValue.srgb8(255, 204, 0)
     #expect(color.cssString(as: .hex) == "#ffcc00")
@@ -261,7 +261,7 @@ struct CSSFormattingTests {
     #expect(red.cssString(as: .color(.hsl)) == nil)
   }
 
-  @Test("Precision is honored and trailing zeros stripped")
+  @Test("Decimal Precision is honored and trailing zeros stripped")
   func precision() {
     let color = ColorValue(space: .oklch, 0.123456789, 0.198765, 200.5)
     // Hue is on a 0–360 scale, so it loses two decimals relative to lightness.
@@ -274,7 +274,7 @@ struct CSSFormattingTests {
 
   /// The defect this fixes: at a flat four decimals the panel reported a hue of
   /// `217.2193` — a ten-thousandth of a degree, which is noise dressed as accuracy.
-  @Test("Precision follows each component's scale, not a flat decimal count")
+  @Test("Decimal Precision follows each component's scale, not a flat decimal count")
   func precisionIsRelativeToComponentScale() {
     let blue = ColorValue.srgb8(59, 130, 246)
 
