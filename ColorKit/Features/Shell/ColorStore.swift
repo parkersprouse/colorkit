@@ -152,7 +152,7 @@ enum Tool: String, CaseIterable, Identifiable, Sendable {
     case .export: "Export"
     }
   }
-  
+
   /// The accessibility label for a collapsed, icon-only sidebar row (M36) — see `ToolSidebar`.
   var tooltip: String {
     switch self {

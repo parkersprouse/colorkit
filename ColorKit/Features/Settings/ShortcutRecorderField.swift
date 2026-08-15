@@ -36,7 +36,7 @@ struct ShortcutRecorderField: View {
       }
       .help("Global shortcut to enable the color picker from anywhere.")
       .padding(.bottom, 8)
-      
+
       HStack(spacing: 8) {
         Button(isRecording ? "Cancel" : "Record Shortcut…") {
           if isRecording {

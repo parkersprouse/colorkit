@@ -130,7 +130,7 @@ enum CommandLineToolInstaller {
           "colorkit CLI successfully installed. Open a new terminal session and run colorkit --help to try it."
         case .needsProfileLine:
           "colorkit CLI successfully installed. Ensure the location you installed the CLI to is included on your PATH, "
-          + "then open a new terminal session and run colorkit --help to try it."
+            + "then open a new terminal session and run colorkit --help to try it."
         }
       }
     }

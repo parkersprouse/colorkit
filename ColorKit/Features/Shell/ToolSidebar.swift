@@ -41,7 +41,7 @@ struct ToolSidebar: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
       collapseToggle
-      
+
       Divider()
         .padding(.vertical, 8)
 

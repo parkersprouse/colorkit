@@ -77,28 +77,28 @@ struct SettingsView: View {
             Text("colorkit")
               .monospaced()
               .font(.system(size: 12))
-            
+
             Spacer()
-            
+
             Button("Install…") { runInstall() }
               .accessibilityIdentifier("installColorkit")
           }
           .help("Adds a colorkit command you can run from the command line.")
-          
+
           if let installOutcome {
-            HStack() {
+            HStack {
               Text(installOutcome.message)
                 .font(.caption)
-                .foregroundStyle(installOutcome.isSuccess ? Color.init(hue: 0.37, saturation: 0.75, brightness: 0.75, opacity: 1) : Color.orange)
+                .foregroundStyle(installOutcome.isSuccess ? Color(hue: 0.37, saturation: 0.75, brightness: 0.75, opacity: 1) : Color.orange)
                 .textSelection(.enabled)
                 .accessibilityIdentifier("installOutcome")
-              
+
               Spacer()
             }
           }
         }
       }
-      
+
       Section {
         Button("Reset to Defaults", role: .destructive) {
           store.preferences = Preferences()
