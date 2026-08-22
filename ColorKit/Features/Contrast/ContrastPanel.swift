@@ -154,11 +154,18 @@ struct ContrastPanel: View {
       Image(systemName: passes ? "checkmark.circle.fill" : "xmark.circle")
         .foregroundStyle(passes ? Color.green : Color.secondary)
       Text(item.title)
-      Text(item.requirement.criterion)
-        .font(.caption)
-        // See the note in `apca` — nothing in this panel is dimmer than
-        // secondary, on principle.
-        .foregroundStyle(.secondary)
+      // A `Link`, not a `Text` — clicking the criterion number opens the W3C's own
+      // page for it, so "which spec rule is this" is one click away rather than a
+      // number to go look up.
+      Link(destination: item.requirement.specURL) {
+        Text(item.requirement.criterion)
+          .font(.caption)
+          // See the note in `apca` — nothing in this panel is dimmer than
+          // secondary, on principle.
+          .foregroundStyle(.secondary)
+      }
+      .accessibilityLabel("Success criterion \(item.requirement.criterion)")
+      .accessibilityHint("Opens this criterion on the W3C site.")
       Spacer()
       Text(String(format: "%g:1", item.requirement.minimumRatio))
         .font(.system(.callout, design: .monospaced))
@@ -166,6 +173,9 @@ struct ContrastPanel: View {
     }
     .padding(.horizontal, 10)
     .padding(.vertical, 7)
+    // The row's own tooltip, not just the number's — a hover anywhere over the
+    // requirement should surface what it actually requires.
+    .help(item.requirement.specSummary)
   }
 
   // MARK: - APCA

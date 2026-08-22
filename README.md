@@ -44,8 +44,8 @@ Drag the app from there into `/Applications` to install.
 ### The menu bar
 
 Click the eyedropper in the menu bar for a small panel holding the current color, a
-**Copy as** menu listing every format, your recent colors, and three actions: **Pick
-Color from Screen**, **Open ColorKit**, and **Quit**.
+**Copy as** menu listing every format, your recent colors, and three actions: **Color
+Picker**, **Open ColorKit**, and **Quit**.
 
 ### The global shortcut
 
@@ -55,12 +55,18 @@ recents. The menu bar icon flashes a checkmark to confirm – useful precisely b
 you were looking at some other app when you pressed it.
 
 The shortcut is only advertised in the panel once macOS has actually granted it, so if
-you don't see it listed, another app claimed the chord first.
+you don't see it listed, another app claimed the chord first. It's also the only
+keyboard shortcut anywhere in the app, and you can rebind it from **Settings ▸
+Shortcuts**.
 
 ### The window
 
-Everything else is in the main window. At the top is a text field that accepts any CSS
-color; below it, a row of recent colors; below that, a switcher for the seven tools.
+A collapsible sidebar sits on the left, holding the switcher for the seven tools and,
+below it, your recent colors. Collapse it to an icon-only rail when you want the room
+back.
+
+Everything else lives in the content column beside it: a text field at the top that
+accepts any CSS color, then whichever tool panel is showing.
 
 **The field belongs to no tool.** Every tool is a different question asked about the
 same color, so switching tools never changes what you typed.
@@ -204,17 +210,24 @@ produces inside sRGB – the picker, the harmonies, the ramps and the contrast s
 recalibrate. It is for the case where the output has to work everywhere and a
 `color(display-p3 …)` in your stylesheet is a problem rather than a feature.
 
-The rest are output preferences, shared by every panel and also reachable from the
-toolbar's sliders icon:
+The same section also holds whether to show the recents row and how many colors it
+keeps.
+
+**Shortcuts** lets you rebind the global sampling shortcut (⌃⌥⌘C by default) to
+whatever chord you'd rather use.
+
+The output preferences are shared by every panel and also reachable from the output
+options icon beside the color field:
 
 - Legacy comma syntax (`rgb(255, 0, 0)`)
 - `rgb()` as percentages
 - Uppercase hex, and shortening hex where possible
-- Precision – Compact, Normal, Fine, or Maximum
+- Precision – Minimum, Normal, Increased, or Maximum
 - Out of gamut – map values into gamut, or keep the originals
 - Alpha – only when transparent, always, or never
 
-Plus whether to show the recents row, and how many colors it keeps.
+**Command Line Tool** installs `colorkit` onto a directory on your `PATH` you pick,
+without needing an admin password.
 
 ---
 
@@ -223,7 +236,7 @@ Plus whether to show the recents row, and how many colors it keeps.
 The same engine, for scripts and for anyone who'd rather not leave the terminal.
 
 ```bash
-xcodebuild -project "ColorKit.xcodeproj" -target colorkit -destination 'platform=macOS' build
+xcodebuild -project "ColorKit.xcodeproj" -target ColorKitCLI -destination 'platform=macOS' build
 ```
 
 It builds to `./build/Release/colorkit`. Copy it somewhere on your `PATH` if you want

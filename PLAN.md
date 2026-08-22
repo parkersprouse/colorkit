@@ -1,5 +1,13 @@
 # ColorKit – Implementation Plan
 
+> **This is the point-in-time status the numbered plan (M0–M18) shipped with — it was
+> never rewound and updated further, on purpose (see the note a few paragraphs down on
+> why every number here is "a reading taken then"). M19 onward continued past it; the
+> milestone headings below go through M38, and CLAUDE.md's top-of-file narrative is
+> what states which milestone the project is actually on today, along with the current
+> test count. Read this block as the M18-era snapshot it is, not as the project's
+> current state.**
+
 > **Status (2026-08-05): M0–M18 and M5b (CVD) complete – the numbered plan is done.**
 > The suite is **405 Swift Testing functions across 46 suites in `ColorKitTests`,
 > 59 more across 10 suites in `ColorKitCLITests`, plus 30

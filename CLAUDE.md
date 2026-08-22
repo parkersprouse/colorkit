@@ -233,9 +233,9 @@ change without a mistake masquerading as an app regression:
 xcodebuild -project "ColorKit.xcodeproj" -target ColorKitCLI -destination 'platform=macOS' build && ./build/Release/colorkit --help
 ```
 
-Full test suite (~9 minutes, nearly all of it UI tests — the 556 + 62 Swift Testing
-tests finish in about a second, the 48 XCUITests take seven minutes and up). **There are
-two Swift Testing bundles now**: `ColorKitTests` (556 tests, 55 suites) and
+Full test suite (~9 minutes, nearly all of it UI tests — the 581 + 62 Swift Testing
+tests finish in about a second, the 53 XCUITests take seven minutes and up). **There are
+two Swift Testing bundles now**: `ColorKitTests` (581 tests, 56 suites) and
 `ColorKitCLITests` (62 tests, 10 suites), and both are in the scheme:
 
 ```bash
@@ -1342,7 +1342,7 @@ Layered so the numeric core stays independently testable and UI-free:
   depends on whatever the developer's own use of the app last saved. It pairs with the
   same `["-NSTreatUnknownArgumentsAsOpen", "NO", …]` opt-out `UITestInMemoryStore` needs
   and for the identical reason — a bare argument alone is read by AppKit as a file to
-  open — which is why **every** UI test file carries the pair now (all 11 at the time of
+  open — which is why **every** UI test file carries the pair now (all 12 at the time of
   writing), not only `ProjectsSmokeTests`. Stated as "every" rather than as a count on
   purpose: the rule is that a new suite carries it too, and a number here goes stale the
   next time one is added, which is exactly when somebody most needs to read this.

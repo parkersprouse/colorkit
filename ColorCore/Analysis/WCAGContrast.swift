@@ -44,6 +44,38 @@ nonisolated enum ContrastRequirement: Sendable, Hashable, CaseIterable {
     case .nonText: "1.4.11"
     }
   }
+
+  /// A short paraphrase of the criterion's own requirement, for a tooltip. Paraphrased
+  /// rather than the spec's normative text verbatim, both because a summary does not
+  /// need updating every time the row's own wording changes and because it avoids
+  /// reproducing the W3C's copyrighted text at length.
+  var specSummary: String {
+    switch self {
+    case .aaNormalText:
+      "Text and images of text need at least 4.5:1 contrast against their background."
+    case .aaLargeText:
+      "Large-scale text (18pt, or 14pt bold, and larger) needs at least 3:1 contrast against its background."
+    case .aaaNormalText:
+      "The enhanced level: text and images of text need at least 7:1 contrast against their background."
+    case .aaaLargeText:
+      "The enhanced level: large-scale text needs at least 4.5:1 contrast against its background."
+    case .nonText:
+      "Visual boundaries of user interface components, and graphics required to understand content, need at least 3:1 contrast against adjacent colors."
+    }
+  }
+
+  /// This criterion's own page on the W3C's site — the anchor slug matches the
+  /// criterion's name, not its number, so it is transcribed rather than derived.
+  var specURL: URL {
+    switch self {
+    case .aaNormalText, .aaLargeText:
+      URL(string: "https://www.w3.org/TR/WCAG22/#contrast-minimum")!
+    case .aaaNormalText, .aaaLargeText:
+      URL(string: "https://www.w3.org/TR/WCAG22/#contrast-enhanced")!
+    case .nonText:
+      URL(string: "https://www.w3.org/TR/WCAG22/#non-text-contrast")!
+    }
+  }
 }
 
 nonisolated extension ColorValue {
